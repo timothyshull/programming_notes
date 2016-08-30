@@ -845,3 +845,168 @@ superblock starting at a different offset depending on the cylinder group
 - a directory link adds an entry to the containing directory with the i-node
   number and base name of the directory, which points to the i-node, which points
   to the linked directories block
+  
+  
+!!!! Missing a few sections here
+
+
+# Chapter 5 - Standard I/O Library
+- ISO C and extenstions, covers over buffer allocation and chunk size
+  optimization
+- written in roughly 1975
+## Streams and FILE Objects
+- rather than working with a file descriptor considers a file handle to 
+  be a stream
+- with ASCII - single char = 1 byte, international char > 1 byte
+- on creation, stream has no orientation then it can be specified
+- use fwide to set a stream's orientation
+```
+#include <stdio.h>
+#include <wchar.h>
+int fwide(FILE *fp, int mode);
+```
+- arg - negative - tries to make the specified stream byte-oriented
+- arg - positive - tries to make the specified stream wide-oriented
+- arg - zero - tries to set the orientation, but will still 
+  return a value identifying the stream's orientation.
+- Returns: positive if stream is wide-oriented, negative if stream is 
+  byte-oriented, or 0 if stream has no orientation
+  
+## Standard Input, Standard Output, and Standard Error
+- fd versions - STDIN_FILENO, STDOUT_FILENO, and STDERR_FILENO
+- file pointer versions - stdin, stdout, and stderr
+- defined in the <stdio.h> header
+- (usually 0, 1, 2)
+
+## Buffering
+- goal is to minimize read and write calls and automate it, covering over
+  application programmer's need to handle it
+- causes confusion
+- three types:
+    - fully buffered - I/O takes place when the standard I/O buffer is 
+      filled. Buffer usually created with malloc. Flushes on fill or fflush
+      call. In a terminal driver flushing discards the data.
+    - line buffered - I/O on newline char. Usually used for terminals.
+      NOTE: max line is fixed and will cause I/O. 
+      NOTE: I/O requests from unbuffered or line buffered streams will 
+      cause a flush
+    - unbuffered - no buffering (generally stderr is unbuffered)
+    
+- stdin and stdout are generally fully buffered for non-interactive devices
+- stderr is never fully buffered and generally always unbuffered
+- all other streams (stdin and stdout included) are line buffered if they
+  are a terminal device and unbuffered otherwise
+```
+#include <stdio.h>
+void setbuf(FILE *restrict fp, char *restrict buf);
+int setvbuf(FILE *restrict fp, char *restrict buf, int mode,
+size_t size);
+```
+- call after stream is open and set buffering
+    - _IOFBF - fully buffered
+    - _IOLBF - line buffered
+    - _IONBF - unbuffered
+- NOTE: see summary 5.1 for details
+```
+#include <stdio.h> 
+int fflush(FILE *fp);
+```
+- force a stream to be flushed
+
+## Opening a Stream
+```
+#include <stdio.h>
+FILE *fopen(const char *restrict pathname, const char *restrict type);
+FILE *freopen(const char *restrict pathname, const char *restrict type, FILE *restrict fp);
+FILE *fdopen(int filedes, const char *type);
+```
+- fopen - opens file
+- freopen - opens a file on a specified stream, clearing orientation if necessary
+- fdopen - creates a stream from an open file descriptor
+  NOTE: streams and other special file types cannot be opened with fdopen
+  and must be opened and then passed to fdopen
+- open type arg:
+    - r or rb - read
+    - w or wb - write
+    - a or ab - append (write to end of file), create if necessary
+    - r+, r+b, rb+ - read and write
+    - w+, w+b, wb+ - truncate or create and read or write
+    - a+, a+b, ab+ - open or create for reading and writing from the end of the file
+- fdopen alters type args - truncate does not work as expected and more
+- for read and write
+    - need to call fflush, fseek, fsetpos, or rewind between a read/write switch or
+      when EOF is encountered
+```
+#include <stdio.h> 
+int fclose(FILE *fp);
+```
+- use fclose to close an open stream, flushes before closing ad releases buffer
+- on process exit, all streams are flushed and closed
+
+## Reading and Writing a Stream
+- three types of I/O
+  - char - read and write on character at a time (if buffered, buffered behind scenes)
+  - line - use fgets or fputs
+  - direct - fread/fwrite - read or write in a specified size (corollary to reading blocks)
+    NOTE: aka binary I/O, object-at-a-time I/O, record-oriented I/O, structure-oriented I/O
+- character input:
+```
+#include <stdio.h> 
+int getc(FILE *fp); 
+int fgetc(FILE *fp); 
+int getchar(void);
+```
+- getchar == getc(stdin)
+- getc can be macro, fgetc cannot
+- getc arg should have no side effects
+- fgetc has an address and can be passed to other functions
+- fgetc calls usually take longer
+- returns character converted to int
+```
+#include <stdio.h> 
+int ferror(FILE *fp); 
+int feof(FILE *fp);
+void clearerr(FILE *fp);
+```
+- Both return: nonzero (true) if condition is true, 0 (false) otherwise
+- each file pointer generally maintains:
+  - error flag
+  - EOF flag
+- clear with clearerr
+```
+#include <stdio.h>
+int ungetc(int c, FILE *fp);
+```
+- use ungetc to push a character back to a stream (only for files that will 
+  accept this)
+  NOTE: does not write back to file, just pushes back to kernel buffer
+- output
+```
+#include <stdio.h>
+int putc(int c, FILE *fp); 
+int fputc(int c, FILE *fp); 
+int putchar(int c);
+```
+- same semantics as above
+
+## Line-at-a-time I/O
+```
+#include <stdio.h>
+char *fgets(char *restrict buf, int n, FILE *restrict fp); 
+char *gets(char *buf);
+```
+- fgets takes max for line size and stores newline in buffer
+- !!! do not use gets - causes buffer overflow
+```
+#include <stdio.h>
+int fputs(const char *restrict str, FILE *restrict fp);
+int puts(const char *str);
+```
+- fputs does not write null character or newline
+- puts is not unsafe but avoid using it in favor of fputs
+
+## I/O Efficiency
+- fastest to slowest - fgets, getc, fgetc
+
+## Binary I/O
+```

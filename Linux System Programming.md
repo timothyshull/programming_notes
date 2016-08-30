@@ -899,3 +899,339 @@ struct pollfd {
 - 2.4 unified the two
 - risks data loss on power failure, something that can be avoided with synchronized
   I/O
+  
+# Chapter 3 - Buffered I/O
+- blocks and block size are the main focus of I/O
+- poor block size choice can cause system performance degradation
+  buffered I/O and the C standard library I/O functions handle much of this
+  
+## User-Buffered I/O
+- many small I/Os to regular files -> user-buffered I/O
+- for example 2M written in 1byte chunks takes 18x longer than 2M
+  in 1024 byte chunks which takes ~ .75x of 1130 byte chunks
+- use stat() command to determine block size
+- can use larger multiples of the block size to reduce system calls
+  but do not do this for many small reads and writes
+- can write buffering by hand but more common to use the C standard library
+
+## Standard I/O
+- generally glibc with Linux implementing some deviations from the standard
+
+## File Pointers
+- stdio routines use file pointers
+- open file is a stream, input, output, and input/output
+
+## Opening Files
+```
+#include <stdio.h>
+FILE * fopen (const char *path, const char *mode);
+```
+
+## Modes
+- r - start
+- r+ - start (r + w)
+- w - start + truncate or create
+- w+ - start + truncate or create (w + r)
+- a - end + create if necessary, writes append at end
+- a+ - end + create if necessary, writes append at end (w + r)
+- b - ignored on Linux (binary)
+
+## Opening a Stream via File Descriptor
+- takes an already open fd
+```
+#include <stdio.h>
+FILE * fdopen (int fd, const char *mode);
+```
+- do not use fd for I/O after
+```
+ FILE *stream;
+int fd;
+fd = open ("/home/kidd/map.txt", O_RDONLY);
+if (fd == &#8722;1)
+    /* error */
+stream = fdopen (fd, "r");
+if (!stream)
+    /* error */
+```
+
+## Closing Streams
+```
+#include <stdio.h>
+int fclose (FILE *stream);
+```
+- flushes before closing 
+- returns EOF on failure and sets errno
+
+## Closing All Streams
+```
+#define _GNU_SOURCE
+#include <stdio.h>
+int fcloseall (void);
+```
+- Linux only
+- always returns 0
+
+## Reading from a Stream
+- must be opened with standard I/O function in any mode other than w or a
+
+## Reading a Character at a Time
+```
+#include <stdio.h>
+int fgetc (FILE *stream);
+```
+- casts to int to ensure EOF can be handled
+- always store in int!
+```
+int c;
+c = fgetc (stream);
+if (c == EOF)
+    /* error */
+else
+    printf ("c=%c\n", (char) c);
+```
+
+## Putting the character back
+```
+#include <stdio.h>
+int ungetc (int c, FILE *stream);
+```
+- returns c on success, EOF on failure
+- POSIX guarantees success of 1, Linux allows infinite based on available
+  memory
+- calling seek in between will discard all pushed back chars
+
+## Reading an Entire Line
+```
+#include <stdio.h>
+char * fgets (char *str, int size, FILE *stream);
+```
+- reads up to one less than size bytes from stream into str
+- '\0' stored in buffer after bytes are read in
+- reading stops after '\n' or EOF are reached
+- returns NULL on failure
+- LINE_MAX is defined in limits.h
+- Linux is not limited by this but portable programs can use it for safety
+
+## Reading arbitrary strings
+- fgets often causes issues
+```
+char *s;
+int c;
+s = str;
+while (--n > 0 && (c = fgetc(stream)) != EOF)
+    *s++ = c;
+*s = '\0';
+```
+- read to delimiter
+```
+char *s;
+int c = 0;
+s = str;
+while (--n > 0 && (c = fgetc (stream)) != EOF && (*s++ = c) != d)
+    ;
+if (c == d)
+    *--s = '\0';
+else
+    *s = '\0';
+```
+- probably slower but not for same reason as dd
+
+## Reading Binary Data
+```
+#include <stdio.h>
+size_t fread (void *buf, size_t size, size_t nr, FILE *stream);
+```
+- reads nr elements (each element of 'size' bytes) into buffer
+- returns number of elements read, failure returns less than nr
+- must use ferror() or feof() to determine type of failure
+```
+char buf[64];
+size_t nr;
+nr = fread (buf, sizeof(buf), 1, stream);
+if (nr == 0)
+    /* error */
+```
+
+## Writing to a Stream
+### Issues of Alignment
+- processors access memory in chunks of bytes (2, 4, 8, 16)
+- can only read in integer multiples of this number
+- consequently, C vars must be stored and accessed on alignment boundaries
+- usually naturally aligned
+- usually do not need to deal with alignment but saving binary data,
+  dealing with memory management, and networking may make alignment
+  important
+  
+## Writing a Single Character
+```
+#include <stdio.h>
+int fputc (int c, FILE *stream);
+```
+- casts int to unsigned char and returns c or EOF (w/ errno)
+
+## Writing a String of Characters
+```
+#include <stdio.h>
+int fputs (const char *str, FILE *stream);
+```
+- returns non-negative number or EOF
+```
+FILE *stream;
+stream = fopen("journal.txt", "a");
+if (!stream)
+    /* error */
+if (fputs ("The ship is made of wood.\n", stream) == EOF)
+    /* error */
+if (fclose (stream) == EOF)
+    /* error */
+```
+ 
+## Writing Binary Data
+```
+#include <stdio.h>
+size_t fwrite (void *buf, size_t size, size_t nr, FILE *stream);
+```
+- advances file pointer by total number of bytes written
+
+## Seeking a Stream
+```
+#include <stdio.h>
+int fseek (FILE *stream, long offset, int whence);
+```
+- whence - SEEK_SET - file position set to offset
+- whence - SEEK_CUR - file position set to current position + offset
+- whence - SEEK_END - file position set to end + offset
+```
+#include <stdio.h>
+int fsetpos (FILE *stream, fpos_t *pos);
+// with fgetpos();
+```
+- works like SEEK_SET above
+- may be the only option on certain platforms
+```
+#include <stdio.h>
+void rewind (FILE *stream);
+```
+- resets to start
+
+## Obtaining the Current Stream Position
+```
+#include <stdio.h>
+long ftell (FILE *stream);
+```
+- returns -1 on error and sets errno
+```
+#include <stdioh.h>
+int fgetpos (FILE *stream, fpos_t *pos);
+```
+- 0 on success, -1 w/ errno on failure
+
+## Flushing a Stream
+```
+#include <stdio.h>
+int fflush (FILE *stream);
+```
+- writes unwritten data in user buffer to kernel buffer
+- if passed NULL, all open input streams are flushed
+- 0 on success, EOF + errno on failure
+- a call to fflush followed by fsync will ensure a full write to disk
+
+## Errors and End-of-File
+```
+include <stdio.h>
+int ferror (FILE *stream);
+```
+- checks for error on a stream, 0 for no error
+```
+include <stdio.h>
+int feof (FILE *stream);
+```
+- checks for EOF on a stream, 0 for no error
+```
+#include <stdio.h>
+void clearerr (FILE *stream);
+```
+- clears both error and EOF for a stream
+
+## Obtaining the Associated File Descriptor
+```
+#include <stdio.h>
+int fileno (FILE *stream);
+```
+- returns fd or -1 with errno set to EBADF
+
+## Controlling the Buffering
+- unbuffered - data goes straight to kernel (stderr by default)
+- line-buffered - buffer submitted to kernel on each newline character (default for terminals)
+- block-buffered - aka full-buffering, buffer passed to kernel at end of block (default for file streams)
+```
+#include <stdio.h>
+int setvbuf (FILE *stream, char *buf, int mode, size_t size);
+```
+- _IONBF - unbuffered
+- _IOLBF - line-buffered
+- _IOFBF - block buffered
+- must be called on open stream
+- must close the stream before a buffer falls out of scope
+
+## Thread Safety
+- must synchronize access to shared data between threads or make the data
+  thread-local
+- use mutual exclusion but not always adequate
+- may need to block (expand the 'critical region') on many calls at once
+- may need lock-free safety for access
+- stdio functions are inherently thread safe (use lock, lock count, and owning thread)
+- within single function calls, stdio function calls are atomic
+
+## Manual File Locking
+```
+#include <stdio.h>
+void flockfile (FILE *stream);
+```
+
+```
+#include <stdio.h>
+void funlockfile (FILE *stream);
+```
+- just increments the lock count and waits for a file to become free or decrements lock count
+```
+#include <stdio.h>
+int ftrylockfile (FILE *stream);
+```
+- only locks if stream is unlocked or does nothing and returns non-zero value
+```
+flockfile (stream);
+fputs ("List of treasure:\n", stream);
+fputs ("    (1) 500 gold coins\n", stream);
+fputs ("    (2) Wonderfully ornate dishware\n", stream);
+funlockfile (stream);
+```
+
+## Unlocked Stream Operations
+- Linux provides "unlocked" cousins to stdio functions to allow an application
+  programmer to manually manage file locking to improve performance
+```
+#define _GNU_SOURCE
+#include <stdio.h>
+int fgetc_unlocked (FILE *stream);
+char *fgets_unlocked (char *str, int size, FILE *stream);
+size_t fread_unlocked (void *buf, size_t size, size_t nr,
+                       FILE *stream);
+int fputc_unlocked (int c, FILE *stream);
+int fputs_unlocked (const char *str, FILE *stream);
+size_t fwrite_unlocked (void *buf, size_t size, size_t nr,
+                        FILE *stream);
+int fflush_unlocked (FILE *stream);
+int feof_unlocked (FILE *stream);
+int ferror_unlocked (FILE *stream);
+int fileno_unlocked (FILE *stream);
+void clearerr_unlocked (FILE *stream);
+```
+- POSIX has some but these are for Linux
+
+## Critiques of Standard I/O
+- some bad functions
+- do not use gets
+- double copy has performance impact
+- highly optimized user buffering libraries exist
+     
