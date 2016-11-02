@@ -1234,4 +1234,33 @@ void clearerr_unlocked (FILE *stream);
 - do not use gets
 - double copy has performance impact
 - highly optimized user buffering libraries exist
-     
+    
+
+# Chapter 4 - Advanced File I/O
+## Scatter/Gather I/O
+- 1 system call writes to a vector of buffers from 1 data stream or a vector
+  of buffers into 1 stream (aka vectored I/O)
+    - natural for cases that match
+    - efficient and performant
+    - atomic - no interleaving
+- can be achieved manually
+
+## readv() and writev()
+```
+#include <sys/uio.h>
+ssize_t readv (int fd, const struct iovec *iov, int count);
+```
+
+```
+#include <sys/uio.h>
+ssize_t writev (int fd, const struct iovec *iov, int count);
+```
+
+```
+include <sys/uio.h>
+struct iovec {
+    void *iov_base;    /* pointer to start of buffer */
+    size_t iov_len;    /* size of buffer in bytes */
+};
+````
+
