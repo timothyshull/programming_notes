@@ -1,16 +1,17 @@
 # Ch 1.3
 - Bag
-    - client
+    - client - X
+    - stats - X
 - Queue
-    - client
-    - readInts
+    - client - X
+    - readInts - X
 - Stack
-    - client
-    - Reverse
+    - client - X
+    - Reverse - X
 
-- Djikstra's Two-Stack Algorithm for Expression Evaluation
-- FixedCapacityStack
-- FixedCapacityStackOfStrings
-- Array resizing (resize)
-- ResizingArrayStack
-- generally a LinkedList
+- Djikstra's Two-Stack Algorithm for Expression Evaluation - X
+- FixedCapacityStack - X
+- FixedCapacityStackOfStrings - X
+- Array resizing (resize) - X
+- ResizingArrayStack - X
+- generally a LinkedList - ignore

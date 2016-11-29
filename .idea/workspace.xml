@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6716ed24-d6c0-4182-9070-9b5b6cdf732d" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Personal Cover Letter.md" afterPath="$PROJECT_DIR$/Personal Cover Letter.md" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/algorithms_book.md" afterPath="$PROJECT_DIR$/algorithms/algorithms_book.md" />
     </list>
     <ignored path="Notes.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -111,12 +109,12 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="algorithms_book.md" pinned="false" current-in-tab="false">
+      <file leaf-file-name="algorithms_book.md" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/algorithms/algorithms_book.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="240">
-                <caret line="16" column="0" lean-forward="true" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
+              <first_editor relative-caret-position="255">
+                <caret line="17" column="0" lean-forward="true" selection-start-line="17" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -127,12 +125,12 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="control_flow.md" pinned="false" current-in-tab="true">
+      <file leaf-file-name="control_flow.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/swift/control_flow.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="360">
-                <caret line="76" column="0" lean-forward="true" selection-start-line="76" selection-start-column="0" selection-end-line="76" selection-end-column="0" />
+              <first_editor relative-caret-position="315">
+                <caret line="73" column="3" lean-forward="true" selection-start-line="73" selection-start-column="3" selection-end-line="73" selection-end-column="3" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -215,8 +213,8 @@
         <option value="$PROJECT_DIR$/Computer Architecture Lists.md" />
         <option value="$PROJECT_DIR$/algorithms/algorithm_books.md" />
         <option value="$PROJECT_DIR$/bash_to_remember.md" />
-        <option value="$PROJECT_DIR$/algorithms/algorithms_book.md" />
         <option value="$PROJECT_DIR$/swift/control_flow.md" />
+        <option value="$PROJECT_DIR$/algorithms/algorithms_book.md" />
       </list>
     </option>
   </component>
@@ -418,12 +416,12 @@
       <workItem from="1478668599285" duration="173000" />
       <workItem from="1480341973536" duration="9000" />
       <workItem from="1480341997698" duration="2269000" />
-      <workItem from="1480357101118" duration="883000" />
+      <workItem from="1480357101118" duration="2962000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="89152000" />
+    <option name="totallyTimeSpent" value="91231000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="840" y="23" width="840" height="1022" extended-state="0" />
@@ -1040,20 +1038,6 @@
         <state />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/algorithms/algorithms_book.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="240">
-            <caret line="16" column="0" lean-forward="true" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
-            <folding />
-          </first_editor>
-          <second_editor />
-        </state>
-      </provider>
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/bash_to_remember.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
@@ -1099,8 +1083,22 @@
     <entry file="file://$PROJECT_DIR$/swift/control_flow.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="360">
-            <caret line="76" column="0" lean-forward="true" selection-start-line="76" selection-start-column="0" selection-end-line="76" selection-end-column="0" />
+          <first_editor relative-caret-position="315">
+            <caret line="73" column="3" lean-forward="true" selection-start-line="73" selection-start-column="3" selection-end-line="73" selection-end-column="3" />
+            <folding />
+          </first_editor>
+          <second_editor />
+        </state>
+      </provider>
+      <provider editor-type-id="MarkdownFxPreviewEditor">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/algorithms/algorithms_book.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="255">
+            <caret line="17" column="0" lean-forward="true" selection-start-line="17" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
             <folding />
           </first_editor>
           <second_editor />
