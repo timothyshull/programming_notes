@@ -1,5 +1,3 @@
-- Focus on the questions in Algorithms in C++ and Algorithms, use Swift for Algorithms
-
 # common
 - isEmpty
 - size
@@ -70,6 +68,9 @@
 ### Notes
 - each of the above can use an array as the underlying storage but generally requires resizing and storage of the size
 - without array resizing, consider as a fixed-capacity data structure
+- keep in mind that conceptually a link is the connection between nodes,
+  so while the "next" member may be a node/pointer to a node, it represents
+  a separate concept (and can be represented differently, i.e. and array index, etc)
 
 - Java generic array creating/casting
 ```

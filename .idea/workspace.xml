@@ -2,8 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6716ed24-d6c0-4182-9070-9b5b6cdf732d" name="Default" comment="">
-      <change type="MOVED" beforePath="$PROJECT_DIR$/algorithms/linked_lists.md" afterPath="$PROJECT_DIR$/algorithms/linked_lists_stacks_and_queues.md" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/algorithms_in_c++.md" afterPath="$PROJECT_DIR$/algorithms/algorithms_in_c++.md" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/linked_lists_stacks_and_queues.md" afterPath="$PROJECT_DIR$/algorithms/linked_lists_stacks_and_queues.md" />
     </list>
     <ignored path="Notes.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -32,13 +33,23 @@
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file leaf-file-name="linked_lists_stacks_and_queues.md" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/algorithms/linked_lists_stacks_and_queues.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="660">
-                <caret line="77" column="35" lean-forward="true" selection-start-line="77" selection-start-column="35" selection-end-line="77" selection-end-column="35" />
+              <first_editor relative-caret-position="45">
+                <caret line="3" column="8" lean-forward="false" selection-start-line="3" selection-start-column="8" selection-end-line="3" selection-end-column="8" />
+                <folding />
+              </first_editor>
+              <second_editor />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Understanding and Using C Pointers.md" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="FIRST">
+              <first_editor relative-caret-position="255">
+                <caret line="17" column="43" lean-forward="false" selection-start-line="17" selection-start-column="43" selection-end-line="17" selection-end-column="43" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -48,9 +59,6 @@
       </file>
       <file leaf-file-name="Computer Architecture Lists.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Computer Architecture Lists.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
               <first_editor relative-caret-position="870">
@@ -64,9 +72,6 @@
       </file>
       <file leaf-file-name="algorithm_books.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/algorithms/algorithm_books.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
               <first_editor relative-caret-position="255">
@@ -80,9 +85,6 @@
       </file>
       <file leaf-file-name="algorithms_book.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/algorithms/algorithms_book.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
               <first_editor relative-caret-position="255">
@@ -96,13 +98,10 @@
       </file>
       <file leaf-file-name="algorithms_in_c++.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/algorithms/algorithms_in_c++.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="15">
-                <caret line="1" column="0" lean-forward="false" selection-start-line="1" selection-start-column="0" selection-end-line="1" selection-end-column="0" />
+              <first_editor relative-caret-position="2190">
+                <caret line="146" column="22" lean-forward="false" selection-start-line="146" selection-start-column="22" selection-end-line="146" selection-end-column="22" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -112,9 +111,6 @@
       </file>
       <file leaf-file-name="recursion.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/algorithms/recursion.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
               <first_editor relative-caret-position="240">
@@ -128,9 +124,6 @@
       </file>
       <file leaf-file-name="control_flow.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/swift/control_flow.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
               <first_editor relative-caret-position="1095">
@@ -144,9 +137,6 @@
       </file>
       <file leaf-file-name="bash_to_remember.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/bash_to_remember.md">
-          <provider editor-type-id="MarkdownFxPreviewEditor">
-            <state />
-          </provider>
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
               <first_editor relative-caret-position="480">
@@ -184,8 +174,8 @@
         <option value="$PROJECT_DIR$/bash_to_remember.md" />
         <option value="$PROJECT_DIR$/swift/control_flow.md" />
         <option value="$PROJECT_DIR$/algorithms/algorithms_book.md" />
-        <option value="$PROJECT_DIR$/algorithms/algorithms_in_c++.md" />
         <option value="$PROJECT_DIR$/algorithms/recursion.md" />
+        <option value="$PROJECT_DIR$/algorithms/algorithms_in_c++.md" />
         <option value="$PROJECT_DIR$/algorithms/linked_lists_stacks_and_queues.md" />
       </list>
     </option>
@@ -219,6 +209,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -262,7 +253,6 @@
         </subPane>
       </pane>
       <pane id="Scratches" />
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -392,12 +382,17 @@
       <workItem from="1480447873634" duration="1736000" />
       <workItem from="1480471451529" duration="3285000" />
       <workItem from="1480480801470" duration="1000" />
-      <workItem from="1480528263591" duration="3597000" />
+      <workItem from="1480528263591" duration="3834000" />
+      <workItem from="1480546011215" duration="474000" />
+      <workItem from="1480560807834" duration="294000" />
+      <workItem from="1480602448406" duration="58000" />
+      <workItem from="1480602518954" duration="1684000" />
+      <workItem from="1480617206751" duration="199000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="99882000" />
+    <option name="totallyTimeSpent" value="102828000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="23" width="840" height="1022" extended-state="0" />
@@ -408,7 +403,7 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.23294859" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.23294859" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -466,9 +461,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -479,9 +471,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="13020">
@@ -492,9 +481,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="0">
@@ -505,9 +491,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -518,9 +501,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="13020">
@@ -531,9 +511,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="0">
@@ -544,9 +521,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -557,9 +531,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="0">
@@ -570,9 +541,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="7815">
@@ -583,9 +551,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -596,9 +561,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="8730">
@@ -609,9 +571,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="0">
@@ -622,9 +581,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -635,9 +591,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider selected="true" editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="8730">
@@ -648,9 +601,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="6870">
@@ -661,9 +611,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -674,9 +621,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="0">
@@ -687,9 +631,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="6870">
@@ -700,9 +641,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="23070">
@@ -713,9 +651,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="4185">
@@ -726,9 +661,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="0">
@@ -739,9 +671,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="22785">
@@ -752,9 +681,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="9570">
@@ -765,9 +691,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="9765">
@@ -778,9 +701,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="7830">
@@ -791,9 +711,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="5760">
@@ -804,9 +721,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="5010">
@@ -817,9 +731,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="2670">
@@ -830,9 +741,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="285">
@@ -845,9 +753,6 @@
     <entry file="file://$PROJECT_DIR$/test.md" />
     <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.html" />
     <entry file="file://$PROJECT_DIR$/Advanced Programming in the Unix Environment.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="15">
@@ -858,9 +763,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Linux System Programming.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="18705">
@@ -870,23 +772,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="23070">
-            <caret line="1538" column="32" lean-forward="false" selection-start-line="1538" selection-start-column="32" selection-end-line="1538" selection-end-column="32" />
-          </first_editor>
-          <second_editor />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/The C Programming Language.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="968">
@@ -908,9 +794,6 @@
     <entry file="file://$PROJECT_DIR$/algorithms/linked_lists/questions.md" />
     <entry file="file://$PROJECT_DIR$/Core Audio Cover Letter.md" />
     <entry file="file://$PROJECT_DIR$/Computer Architecture Lists.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="870">
@@ -922,9 +805,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/algorithm_books.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="255">
@@ -936,9 +816,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/bash_to_remember.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="480">
@@ -952,9 +829,6 @@
     <entry file="file://$PROJECT_DIR$/Resume.md" />
     <entry file="file://$PROJECT_DIR$/Generic Cover Letter.md" />
     <entry file="file://$PROJECT_DIR$/swift/control_flow.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="1095">
@@ -966,9 +840,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/algorithms_book.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="255">
@@ -980,9 +851,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/recursion.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
           <first_editor relative-caret-position="240">
@@ -994,13 +862,21 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/algorithms_in_c++.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="15">
-            <caret line="1" column="0" lean-forward="false" selection-start-line="1" selection-start-column="0" selection-end-line="1" selection-end-column="0" />
+          <first_editor relative-caret-position="2190">
+            <caret line="146" column="22" lean-forward="false" selection-start-line="146" selection-start-column="22" selection-end-line="146" selection-end-column="22" />
+            <folding />
+          </first_editor>
+          <second_editor />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Understanding and Using C Pointers.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="255">
+            <caret line="17" column="43" lean-forward="false" selection-start-line="17" selection-start-column="43" selection-end-line="17" selection-end-column="43" />
             <folding />
           </first_editor>
           <second_editor />
@@ -1008,13 +884,10 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/linked_lists_stacks_and_queues.md">
-      <provider editor-type-id="MarkdownFxPreviewEditor">
-        <state />
-      </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="660">
-            <caret line="77" column="35" lean-forward="true" selection-start-line="77" selection-start-column="35" selection-end-line="77" selection-end-column="35" />
+          <first_editor relative-caret-position="45">
+            <caret line="3" column="8" lean-forward="false" selection-start-line="3" selection-start-column="8" selection-end-line="3" selection-end-column="8" />
             <folding />
           </first_editor>
           <second_editor />

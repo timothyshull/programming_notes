@@ -129,7 +129,7 @@ return b - a - 1;
 ## strcpy(a, b)
 ```
 int i;
-for (i = 0; (a[i] = b[i]) != 0; i++);
+for (i = 0; (a[i] = b[i]) != 0; i++); // assignment like this returns the value of the char being assigned
 
 // pointers
 while (*a++ = *b++) ;
