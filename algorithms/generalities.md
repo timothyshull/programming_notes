@@ -494,3 +494,11 @@ mergesort
 
 
 - NOTE: see https://en.wikipedia.org/wiki/List_of_data_structures for more info beyond this
+
+
+# Later
+- simple custom memory management when given a block of memory using:
+    - block partition pools
+    - Arenas
+    - Spans?
+    - general partitioning
