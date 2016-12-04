@@ -112,7 +112,7 @@ int resize(Item *array, size_t capacity) {
 - C++ resize (with exception)
 ```
 template<typename Item>
-void resize(Item *array, size_t orig_size, size_t new_size) {
+Item *resize(Item *array, size_t orig_size, size_t new_size) {
     if (new_size < orig_size) {
         return;
     }
@@ -133,14 +133,14 @@ void resize(Item *array, size_t orig_size, size_t new_size) {
     for (ptrdiff_t i = 0; i < orig_size; i++) {
         *(tmp + i) = *(array + i);
     }
-    array = tmp;
+    return tmp;
 }
 ```
 
 - C++ resize (without exceptions)
 ```
 template<typename Item>
-void resize(Item *array, size_t orig_size, size_t new_size) {
+Item *resize(Item *array, size_t orig_size, size_t new_size) {
     if (new_size < orig_size) {
         return;
     }
@@ -159,7 +159,7 @@ void resize(Item *array, size_t orig_size, size_t new_size) {
     for (ptrdiff_t i = 0; i < orig_size; i++) {
         *(tmp + i) = *(array + i);
     }
-    array = tmp;
+    return tmp;
 }
 ```
 
