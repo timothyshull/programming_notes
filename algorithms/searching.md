@@ -371,3 +371,456 @@ void insert(Item x) {
 - a recurrence relationship exists that describes the number of comparisons and internal path length
 
 ## Index Implementations with Symbol Tables
+- same idea as sort -> use an external search structure that indexes into another
+- can construct a binary search tree using this technique
+- use three arrays:
+    - one for the items
+    - one for left links
+    - one for right links
+```
+x = x->l
+// becomes
+x = l[x]
+```
+- allows for the addition of arrays containing extra information about each element
+  to be added without adding tree processing routines
+- inappropriate for space restricted environments or trees that grow and shrink in size often
+- indexing a string for array indexed based binary search
+```
+#include <iostream.h>
+#include <fstream.h>
+#include "Item.h"
+#include "Symbol_table.h"
+static char text[maxN];
+int main(int argc, char *argv[]) {
+    int N = 0;
+    char t;
+    ifstream corpus;
+    corpus.open(*++argv);
+    while (N < maxN && corpus.get(t)) {
+        text[N++] = t;
+    }
+    text[N] = 0;
+    Symbol_table<Item, Key> st(maxN);
+    for (int i = 0; i < N; i++) st.insert(&text[i]);
+    char query[maxQ]; Item x, v(query);
+    while (cin.getline(query, maxQ)) {
+        if ((x = st.search(v.key())).null()) {
+            cout << "not found: " << query << endl; {
+        } else {
+            cout <<  x-text << ": " << query << endl;
+        }
+    }
+}
+```
+
+## Insertion at the root in BSTs
+- the standard implementation of BSTs inserts new nodes as external nodes
+- another approach is to insert at the root
+- rotation (right):
+    - get link to new root E from left link of element S
+    - set left link of S to right link of E
+    - set right link of E to S
+    - set link to S from S's parent to point to E
+    - moves E and its left subtree up one level and S and its right subtree down
+      one level
+```
+void rotate_right(link& h) {
+    link x = h->l;
+    h->l = x->r;
+    x->r = h;
+    h = x;
+}
+
+void rotate_left(link& h) {
+    link x = h->r;
+    h->r = x->l;
+    x->l = h;
+    h = x;
+}
+```
+- root insertion in BSTs:
+```
+private:
+    void insert_t(link& h, Item x) {
+        if (h == 0) { h = new node(x); return; }
+        if (x.key() <  h->item.key()) { insertT(h->l, x); rotR(h); }
+        else { insertT(h->r, x); rotL(h); }
+    }
+public:
+    void insert(Item item) { insertT(head, item); }
+```
+
+## BST Implementations of Other ADT Functions
+- select, join, and remove are all important functions to be performed on binary trees
+- removal can be problematic
+- select on BSTs is analogous to quicksort:
+```
+private:
+    Item select_r(link h, int k) {
+        if (h == 0) return null_item;
+        int t = (h->l == 0) ? 0: h->l->N;
+        if (t > k) return select_r(h->l, k);
+        if (t < k) return select_r(h->r, k-t-1);
+        return h->item;
+    }
+public:
+    Item select(int k) { return selectR(head, k); }
+```
+- removal requires finding a node in a subtree and recursively removing the node
+  from that subtree
+- to combine two trees with one containing all keys greater than the first, partition
+  to bring smallest element in greater tree to root and then linking the left treet to this root
+- parititioning of a BST
+```
+void partR(link& h, int k) {
+    int t = (h->l == 0) ? 0: h->l->N;
+    if (t > k ) { partR(h->l, k); rotR(h); }
+    if (t < k ) { partR(h->r, k-t-1); rotL(h); }
+}
+```
+- possible approaches to removal:
+    - add a parent link to facilitate removal (cumbersome and adds space overhead)
+    - search for pointer to node being remove and stop when found (?)
+    - use reference or pointer to the pointer to the node as the handle (works in C and C++ but often not elsewhere)
+    - lazily mark nodes for removal and batch remove and reconstruct the tree
+- removal by removing first node with key v:
+```
+private:
+  link joinLR(link a, link b) {
+        if (b == 0) return a;
+        partR(b, 0); b->l = a;
+        return b;
+    }
+    void removeR(link& h, Key v) {
+        if (h == 0) return;
+        Key w = h->item.key();
+        if (v < w) removeR(h->l, v);
+        if (w < v) removeR(h->r, v);
+        if (v == w) {
+            link t = h;
+            h = joinLR(h->l, h->r); delete t;
+        }
+    }
+public:
+    void remove(Item x) { removeR(head, x.key()); }
+```
+- joining BSTs:
+```
+private:
+    link joinR(link a, link b) {
+        if (b == 0) return a;
+        if (a == 0) return b;
+        insertT(b, a->item);
+        b->l = joinR(a->l, b->l);
+        b->r = joinR(a->r, b->r);
+        delete a;
+        return b;
+    }
+public:
+    void join(ST<Item, Key>& b) { head = joinR(head, b.head); }
+```
+- both remove and join above can lead to poorly balanced trees
+- BSTs require a large proportion of their space to store links
+- poorly balanced trees lead to slow performance
+
+
+# Balanced Trees
+- standard binary trees have bad worst case performance
+- like quicksort, standard binary trees are susceptible to a number of cases that
+  can easily occur:
+    - sorted input
+    - many duplicate keys
+    - reverse order
+    - alternating large and small keys
+    - any large segment with a simple structure
+- balanced trees are preferable
+- one approach is to periodically rebalance the tree
+- balance a binary tree:
+```
+void balanceR(link& h) {
+    if ((h == nullptr) || (h->N == 1)) return;
+    partR(h, h->N/2);
+    balanceR(h->l);
+    balanceR(h->r);
+}
+```
+- three general approaches to providing performance guarantees:
+    - randomize
+        - introduce random decisions to reduce the probability of worst case
+          performance (randomized BSTs and skip lists)
+    - amortize
+        - do more work at certain points to provide a guaranteed upper bound on
+          average per-operation cost (splay BSTs)
+    - optimize
+        - take the time to provide specific performance guarantees for each operation
+
+## Randomized BSTs
+- assuming items inserted in random order means each node is equally likely to be
+  the root node
+- inserting randomness into the algorithm makes this hold without any assumptions
+- each new node should be the new root with a probability of 1 / (N + 1), so root
+  insertion is randomly done with this probability
+- properties:
+    - building a randomized BST is equivalent to building a standard BST from a random
+      initial permutation of the keys
+    - 2 * N *lg(N) comparisons for construction and 2 * ln(N) comparisons for search
+    - the probability that the construction cost for a randomized BST is more than
+      a factor of a X the average is e ^ -a
+    - making a tree with an arbitrary sequence of randomized insert, remove, and join
+      operations is equivalent to building a standard BST from a random permutation of
+      the input keys (see Karp's general solution to probabilistic recurrence relations)
+    - the implied cost of searching in a randomized BST is close to the average
+- randomized BST insertion:
+```
+private:
+    void insertR(link& h, Item x) {
+        if (h == 0) { h = new node(x); return; }
+        if (rand() < RAND_MAX/(h->N+1)) {
+            insertT(h, x);
+            return;
+        }
+        if (x.key() < h->item.key()) {
+            insertR(h->l, x);
+        } else {
+            insertR(h->r, x);
+        }
+        h->N++;
+    }
+public:
+    void insert(Item x) { insertR(head, x); }
+```
+- join randomized BSTs
+```
+private:
+    link joinR(link a, link b) {
+        if (a == nullptr) return b;
+        if (b == nullptr) return a;
+        insertR(b, a->item);
+        b->l = joinR(a->l, b->l);
+        b->r = joinR(a->r, b->r);
+        delete a; fixN(b); return b;
+    }
+public:
+    void join(ST<Item, Key>& b) {
+        int N = head->N;
+        if (rand()/(RAND_MAX/(N+b.head->N)+1) < N) {
+            head = joinR(head, b.head);
+        } else {
+            head = joinR(b.head, head);
+        }
+    }
+```
+- deletion in a randomized BST
+```
+link joinLR(link a, link b) {
+    if (a == nullptr) return b;
+    if (b == nullptr) return a;
+    if (rand()/(RAND_MAX/(a->N+b->N)+1) < a->N) {
+        a->r = joinLR(a->r, b); return a;
+    } else {
+        b->l = joinLR(a, b->l); return b;
+    }
+}
+```
+- good to understand probability theory to be able to understand these performance
+  properties
+- randomized BSTs are one of the easiest ways to create a symbol table with near optimal
+  performance guarantees
+
+
+## Splay BSTs
+- splay insertions bring newly inserted nodes to the root (standard root insertion
+  when the links from the root to the grandchild on the search path have the same orientation)
+  and two rotations when the intermediate links have the same orientation
+
+- properties
+    - the number of comparisons used when a splay BST is built from N insertions into an
+      initially empty tree is O(N * lg(N))
+    - the number of comparisons required for any sequence of M insert or search operation
+      in an n-node splay BST is O((N + M) lg(N + M))
+- splay insertion in BSTs
+```
+private:
+    void splay(link& h, Item x) {
+        if (h == 0) { h = new node(x, 0, 0, 1); return; }
+        if (x.key() < h->item.key()) {
+            link& hl = h->l; int N = h->N;
+            if (hl == 0) { h = new node(x, 0, h, N+1); return; }
+            if (x.key() <  hl->item.key()) { splay(hl->l, x); rotR(h); }
+            else { splay(hl->r, x); rotL(hl); }
+            rotR(h);
+        } else {
+            link &hr = h->r; int N = h->N;
+            if (hr == 0) { h = new node(x, h, 0, N+1); return; }
+            if (hr->item.key() < x.key()) { splay(hr->r, x); rotL(h); }
+            else { splay(hr->l, x); rotR(hr); }
+            rotL(h);
+        }
+    }
+public:
+    void insert(Item item) { splay(head, item); }
+```
+- checks the following configurations for rotations:
+    - left-left: rotate right at the root twice
+    - left-right: rotate left at the left child, then right at the root
+    - right-right: rotate left at the root twice
+    - right-left: rotate right at the right child, then left at the root
+
+## Top_down 2-3-4 Trees - TODO: fill this in more
+- definition:
+    - a tree that either is empty or comprises three types of nodes:
+        - 2 nodes:
+            - 1 key
+            - left link -> smaller keys
+            - right link -> larger keys
+         - 3 nodes:
+            - 2 keys
+            - left link -> smaller keys
+            - middle link -> keys between the two keys
+            - right link -> greater keys
+          - 4 nodes:
+            - 3 keys
+            - 4 links -> each range subtended by the keys
+    - balanced 2-3-4 search tree: all links to empty trees are the same distance from the root
+- there are generalized 2-3-4 trees, but the context implies balanced 2-3-4 trees
+- insertion:
+    - if the key to be inserted terminates at a 2 node, turn it to a 3 node
+    - if the key to be inserted terminates at a 3 node, turn it to a 4 node
+    - if the key to be inserted terminates at a 4 node, split it into two 2 nodes
+      and pass the middle key up to the parent
+- when the root becomes a 4 node, split it into a triangle of 2 nodes
+- properties:
+    - searches in an n-node 2-3-4 tree visits at most lg(N + 1) nodes
+    - insertions into n-node 2-3-4 trees require fewer than lg(N + 1) node splits
+      in the worst case and seem to require less than one node split on the average
+- NOTE: go back and review more info on these trees later
+
+## Red-Black Trees - TODO: fill this in more
+- models 2-3-4 trees using binary trees and encoding extra information to encode
+  red nodes and black nodes
+- coloring the links is equivalent to coloring the nodes
+- properties:
+    - standard search works without modification
+    - correspond to 2-3-4 trees and can maintain balance similarly
+    - a search in a red-black tree with N nodes requires fewer than 2 * lg(N + 2) comparisons
+    - a search in a red-black tree with N nodes built from random keys uses about 1.002 * lg(N)
+      comparisons on average
+- insertion in red-black trees
+```
+private:
+    int red(link x) { if (x == 0) return 0; return x->red; }
+    void RBinsert(link& h, Item x, int sw) {
+        if (h == 0) { h = new node(x); return; }
+        if (red(h->l) && red(h->r)) { h->red = 1; h->l->red = 0; h->r->red = 0; }
+        if (x.key() < h->item.key()) {
+            RBinsert(h->l, x, 0);
+            if (red(h) && red(h->l) && sw) rotR(h);
+            if (red(h->l) && red(h->l->l)) { rotR(h); h->red = 0; h->r->red = 1; }
+        } else {
+            RBinsert(h->r, x, 1);
+            if (red(h) && red(h->r) && !sw) rotL(h);
+            if (red(h->r) && red(h->r->r)) { rotL(h); h->red = 0; h->l->red = 1; }
+        }
+    }
+public:
+    void insert(Item x) { RBinsert(head, x, 0); head->red = 0; }
+```
+- definitions:
+    - red-black BST: a BST with a node marked as red or black with no two consecutive
+      red nodes occurring in any path from an external node to the root
+    - balanced red-black BST: red-black BST in which all paths from external nodes to
+      the root have the same number of black nodes
+
+## Skip Lists - TODO: fill this in more
+- two-level linked list - every third node contains a second link that allows faster traversal
+- definition:
+    - skip list: an ordered linked list where each node contains a variable number of
+      links, where the i-th links in the nodes implement a singly linked list
+      that skips the nodes with fewer than i links
+- properties:
+    - search and insertion in a randomized skip list with parameter t require about
+      (t * log sub t (N)) / 2 = (t = (2 * lg(t))) * lg(N)
+    - skip lists have (t / (t - 1)) * N links on the average
+- searching in skip lists:
+```
+private:
+  Item searchR(link t, Key v, int k)
+    { if (t == 0) return nullItem;
+      if (v == t->item.key()) return t->item;
+      link x = t->next[k];
+      if ((x == 0) || (v < x->item.key()))
+        {
+          if (k == 0) return nullItem;
+          return searchR(t, v, k-1);
+        }
+      return searchR(x, v, k);
+    }
+public:
+  Item search(Key v)
+    { return searchR(head, v, lgN); }
+```
+- general skip list data structure:
+```
+private:
+  struct node
+    { Item item; node **next; int sz;
+      node(Item x, int k)
+        { item = x; sz = k; next = new node*[k];
+          for (int i = 0; i < k; i++) next[i] = 0; }
+    };
+  typedef node *link;
+  link head;
+  Item nullItem;
+  int lgN;
+public:
+  ST(int)
+    { head = new node(nullItem, lgNmax); lgN = 0; }
+```
+- insertion in skip lists:
+```
+private:
+  int randX()
+    { int i, j, t = rand();
+      for (i = 1, j = 2; i < lgNmax; i++, j += j)
+        if (t > RAND_MAX/j) break;
+      if (i > lgN) lgN = i;
+      return i;
+    }
+  void insertR(link t, link x, int k)
+    { Key v = x->item.key(); link tk = t->next[k];
+      if ((tk == 0) || (v < tk->item.key()))
+        {
+          if (k < x->sz)
+            { x->next[k] = tk; t->next[k] = x; }
+          if (k == 0) return;
+          insertR(t, x, k-1); return;
+        }
+      insertR(tk, x, k);
+    }
+public:
+  void insert(Item v)
+    { insertR(head, new node(v, randX()), lgN); }
+```
+- removal in skip lists:
+```
+private:
+  void removeR(link t, Key v, int k)
+    { link x = t->next[k];
+      if (!(x->item.key() < v))
+        {
+          if (v == x->item.key())
+            { t->next[k] = x->next[k]; }
+          if (k == 0) { delete x; return; }
+          removeR(t, v, k-1); return;
+        }
+      removeR(t->next[k], v, k);
+    }
+public:
+  void remove(Item x)
+    { removeR(head, x.key(), lgN); }
+```
+
+## Performance Characteristics - TODO: fill this in more
+- randomized BSTs are the simplest to implement
+- see the table

@@ -357,3 +357,193 @@ return_type bottom_up(p, n) {
     - path length: the sum of the levels of the tree's nodes
     - internal path length: sum of the levels of the all of the tree's internal nodes
     - external path length: sum of the levels of all of the tree's external nodes
+
+## Tree Traversal
+- traversal ordering:
+    - preorder:
+        - current node
+        - left subtree
+        - right subtree
+    - inorder:
+        - left subtree
+        - current node
+        - right subtree
+    - postorder:
+        - left subtree
+        - right subtree
+        - current node
+    - preorder - operate on current node (i.e. visit) then visit the left subtree then visit the right subtree
+- recursive tree traversal (preorder):
+```
+void traverse(link h, void visit(link)) {
+    if (h == nullptr) {
+        return;
+    }
+    visit(h);
+    traverse(h->l, visit);
+    traverse(h->r, visit);
+}
+```
+- pay attention to the state of the call stack for these
+- tree traversal (non-recursive, preorder):
+```
+void traverse(link h, void visit(link)) {
+    Stack<link> s(max);
+    s.push(h);
+    while (!s.empty()) {
+        visit(h = s.pop());
+        if (h->r != 0) {
+            s.push(h->r);
+        }
+        if (h->l != 0) {
+            s.push(h->l);
+        }
+    }
+}
+```
+- for ordering in the non-recursive version:
+    - preorder:
+        - push right, left, node
+        - push right, node, left
+        - push node, right, left
+- level order traversal:
+```
+void traverse(link h, void visit(link)) {
+    Queue<link> q(max);
+    q.put(h);
+    while (!q.empty()) {
+        visit(h = q.get());
+        if (h->l != 0) {
+            q.put(h->l);
+        }
+        if (h->r != 0) {
+            q.put(h->r);
+        }
+    }
+}
+```
+- these approaches are important because they correspond to different
+  orderings for processing work to be done
+- level order does not inherently correspond to a recursive implementation
+  that corresponds to the recursive structure of a tree
+- each of these traversal approaches correspond to forests as well (if you think
+  of a forest as a tree with an imaginary root)
+    - preorder: visit the root then each of the subtrees
+    - postorder: vist the subtrees then the root
+    - level order: same as for binary trees
+
+## Recursive Binary Tree Algorithms
+- recursive nature of the tree as a data structure leads to recursive algorithms for
+  tree operations
+- tree operations:
+```
+int count(link h) {
+    if (h == nullptr) return 0;
+    return count(h->l) + count(h->r) + 1;
+}
+
+int height(link h) {
+    if (h == nullptr) return -1;
+    int u = height(h->l), v = height(h->r);
+    if (u > v) return u+1; else return v+1;
+}
+
+void print_node(Item x, int h) {
+    for (int i = 0; i < h; i++) cout << "  ";
+    cout << x << endl;
+}
+void show(link t, int h) {
+    if (t == nullptr) { printnode('*', h); return; }
+    show(t->r, h+1);
+    printnode(t->item, h);
+    show(t->l, h+1);
+}
+```
+- for print, the effect of preorder vs. postorder is important to consider
+- tournament (tree): is a form of binary heap/min (max) tree
+- joining tournaments:
+    - create new node
+    - make the new node's left link point to one tournament
+    - make the new node's right link point to the other
+- constructing a tournament from an array:
+```
+struct node
+  { Item item; node *l, *r;
+    node(Item x)
+      { item = x; l = 0; r = 0; }
+  };
+typedef node* link;
+link max(Item a[], int l, int r) {
+    int m = (l+r)/2;
+    link x = new node(a[m]);
+    if (l == r) return x;
+    x->l = max(a, l, m);
+    x->r = max(a, m+1, r);
+    Item u = x->l->item, v = x->r->item;
+    if (u > v) {
+        x->item = u;
+    } else {
+        x->item = v;
+    }
+    return x;
+}
+```
+- prefix expression parse tree:
+```
+char *a; int i;
+struct node {
+    Item item; node *l, *r;
+    node(Item x) {
+        item = x;
+        l = 0;
+        r = 0;
+    }
+};
+typedef node* link;
+link parse() {
+    char t = a[i++]; link x = new node(t);
+    if ((t == '+') || (t == '*')) {
+        x->l = parse();
+        x->r = parse();
+    }
+    return x;
+}
+```
+
+## Graph Traversal
+- graph depth-first search is a generalization of tree traversal methods
+- depth-first search:
+```
+void traverse(int k, void visit(int)) {
+    visit(k);
+    visited[k] = 1;
+    for (link t = adj[k]; t != 0; t = t->next) {
+        if (!visited[t->v]) {
+            traverse(t->v, visit);
+        }
+    }
+}
+```
+- can also define a DFS method that uses an explicit stack
+- gives a linear time solution to the connectivity problem
+- for large graphs it may still be preferable to use the union find technique
+  because the whole graph takes space proportional to E whereas union find
+  takes space proportional to V
+- breadth-first search:
+```
+void traverse(int k, void visit(int)) {
+    Queue<int> q(V*V);
+    q.put(k);
+    while (!q.empty()) {
+        if (visited[k = q.get()] == 0) {
+            visit(k); visited[k] = 1;
+            for (link t = adj[k]; t != 0; t = t->next) {
+                if (visited[t->v] == 0) q.put(t->v);
+            }
+        }
+    }
+}
+```
+- properties:
+    - DFS requires time proportional to num vertices + num edges when using
+      an adjacency list representation
