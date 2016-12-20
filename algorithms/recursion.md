@@ -127,10 +127,31 @@ receive() -> decode() -> store() -> receive() -> decode() -> store()
 - relates to trying all possible permutations
 - generically:
     - from starting point
-        - while solution has not beend found
+        - test for accept or reject and return if either
+        - while solution has not been found
             - recursively try each possibility in current path
             - if no solution, return to starting point
         - if no solution return false
+- backtracking is really just depth-first search on an implicit graph (or tree)
+```
+```
+```
+void backtrack(candidate) {
+    if (reject(instance, candidate)) {
+        return;
+    }
+    if (accept(instance, candidate)) {
+        return output(instance, candidate);
+    }
+    element s = first(instance, candidate);
+    while (s != null_case) {
+        backtrack(s);
+        s = next(instance, s)l
+    }
+}
+
+```
+
 - recursive
 ```
 boolean solve(Node n) {
