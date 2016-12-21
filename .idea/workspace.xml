@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="6716ed24-d6c0-4182-9070-9b5b6cdf732d" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/recursion_and_trees.md" afterPath="$PROJECT_DIR$/algorithms/recursion_and_trees.md" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/searching.md" afterPath="$PROJECT_DIR$/algorithms/searching.md" />
     </list>
     <ignored path="Notes.iws" />
@@ -35,8 +34,8 @@
         <entry file="file://$PROJECT_DIR$/algorithms/searching.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="602">
-                <caret line="823" column="56" lean-forward="false" selection-start-line="823" selection-start-column="56" selection-end-line="823" selection-end-column="56" />
+              <first_editor relative-caret-position="707">
+                <caret line="1627" column="23" lean-forward="false" selection-start-line="1627" selection-start-column="23" selection-end-line="1627" selection-end-column="23" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -117,6 +116,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
@@ -146,7 +146,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -310,12 +309,14 @@
       <workItem from="1482149741541" duration="6551000" />
       <workItem from="1482201813278" duration="388000" />
       <workItem from="1482239285556" duration="8615000" />
-      <workItem from="1482254117214" duration="9126000" />
+      <workItem from="1482254117214" duration="13927000" />
+      <workItem from="1482287662645" duration="1977000" />
+      <workItem from="1482327128302" duration="6439000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="193375000" />
+    <option name="totallyTimeSpent" value="206592000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -665,7 +666,6 @@
         <state split_layout="FIRST">
           <first_editor relative-caret-position="482">
             <caret line="526" column="10" lean-forward="true" selection-start-line="526" selection-start-column="10" selection-end-line="526" selection-end-column="10" />
-            <folding />
           </first_editor>
           <second_editor />
         </state>
@@ -674,8 +674,8 @@
     <entry file="file://$PROJECT_DIR$/algorithms/searching.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="602">
-            <caret line="823" column="56" lean-forward="false" selection-start-line="823" selection-start-column="56" selection-end-line="823" selection-end-column="56" />
+          <first_editor relative-caret-position="707">
+            <caret line="1627" column="23" lean-forward="false" selection-start-line="1627" selection-start-column="23" selection-end-line="1627" selection-end-column="23" />
             <folding />
           </first_editor>
           <second_editor />

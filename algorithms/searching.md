@@ -824,3 +824,805 @@ public:
 ## Performance Characteristics - TODO: fill this in more
 - randomized BSTs are the simplest to implement
 - see the table
+
+
+# Hashing
+- hashing is an exception of key-indexed searching
+- transform search key into a table address and handle collision resolution for
+  keys that map to the same address
+- hashing speeds access at the expense of space
+- theoretical optimum search and insert in constant time
+
+## Hash Functions
+- maps keys to table addresses -> the range of `[0, M - 1]` for M keys
+- an ideal hash function makes each output equally likely for each input
+- prior to high level languages, a grouping of data could be seen as type variant
+  and hashing was a natural extension of this
+- hash functions can often be machine dependent
+- basic approaches:
+    - floating point numbers in a fixed range can be rounded and/or rescaled by
+      subtracting computing ((n - s) / (t - s)) * M where s is the lower bound for keys
+      and t is the upper bound and M is the number of keys
+    - for w-bit integers, they can be converted to floating point numbers and divided
+      by 2 ^ w then multiplied by M
+    - the same result can be achieved by multiplying by M and right shifting by w (or vice versa)
+      (only useful for keys evenly distributed in the range)
+    - modular hash functions for integer keys -> choose M to be prime (generally closest
+      prime to a power of 2) and computer k % M
+    - modular hash for floats -> scale to convert to 0...1, multiply by 2 ^ w and then
+      use a modular hash function
+    - for integer keys -> multiply by a constant between 0 and 1 and reduce it modulo M
+      (choose a random constant that does not have a relationship to the M -> a popular
+      choice is the golden ration .618033...
+- non-prime M's result in unfortunate mathematical recurrences
+- Mersenne primes: (2 ^ t - 1) <= 31 -> 2,3,5,7,13,17,19,31
+- fastest to store a table of the largest primes less than 2^n for 8 <= n <= 32
+- hash function for string keys (Horner's algorithm):
+```
+int hash(char *v, int M) {
+    int h = 0, a = 127;
+    for (; *v != 0; v++) {
+        h = (a*h + *v) % M;
+    }
+    return h;
+}
+```
+- universal hash function for string keys (with pseudorandom coefficient values):
+```
+int hashU(char *v, int M) {
+    int h, a = 31415, b = 27183;
+    for (h = 0; *v != 0; v++, a = a*b % (M-1)) {
+        h = (a*h + *v) % M;
+    }
+    return (h < 0) ? (h + M) : h;
+}
+```
+- hash functions that produce random table indices no matter what the keys are are desirable
+- using random values for the coefficients and a different random value for each digit in the key
+  leads to universal hashing
+- ideal is that the probability of collision is 1 / M
+- a symbol table using hashing must be given keys of a type that have a hashing function defined
+- universal hashing is often much slower
+- important to be aware of the cost of the hash function and it's location (do not place in inner loops)
+- often fastest hashing method:
+```
+inline int hash(Key v, int M) { return v & (M - 1); }
+```
+
+## Separate Chaining
+- important to handle hash collisions
+- most basic method is to place a linked list in table addresses and resolve
+  collisions using list search (separate chaining)
+- can use a dummy header node or can have the first nodes in the in the lists comprise the table
+```
+private:
+    link* heads;
+    int N, M;
+public:
+    ST(int maxN) {
+        N = 0; M = maxN/5;
+        heads = new link[M];
+        for (int i = 0; i < M; i++) heads[i] = 0;
+    }
+    Item search(Key v) { return searchR(heads[hash(v, M)], v); }
+    void insert(Item item) {
+        int i = hash(item.key(), M);
+        heads[i] = new node(item, heads[i]); N++;
+    }
+```
+- properties:
+    - reduces the number of comparisons for sequential search by a factor of M on average
+      using extra space for M links
+    - in a separate chaining hash table with M lists and N keys, the probability that the
+      number of keys in each list is within a small constant factor of N / M is extremely clost to 1
+    - NOTE: see the chapter for some formulas for various probabilities
+- best to choose M to be small enough to not waste space with empty links (1/5 or 1/10 of expected number of keys)
+- can optimize operations depending on importance of search vs insert
+- hashing is not good for sort and select but good for search, insert, and remove
+- good for symbol table in a compiler
+
+## Linear Probing
+- if the number of keys can be estimated and contiguous memory can be allocated,
+  then links do not need to be used
+- open-addressing hashing: store n items in a table of size M > N, using empty
+  locations to store collisions
+- linear probing: when a collision occurs, just find the next open address, wrapping
+  back if the end is reached
+- best to keep the table from getting completely full
+- linear probing:
+```
+private:
+    Item *st;
+    int N, M;
+    Item nullItem;
+public:
+    Symbol_table(int maxN) {
+        N = 0; M = 2*maxN;
+        st = new Item[M];
+        for (int i = 0; i < M; i++) st[i] = nullItem;
+    }
+    int count() const { return N; }
+    void insert(Item item) {
+        int i = hash(item.key(), M);
+        while (!st[i].null()) i = (i+1) % M;
+        st[i] = item; N++;
+    }
+    Item search(Key v) {
+        int i = hash(v, M);
+        while (!st[i].null())
+        if (v == st[i].key()) return st[i];
+        else i = (i+1) % M;
+        return nullItem;
+    }
+```
+- uses a table 2 X the expected size
+- properties:
+    - a = N / M where a is the average number of items in the table is generally
+      larger than 1 (a is called the load factor)
+    - when collisions are resolved with linear probing, the average number of probes required
+      to search in a hash table of size M that contains N = aM keys is about
+      1 / 2 * ( 1 + (1/(1-a)) for hits and 1 / 2(1 + 1/(1-a)^2) for misses
+- the accuracy of the estimates decreases as a approaches 1
+- keys in the table are in random order
+- sort and select requires other operations so linear probing is not appropriate
+  in these cases
+- removal from a table with linear probing:
+```
+void remove(Item x) {
+    int i = hash(x.key(), M), j;
+    while (!st[i].null())
+        if (x.key() == st[i].key()) break;
+            else i = (i+1) % M;
+    if (st[i].null()) return;
+    st[i] = nullItem; N--;
+    for (j = i+1; !st[j].null(); j = (j+1) % M, N--) {
+        Item v = st[j]; st[j] = nullItem; insert(v);
+    }
+}
+```
+
+## Double Hashing - TODO: more work here
+- clustering causes linear probing to run slowly for tables that are nearly full
+- double hashing: use a second hash function to set a fixed increment for probing after a collision
+- important to choose second hash function with care (e.g. it cannot evaluate to 0)
+```
+inline int hash_two(Key v) { return (v % 97) + 1; }
+```
+- double hashing:
+```
+void insert(Item item) {
+    Key v = item.key();
+    int i = hash(v, M), k = hashtwo(v, M);
+    while (!st[i].null()) i = (i+k) % M;
+    st[i] = item; N++;
+}
+
+Item search(Key v) {
+    int i = hash(v, M), k = hashtwo(v, M);
+    while (!st[i].null())
+    if (v == st[i].key()) return st[i];
+        else i = (i+k) % M;
+    return nullItem;
+}
+```
+- properties:
+    - when collisions are resolved with double hashing, the average number of probes
+      required to a search a hash table of size M that contains N = aM keys is
+      (1 / a) * (ln (1 / (1-a)) for hist and 1/(1-a) for misses
+
+## Dynamic Hash Tables
+- increase in keys in a hash table degrades search
+- tables fill up and performance decreases drastically towards the upper limit
+- trees are more elastic
+- doubling a hash table's size is expensive but happens so infrequently its
+  cost is only a constant fraction of building the table
+- dynamic hashing works for both linear probing and separate chaining
+- keeps size at 1/4 to 1/2 so search cost is less than 3 probes on average
+- dynamic hash insertion for linear probing:
+```
+private:
+    void expand() {
+        Item *t = st;
+        init(M+M);
+        for (int i = 0; i < M/2; i++) {
+            if (!t[i].null()) insert(t[i]);
+        }
+        delete t;
+    }
+public:
+    Symbol_table(int maxN) { init(4); }
+    void insert(Item item) {
+        int i = hash(item.key(), M);
+        while (!st[i].null()) i = (i+1) % M;
+        st[i] = item;
+        if (N++ >= M/2) expand();
+    }
+```
+- requires allocating size for the new table, rehashing all the keys in the new
+  table, freeing the memory for the old table
+- properties:
+    - a sequence of t search, insert, and delete symbol-table operations can
+      be executed in time proportional to t and with memory usage always
+      within a constant factor of the number of keys in the table
+- this is the best option for a library hashing implementation
+
+## Perspective
+- choice between linear probing and double hashing depends on the cost of computing
+  the hash and the load factor of the table
+- linear probing and double hashing vs. separate chaining comparison is more complicated ->
+  see book for details
+- many other hashing methods for special situations:
+    - move items around during insertion in double hashing to make successful search
+      more efficient
+    - ordered hashing: reduces cost of unsuccessful search - in standard search,
+      the search stops when an empty location is hit or an item with an equal key is hit
+      ordered hashing -> stop when a key greater than or equal to the current key is found
+      requires more work
+    - exception dictionary: when the table has a fast search miss and a slow search hit
+      (i.e. certain string searches)
+
+
+## Radix Search
+- radix search: search methods that examine the keys one small step at a time
+- keys may be words or strings and words are viewed as part of a base-R number
+  system
+- C-strings can be viewed as variable length numbers and compared via the process
+  of extract the i-th digit
+- reasonable worst case performance without dealing with the issues presented
+  by balanced trees
+- may make inefficient use of space and performance can suffer if access to the bytes
+  of the keys is not available
+
+## Digital Search Trees
+- digital search trees (DSTs): similar to binary trees with the branches based on
+  comparisons of the leading bits in the keys
+- make the decision whether to move left or right from the root based on 0 or 1 ->
+  0 for left 1 for right
+- the first key inserted becomes the root
+- binary digital search tree:
+```
+private:
+    Item searchR(link h, Key v, int d) {
+        if (h == 0) return nullItem;
+        if (v ==  h->item.key()) return h->item;
+        if (digit(v, d) == 0)
+            return searchR(h->l, v, d+1);
+        else return searchR(h->r, v, d+1);
+    }
+public:
+    Item search(Key v) { return searchR(head, v, 0); }
+```
+- properties:
+    - a search or insertion in a digital search tree requires about lg(N) comparisons
+      on average and about 2 * lg(N) comparisons in the worst case (for N random keys)
+    - the number of comparisons is never more than the number of bits in the search key
+
+## Tries
+- definition:
+    - trie: a binary tree that has keys only associated with leaf nodes. The trie for an
+      empty set of keys is a null link, a single key is a leaf containing that key, and a
+      set of keys of cardinality greater than one is an internal node with the left node
+      referring to the trie containing a key whose initial bit is 0 and right node 1 (with
+      the leading bit considered to be removed for the purpose of constructing subtrees)
+- a key exists in the leaf node defined by the digital path from the root to that node
+- a search miss ends on a null leaf
+- trie search:
+```
+private:
+    Item searchR(link h, Key v, int d) {
+        if (h == 0) return nullItem;
+        if (h->l == 0 && h->r == 0) {
+            Key w = h->item.key();
+            return (v == w) ? h->item : nullItem;
+        }
+        if (digit(v, d) == 0)
+           return searchR(h->l, v, d+1);
+        else return searchR(h->r, v, d+1);
+    }
+public:
+    Item search(Key v) { return searchR(head, v, 0); }
+```
+- trie insertion:
+```
+private:
+    link split(link p, link q, int d) {
+        link t = new node(nullItem); t->N = 2;
+        Key v = p->item.key(); Key w = q->item.key();
+        switch(digit(v, d)*2 + digit(w, d)) {
+            case 0: t->l = split(p, q, d+1); break;
+            case 1: t->l = p; t->r = q; break;
+            case 2: t->r = p; t->l = q; break;
+            case 3: t->r = split(p, q, d+1); break;
+        }
+        return t;
+    }
+    void insertR(link& h, Item x, int d) {
+        if (h == 0) { h = new node(x); return; }
+        if (h->l == 0 && h->r == 0) {
+            h = split(new node(x), h, d);
+            return;
+        }
+        if (digit(x.key(), d) == 0)
+            insertR(h->l, x, d+1);
+        else insertR(h->r, x, d+1);
+    }
+public:
+    ST(int maxN) { head = 0; }
+    void insert(Item item) { insertR(head, item, 0); }
+```
+- properties:
+    - the structure of a trie is independent of the key insertion order -> there
+      is a unique trie for any given set of distinct keys
+    - insertion or search for a random key in a trie built from N random (distinct)
+      bitstrings requires about lg(N) bit comparisons on the average. THe worst-case
+      number of bit comparisons is bounded only by the number of bits in the search key.
+    - a trie built from N random w-bit keys has about N/ln(2) or about 1.44 * N nodes
+      on the average
+
+## Patricia Tries
+- basic trie search has two main flaws:
+    - has many extra nodes to support the path
+    - has two distinct types of nodes
+- patricia (practical algorithm to retrieve information coded in alphanumeric) tries::
+    - trie with N keys and only has N nodes and requires lg(N) comparisons and one
+      full key comparison per search
+- each node stores an index in the bit string that dictates which path to take out of
+  the node
+- can regard standard tries and patricia tries as different representations of the same
+  structure
+- patricia trie search:
+```
+private:
+    Item searchR(link h, Key v, int d) {
+        if (h->bit <= d) return h->item;
+        if (digit(v, h->bit) == 0)
+           return searchR(h->l, v, h->bit);
+        else return searchR(h->r, v, h->bit);
+    }
+public:
+    Item search(Key v) {
+        Item t = searchR(head, v, -1);
+        return (v == t.key()) ? t : nullItem;
+    }
+```
+- patricia trie insertion:
+```
+private:
+    link insertR(link h, Item x, int d, link p) {
+        Key v = x.key();
+        if ((h->bit >= d) || (h->bit <= p->bit)) {
+            link t = new node(x); t->bit = d;
+            t->l = (digit(v, t->bit) ? h : t);
+            t->r = (digit(v, t->bit) ? t : h);
+            return t;
+        }
+        if (digit(v, h->bit) == 0)
+           h->l = insertR(h->l, x, d, h);
+        else h->r = insertR(h->r, x, d, h);
+        return h;
+    }
+public:
+    void insert(Item x) {
+        Key v = x.key(); int i;
+        Key w = searchR(head->l, v, -1).key();
+        if (v == w) return;
+        for (i = 0; digit(v, i) == digit(w, i); i++) ;
+        head->l = insertR(head->l, x, i, head);
+    }
+    Symbol_table(int maxN) {
+        head = new node(nullItem);
+        head->l = head->r = head;
+    }
+```
+- patricia trie search:
+```
+private:
+    void showR(link h, ostream& os, int d) {
+        if (h->bit <= d) { h->item.show(os); return; }
+        showR(h->l, os, h->bit);
+        showR(h->r, os, h->bit);
+    }
+public:
+    void show(ostream& os) { showR(head->l, os, -1); }
+```
+- properties:
+    - insertion or search for a random key in a patricia trie built from N random
+      bitstrings requires about lg(N) bit comparisons on the average and about
+      2 * lg(N) bit comparisons in the worst case.
+    - the number of bit comparisons is never worse than the length of the key
+- tries, digital search trees, and patricia tries are competitive with balanced
+  trees
+- prefer patricia tries when search keys are long
+
+## Multiway Tries and TSTs - TODO: spend more time here
+- radix sorting performance was improved by considering more than 1 bit at a time,
+  this also works for radix search
+- there is an important additional consideration -> considering r bits at a time
+  corresponds to using tree nodes with R = 2 ^r links which results in a lot of wasted
+  space
+- definition:
+    - existence trie: trie for empty set of keys is a null link, and the
+      non-empty set of keys represented by an internal node with links referring
+      to the trie for each possible key digit, with the leading digit removed
+      for constructing subtrees
+    - multiway trie: trie for a single key is a leaf containing the key, trie for
+      a set of keys of cardinality greater than one is an internal node with links
+      referring to tries for keys with each possible digit value, with the leading
+      digit removed for constructing subtrees
+- existence trie search and insertion:
+```
+private:
+    struct node {
+        node **next;
+        node() {
+            next = new node*[R];
+            for (int i = 0; i < R; i++) next[i] = 0;
+        }
+    };
+    typedef node *link;
+    link head;
+    Item searchR(link h, Key v, int d) {
+        int i = digit(v, d);
+        if (h == 0) return nullItem;
+        if (i == NULLdigit) {
+            Item dummy(v); return dummy;
+        }
+        return searchR(h->next[i], v, d+1);
+    }
+    void insertR(link& h, Item x, int d) {
+        int i = digit(x.key(), d);
+        if (h == 0) h = new node;
+        if (i == NULLdigit) return;
+        insertR(h->next[i], x, d+1);
+    }
+public:
+    ST(int maxN) { head = 0; }
+    Item search(Key v) { return searchR(head, v, 0); }
+    void insert(Item x) { insertR(head, x, 0); }
+```
+- existence TST search and insertion:
+```
+private:
+    struct node {
+        Item item; int d; node *l, *m, *r;
+        node(int k) { d = k; l = 0; m = 0; r = 0; }
+    };
+    typedef node *link;
+    link head;
+    Item nullItem;
+    Item searchR(link h, Key v, int d) {
+        int i = digit(v, d);
+        if (h == 0) return nullItem;
+        if (i == NULLdigit) { Item dummy(v); return dummy; }
+        if (i < h->d) return searchR(h->l, v, d);
+        if (i == h->d) return searchR(h->m, v, d+1);
+        if (i > h->d) return searchR(h->r, v, d);
+    }
+    void insertR(link& h, Item x, int d) {
+        int i = digit(x.key(), d);
+        if (h == 0) h = new node(i);
+        if (i == NULLdigit) return;
+        if (i < h->d) insertR(h->l, x, d);
+        if (i == h->d) insertR(h->m, x, d+1);
+        if (i > h->d) insertR(h->r, x, d);
+    }
+public:
+    ST(int maxN) { head = 0; }
+    Item search(Key v) { return searchR(head, v, 0); }
+    void insert(Item x) { insertR(head, x, 0); }
+```
+- properties:
+    - search or insertion in a standard r-ary trie requires about log sub R (N) comparisons
+      on average in a tree built from N random bytestrings. The number of links in an
+      r-ary trie built from N random keys is about (R * N) / ln(R). The number of
+      byte comparisons for search or insertion is no more than the number of bytes in
+      the search key
+    - a search or insertion in a full TST requires time proportional to the key length.
+      The number of links in a TST is at most three times the number of characters in all the keys.
+    - a search or insertion in a TST with items in leaves (no one-way branching at the bottom)
+      and R^t-way branching at the root requires roughly ln(N - t) * ln(R) byte accesses
+      for N keys that are random bytestrings. The number of links required is R ^ t for
+      the root node plus a small constant time N.
+- TSTs are good because they deal with key irregularities very well
+    - most practical applications deal with large character sets with non-uniform usage
+    - search misses are extremely efficient, even for long keys
+- partial match searching in TSTs
+```
+private:
+    char word[maxW];
+    void matchR(link h, char *v, int i) {
+        if (h == 0) return;
+        if ((*v == 0) && (h->d == 0)) { word[i] = 0; cout << word << " "; }
+        if ((*v == '*') || (*v == h->d)) { word[i] = h->d; matchR(h->m, v+1, i+1); }
+        if ((*v == '*') || (*v < h->d)) matchR(h->l, v, i);
+        if ((*v == '*') || (*v > h->d)) matchR(h->r, v, i);
+      }
+public:
+    void match(char *v) { matchR(head, v, 0); }
+```
+- hybrid TST node type definitions:
+```
+struct node {
+    Item item; int d; node *l, *m, *r;
+    node(Item x, int k) { item = x; d = k; l = 0; m = 0; r = 0; }
+    node(node* h, int k) { d = k; l = 0; m = h; r = 0; }
+    int internal() { return d != NULLdigit; }
+};
+typedef node *link;
+link heads[R];
+Item nullItem;
+```
+- hybrid TST insertion for symbol table type
+```
+private:
+    link split(link p, link q, int d) {
+        int pd = digit(p->item.key(), d), qd = digit(q->item.key(), d);
+        link t = new node(nullItem, qd);
+        if (pd < qd) { t->m = q; t->l = new node(p, pd); }
+        if (pd == qd) { t->m = split(p, q, d+1); }
+        if (pd > qd) { t->m = q; t->r = new node(p, pd); }
+        return t;
+      }
+    link newext(Item x) { return new node(x, NULLdigit); }
+    void insertR(link& h, Item x, int d) {
+        int i = digit(x.key(), d);
+        if (h == 0) { h = new node(newext(x), i); return; }
+        if (!h->internal()) { h = split(newext(x), h, d); return; }
+        if (i < h->d) insertR(h->l, x, d);
+        if (i == h->d) insertR(h->m, x, d+1);
+        if (i > h->d) insertR(h->r, x, d);
+      }
+public:
+    ST(int maxN) { for (int i = 0; i < R; i++) heads[i] = 0; }
+    void insert(Item x) { insertR(heads[digit(x.key(), 0)], x, 1); }
+```
+- hybrid TST search for symbol-table type
+```
+private:
+    Item searchR(link h, Key v, int d) {
+        if (h == 0) return nullItem;
+        if (h->internal()) {
+            int i = digit(v, d), k = h->d;
+            if (i < k) return searchR(h->l, v, d);
+            if (i == k) return searchR(h->m, v, d+1);
+            if (i > k) return searchR(h->r, v, d);
+        }
+        if (v == h->item.key()) return h->item;
+        return nullItem;
+    }
+public:
+    Item search(Key v) { return searchR(heads[digit(v, 0)], v, 1); }
+```
+
+## Text-String-Index Algorithms
+- suffix tree: a search tree built from keys defined by string pointer into a text
+  string
+- tries work well as opposed to hashing because hashing algorithms have a running
+  time dependent on the key length
+- patricia tries work well
+- TSTs provide many of the same advantages of patricia tries with some additional
+- for most text indexing applications, the text is fixed so dynamic insert does not
+  need to be supported and binary search might be suitable
+- just relying on binary search for fixed text indexing reduces the number of pointers
+  required to index into the text string
+
+
+# External Searching
+- need algorithms that are appropriate for searching in large external text files
+- some considerations:
+    - tape-like devices are limited to sequential access
+    - disk-like random access facilitates search and insert
+    - may have access to a large virtual memory
+    - direct relationship to database functionality
+
+## Rules of the Game
+- model:
+    - consider the access to be through pages or contiguous blocks of information
+      that can be accessed efficiently by the hardware
+    - directly relevant to a filesystem, virtual memory, and caching
+- definitions:
+    - page: a contiguous block of data
+    - probe: first access to a page
+- many additional considerations for long-lived databases not considered here
+
+## Indexed Sequential Access
+- basic implementation -> keep an array with keys and item references and use
+  binary search
+- due to page access:
+    - binary tree with keys and page pointers in internal nodes and keys and
+      item pointers in external nodes
+    - can use an m-ary tree to reduce access costs
+- this model is similar to device dependent hardware access implementations
+- properties:
+    - a search in an indexed sequential file requires only a constant number of probes,
+      but an insertion can require that the entire index be rebuilt
+- modifying the directory (indexed) is expensive
+
+## B Trees - TODO: more notes here
+- multiway trees with a relaxed requirement of the number of entries in each node
+  supports the indexed sequential access requirements with the added benefit of dynamic
+  growth
+- generalization of the 2-3-4 structure (i.e. 4-5-6-7-8 etc)
+- definition:
+    - b tree (of order M): a tree that either is empty or is made up of "k-nodes",
+      with k - 1 keys and k links to trees representing each of the k intervals delimited
+      by the keys. k must be between 2 and M at the root and M / 2 and M at every
+      other node. All links to empty trees must be the same distance from the root.
+- b tree node type definition:
+```
+template <class Item, class Key>
+struct entry { Key key; Item item; struct node *next; };
+struct node {
+    int m; entry<Item, Key> b[M];
+    node() { m = 0; }
+};
+typedef node *link;
+```
+- b tree search:
+```
+private:
+  Item searchR(link h, Key v, int ht)
+    { int j;
+      if (ht == 0)
+        for (j = 0; j < h->m; j++)
+          { if (v == h->b[j].key)
+              return h->b[j].item; }
+      else
+        for (j = 0; j < h->m; j++)
+          if ((j+1 == h->m) || (v < h->b[j+1].key))
+            return searchR(h->b[j].next, v, ht-1);
+      return nullItem;
+    }
+public:
+  Item search(Key v)
+    { return searchR(head, v, HT); }
+```
+- b tree insertion:
+```
+private:
+  link insertR(link h, Item x, int ht)
+    { int i, j; Key v = x.key(); entry<Item, Key> t;
+      t.key = v; t.item = x;
+      if (ht == 0)
+        for (j = 0; j < h->m; j++)
+          { if (v < h->b[j].key) break; }
+      else
+        for (j = 0; j < h->m; j++)
+          if ((j+1 == h->m) || (v < h->b[j+1].key))
+            { link u;
+              u = insertR(h->b[j++].next, x, ht-1);
+              if (u == 0) return 0;
+              t.key = u->b[0].key; t.next = u;
+              break;
+            }
+     for (i = h->m; i > j; i--) h->b[i] = h->b[i-1];
+     h->b[j] = t;
+     if (++h->m < M) return 0; else return split(h);
+    }
+public:
+  ST(int maxN)
+    { N = 0; HT = 0; head = new node; }
+  void insert(Item item)
+    { link u = insertR(head, item, HT);
+      if (u == 0) return;
+      link t = new node(); t->m = 2;
+      t->b[0].key = head->b[0].key;
+      t->b[1].key =  u->b[0].key;
+      t->b[0].next = head; t->b[1].next = u;
+      head = t; HT++;
+    }
+```
+- b tree node split:
+```
+  { link t = new node();
+    for (int j = 0; j < M/2; j++)
+      t->b[j] = h->b[M/2+j];
+    h->m = M/2; t->m = M/2;
+    return t;
+  }
+```
+- properties:
+    - a search or an insertion in a b tree of order M with N items requires between
+      log sub M (N) and log sub (M/2) (N) probes (constant for practical purposes)
+    - a b tree of order M constructed from N random items is expected to have about
+      1.44 * (N/M) pages
+
+## Extendible Hashing - TODO: more notes here
+- combines elements of multiway-trie algorithms, sequential access methods, and hashing
+  to a method that generally requires just one or two probes for search and insert
+- definition:
+    - extendible hash table (of order d): a directory of 2^d references to pages that
+      contain up to M items with keys. The items on each page are identical in their
+      first k bits and the directory contains 2^(d-k) pointers to the page, starting
+      at the location specified by the leading k bits in the keys on the page
+- extendible hashing data structures:
+```
+template <class Item, class Key>
+class ST
+  {
+    private:
+      struct node
+        { int m; Item b[M]; int k;
+          node() { m = 0; k = 0; }
+        };
+      typedef node *link;
+      link* dir;
+      Item nullItem;
+      int N, d, D;
+    public:
+      ST(int maxN)
+        { N = 0; d = 0; D = 1;
+          dir = new link[D];
+          dir[0] = new node;
+        }
+    };
+```
+- extendible hashing search:
+```
+private:
+  Item search(link h, Key v)
+    {
+      for (int j = 0; j < h->m; j++)
+        if (v == h->b[j].key()) return h->b[j];
+      return nullItem;
+    }
+public:
+  Item search(Key v)
+    { return search(dir[bits(v, 0, d)], v); }
+```
+- extendible hashing insertion:
+```
+  void split(link h)
+    { link t = new node;
+      while (h->m == 0 || h->m == M)
+        {
+          h->m = t->m = 0;
+          for (int j = 0; j < M; j++)
+            if (bits(h->b[j].key(), h->k, 1) == 0)
+                 h->b[h->m++] = h->b[j];
+            else t->b[t->m++] = h->b[j];
+          t->k = ++(h->k);
+        }
+      insertDIR(t, t->k);
+    }
+  void insert(link h, Item x)
+    { int j; Key v = x.key();
+      for (j = 0; j < h->m; j++)
+        if (v < h->b[j].key()) break;
+      for (int i = (h->m)++; i > j; i--)
+        h->b[i] = h->b[i-1];
+      h->b[j] = x;
+      if (h->m == M) split(h);
+    }
+public:
+  void insert(Item x) { insert(dir[bits(x.key(), 0, d)], x); }
+```
+- extendible hashing directory insertion:
+```
+void insertDIR(link t, int k)
+  { int i, m, x = bits(t->b[0].key(), 0, k);
+    while (d < k)
+      { link *old = dir;
+        d += 1; D += D;
+        dir = new link[D];
+        for (i = 0; i < D; i++) dir[i] = old[i/2];
+        if (d < k) dir[bits(x, 0, d)^1] = new node;
+      }
+    for (m = 1; k < d; k++) m *= 2;
+    for (i = 0; i < m; i++) dir[x*m+i] = t;
+  }
+```
+- properties:
+    - the extendible hash table built from a set of keys depends on only the values
+      of those keys, and does not depend on the order in which the keys are inserted
+    - with pages that can hold m items, extendible hashing requires about 1.44 * (N/M)
+      pages for a file of N items on average. The expected number of entries in the directory
+      is about 3.92 * (N ^(1/M))(N/M)
+
+## Perspective
+- these algorithms cannot be used directly for implementing a database or a filesystem
+    - the parameters need to be tuned for the system
+    - need reliability and error detection and correction
+- virtual memory can facilitate the algorithm use for in memory operations on a large
+  dataset but size considerations will dictate what is brought into cache and how data
+  is split across pages
