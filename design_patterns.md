@@ -146,7 +146,8 @@
     - Composite and Decorator usage benefits from Prototypes
 
 ## Singleton
-- ensure only one instance of a class and provide global access point
+- intent:
+    - ensure only one instance of a class and provide global access point
 
 - use when:
     - there must be one instance of a class with a well-known access point
@@ -174,3 +175,283 @@
         - Prototype
 
 # Structural Patterns
+- contain many similarities across patterns, differences can sometimes be subtle
+- Adapter vs. Bridge:
+    - Adapter - resolves incompatibilities, generally after-the-fact
+    - Bridge - provides stable interface to possibly differing implementations, generally
+      as an initial design decision
+
+- Facade is not an Adapter as it defines a new interface to unify multiple interfaces
+- Composite vs. Decorator vs. Proxy:
+    - Composite and Decorator - Decorator is not just a degenerate Composite
+    - Decorator - adds responsibilities to objects without subclassing
+    - Composite - provides structure to multiple objects
+    - often used together
+    - Proxy - like Decorator, composes an object to provide an identical interface
+      to clients (i.e. does not change original interface)
+    - not used for recursive composition
+    - provides access control primarily, hiding various details like location and
+      time of initialization
+    - subject provides/defines functionality
+    - Decorator remedies the situation where an object's total functionality cannot
+      be determined at compile time (conveniently, i.e. without excessive subclassing)
+
+## Adapter
+- intent:
+    - convert the interface of a class into another interface
+    - allows interoperability between classes that would be incompatible
+
+- use when:
+    - you want to use an existing class with an interface that does not match your needs
+    - create a reusable class that cooperates with unrelated or unknown classes
+    - can adapt the parent class for the interface of several subclasses
+
+- participants:
+    - Target
+    - Client
+    - Adaptee
+    - Adapter
+
+- collaborations:
+    - Clients call operations on the Adapter which in turn calls operations on the Adaptee
+
+- consequences:
+    - Class vs Object Adapter (subclassing vs pointer referencing):
+        - Class:
+            - commits to a single concrete class
+            - overrides some of Adaptee's behaviors (as a subclass of Adaptee)
+            - introduces only one object with no additional pointer reference to Adaptee
+        - Object:
+            - single Adapter works with many Adaptees (Adaptee and subclasses)
+            - can add functionality to Adaptee
+            - more difficult to override behavior
+    - exist on a spectrum of work done (and overridden/accessible behavior)
+    - pluggable adapters (can subclass adapters and modify behavior as needed)
+    - two-way adapters for transparency (multiple inheritance to remedy the potential lack of
+      interface conformance caused by Adapters)
+
+- implementation:
+
+- related:
+    - Bridge - similar but meant to allow two interfaces to vary independently (Adapter
+      changes an interface)
+    - Decorator - adds to an object but does not change the interface, also supports recursive composition
+    - Proxy - provides a surrogate or another object but does not change interface
+
+## Bridge
+- intent:
+    - decouple an abstraction from its implementation so that the two can vary independently
+
+- use when:
+    - avoid permanent binding between an abstraction and its implementation
+    - both abstraction and implementation should be extensible through subclassing
+    - changes in implementation should not affect clients
+    - hide implementation completely from clients (PIMPL)
+    - proliferation of subclasses necessitates splitting an object into two parts
+    - share implementation between multiple objects but hide this from clients
+
+- participants:
+    - Abstraction
+    - Refined Abstraction
+    - Implementor
+    - Concrete Implementor
+
+- collaborations:
+    - Abstraction forwards requests to the Implementor object
+
+- consequences:
+    - decoupling interface and implementation
+    - improved extensibility
+    - hiding implementation details from clients
+
+- implementation:
+
+- related:
+    - Abstract Factory can create and configure a Bridge
+    - Adapters are generally created and applied after the fact whereas Bridges
+      are created up front to allow abstractions and implementations to vary
+      independently
+
+## Composite
+- intent:
+    - compose objects into tree structures to represent part-whole hierarchies
+    - allows clients to treat individual objects and compositions of objects
+      uniformly
+
+- use when:
+    - need to represent part-whole hierarchies
+    - need to allow clients to ignore the difference between compositions of objects
+      and individual objects
+
+- participants:
+    - Component
+    - Leaf
+    - Composite
+    - Client
+
+- collaborations:
+    - Clients go through the Component to access a Composite, which either forwards
+      directly to a Leaf or passes through a hierarchy to a Leaf
+
+- consequences:
+    - defines hierarchies consisting of primitive objects and composite objects
+    - makes the client simple
+    - makes it easier to add new kinds of components
+    - can make the design too general
+
+- implementation:
+
+- related patterns:
+    - component-parent link can be used for Chain of Responsiblity
+    - Decorator and Composite are often used together, with Decorator supporting
+      the Component interface
+    - Flyweight allows sharing of components but they can no longer refer to parents
+    - Iterator can be used to traverse composites
+    - Visitor localizes operations and behavior that would otherwise be distributed
+      across Composite and Leaf classes
+
+## Decorator
+- intent:
+    - attach responsibility to an object dynamically
+    - flexible alternative to subclassing for extended functionality
+
+- use when:
+    - add responsibility to an object dynamically without affecting other objects
+    - responsibilities of an object/class can be withdrawn
+    - extension by subclassing is impractical (large number of independent extensions
+      are possible or a class is hidden or not capable of being subclassed)
+
+- participants:
+    - Component
+    - Concrete Component
+    - Decorator
+    - Concrete Decorator
+
+- collaborations:
+    - forwards requests to Component
+
+- consequences:
+    - more flexible than static inheritance
+    - avoids feature laden classes high in a hierarchy
+    - a decorator and its component are not identical
+    - lots of little objects
+
+- implementation:
+
+- related:
+    - Adapter - changes an interface whereas a Decorator changes an object's responsibilities
+    - Composite - a Decorator is a Composite with only one Component
+    - Strategy - Decorator changes the skin, Strategy changes the guts
+
+## Facade
+- intent:
+    - provide a unified interface to a set of interfaces in a subsystem
+    - provides a higher level interface that makes a system easier to use
+
+- use when:
+    - want to provide a simple interface to a complex system/subsytem
+    - want to decouple a client from a dependency-laden abstraction/implementation class
+      network
+    - want to provide a (simplified/single) entry point to a layered subsystem
+
+- participants:
+    - Facade
+    - subsytem classes
+
+- collaborations:
+    - forwards requests from clients to various subsystem objects
+    - clients do not need to access subsystem directly
+
+- consequences:
+    - hides subsystem from clients, simplifying client code/interactions
+    - promotes weak coupling/decoupling
+    - does not prevent an application from using subsystem classes if necessary
+
+- implementation:
+
+- related:
+    - Facade can provide an interface to an Abstract Factory or an Abstract Factory
+      can be used in place of a Facade
+    - Mediator is similar but is used to coordinate various Colleagues without reducing
+      awareness between Colleagues
+    - Facades are often Singletons
+
+## Flyweight
+- intent:
+    - use sharing to support large numbers of objects efficiently
+
+- use when:
+    - an application uses a large number of objects
+    - storage costs are high because of the sheer quantity of objects
+    - most objects can use extrinsic state
+    - many groups of objects may be replaced by relatively few shared objects after
+      removing extrinsic state
+    - application does not depend on object identity
+
+- participants:
+    - Flyweight
+    - Concrete Flyweight
+    - Unshared Concrete Flyweight (row, column)
+    - Flyweight Factory
+    - Client
+
+- collaborations:
+    - Flyweight state is characterized as extrinsic or intrinsic
+        - intrinsic state is stored in the Concrete Flyweight
+        - extrinsic state is calculated by clients and passed to Flyweight instances
+          when their operations are invoked
+    - clients should obtain Flyweights exclusively through a Flyweight Factory (which manages
+      sharing)
+
+- consequences:
+    - may incur run time cost of generating extrinsic state
+    - promotes storage savings by:
+        - reduction in total number of instances
+        - amount of intrinsic state per object
+        - computation of extrinsic state vs. storage of extrinsic state
+    - Flyweights are often combined with Composite to create a hierarchy
+
+- implementation:
+
+- related:
+    - combined with Composite to create hierarchy (DAG with shared leaf nodes)
+    - best to implement State and Strategy as Flyweights
+
+## Proxy
+- intent:
+    - provide a surrogate or placeholder for another object to control access to it
+
+- use when:
+    - remote proxy:
+        - representative for an object in a different address space (i.e. machine, network)
+    - virtual proxy:
+        - creates expensive objects on demand
+    - protection proxy:
+        - controls access to an object (and manages access rights)
+    - smart reference:
+        - replaces bare pointer
+        - reference counting
+        - lazy loading, caching, memory management, etc
+        - locking/access control
+
+- participants:
+    - Proxy
+    - Subject
+    - Real Subject
+
+- consequences:
+    - can hide location (address space) of object
+    - can optimize with lazy creation/caching
+    - allows additional housekeeping for object access
+    - can use for copy-on-write
+
+- implementation:
+
+- related:
+    - Adapter - provides a different interface whereas Proxy provides the same interface
+      (NOTE: access control can result in a subset of the interface)
+    - Decorator - similar but adds responsibilities whereas Proxies control access
+      both vary in degree to their implementation
+
+# Behavioral Patterns
+
