@@ -31,3 +31,21 @@ until [  $COUNTER -lt 10 ]; do
     let COUNTER-=1
 done
 ```
+
+# rename files
+```
+for file in *.cc; do mv "$file" "$(basename "$file" .cc).cpp"; done
+```
+
+# lowercase filenames
+```
+for i in *; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
+```
+
+# Split files
+```
+# gcsplit on OSX
+csplit --digits=2  --quiet --prefix=outfile infile "/-|/+1" "{*}"
+csplit -n2 -s -b outfile infile "/-|/+1" "{*}"
+awk '{print $0 " -|"> "file" NR}' RS='-\\|'  input-file
+```
