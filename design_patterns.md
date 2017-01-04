@@ -454,4 +454,403 @@
       both vary in degree to their implementation
 
 # Behavioral Patterns
+- Strategy encapsulates an algorithm
+- State encapsulates state-dependent behavior
+- Mediator encapsulates the protocol between objects
+- Iterator encapsulates movement across an aggregate object
+- all relate to aspects of a program that are likely to change
+- many use objects as arguments:
+    - Visitor
+    - Comand with Context
+    - Memento
+- Mediator and Observer are competing patterns -> Observer distributes communication
+  by introducing Subject and Observer, Mediator encapsulates communication between them
+- Mediator centralizes communication distribution
+- Observers are more flexible to reuse then Mediation
+- Mediators are easier to understand the communication flow
+- Decoupling senders and receivers:
+    - Command, Observer, Mediator, and Chain of Responsibility
+    - Command simplifies interface for generally one-to-one-to-one (invoker -> command -> receiver)
+    - Observer can have multiple observers and subjects
+    - Mediator sits between multiple Colleagues, generally routing requests
+    - Chain of Responsibility sends it through many objects to decouple sender from multiple
+      receivers
 
+- behavioral design patterns complement and support each other
+- most well-designed object oriented systems work are composed of multiple layered patterns
+- it is often better to think at the pattern level than the class level when architecting
+  an object oriented system
+
+## Chain of Responsibility
+- intent:
+    - avoid coupling the sender of a request to its receiver by giving more than one object
+      a chance to handle the request
+    - chain the receiving objects and pass the request along the chain until an object
+      handles it (Cocoa first responder pattern)
+
+- use when:
+    - more than one object can handle a request and the handler isn't known a priori
+    - want to send a request to multiple objects without specifying the receiver explicitly
+    - the set of request handlers should/can be specified dynamically
+
+- participants:
+    - Handler
+    - Concrete Handler
+    - Client
+
+- collaborations:
+    - request is propagated along a chain to a Concrete Handler
+
+- consequences:
+    - reduced coupling
+    - added flexibility in assigning responsibilities to objects
+    - receipt isn't guaranteed
+
+- implementation:
+
+- related:
+    - often used in conjunction with Composite
+
+## Command
+- NOTE: the Command pattern is different than functors in C++
+- intent:
+    - encapsulate a request as an object, allowing clients parameterization with different
+      requests, queueing or logging of requests, and support of undoable operations
+
+- use when:
+    - parameterize objects by an action to perform (object oriented replacement for callbacks)
+    - specify, queue, and execute requests at different times
+    - support undo
+    - support logging changes so that they can be reapplied in case of fatal error
+    - structure a system around high level operations built around primitive operations
+
+- participants:
+    - Command
+    - Concrete Command
+    - Client
+    - Invoker
+    - Receiver
+
+- collaborations:
+    - client creates a Concrete Command and specifies the receiver
+    - Invoker stores the Concrete Command
+    - Invoker executes and stores state for undoable commands
+    - Concrete Command invokes operations on the receiver
+
+- consequences:
+    - decouples the invoker from the object that performs the operation
+    - Command objects are first-class and can be manipulated and extended as such
+    - Commands can be assembled into Composites
+    - new Commands can be added easily
+
+- implementation:
+
+- related:
+    - Composite can be used to implement MacroCommands
+    - Memento can keep state required to undo a Command
+    - copying Commands onto the history list uses the Command as a Prototype
+
+## Interpreter
+- intent:
+    - given a language, define a representation for its grammar along with an
+      interpreter that uses the representation to interpret sequences in the language
+
+- use when:
+    - the grammar is simple (complex grammars are better served by parser generators or custom, full
+      scale parsers)
+    - efficiency is not a critical concern
+
+- participants:
+    - Abstract Expression
+    - Terminal Expression
+    - Nonterminal Expression
+    - Context
+    - Client
+
+- collaborations:
+    - client uses an abstract syntax tree of terminal and nonterminal expressions
+    - uses the context to invoke the interpret operation
+    - interpret operations use the context to store and access the state of interpreter
+
+- consequences:
+    - its easy to change and extend the grammar
+    - implementing the grammar is easy
+    - complex grammars are difficult to maintain
+    - facilitates the ability to add new ways to interpret expressions
+
+- related patterns:
+    - Composite - AST is an instance of the Composite pattern
+    - Flyweight - shows how to share terminal symbols in the AST
+    - Iterator - interpreter uses an iterator to traverse the structure
+    - Visitor - used to maintain behavior in each node in an AST
+
+## Iterator
+- intent:
+    - provide a way to access the elements of an aggregate object sequentially without exposing
+      its underlying representation
+
+- use when:
+    - there is a need to access an aggregate objects contents without exposing the internal
+      representation
+    - there is a need to support multiple traversals of aggregate objects
+    - to provide a uniform interface to traverse different aggregate structures (polymorphic iteration)
+
+- participants:
+    - Iterator
+    - Concrete Iterator
+    - Aggregate
+    - Concrete Aggregate
+
+- collaborations:
+    - Concrete Iterator keeps track of current element and can compute the next element
+
+- consequences:
+    - it supports variations in traversal of an aggregate
+    - iterators simplify the aggregate interface
+    - more than one traversal can be pending on an aggregate
+
+- implementation:
+
+- related patterns:
+    - Composite - Iterators are often applied to recursive structures such as Composites
+    - Factory Method - used to instantiate the proper polymorphic iterator instance
+    - Memento - used to capture the state of an iteration, stored by Iterator internally
+
+## Mediator
+- intent:
+    - define an object that encapsulates how a set of objects interact
+    - promotes loose coupling
+    - allows independent interaction
+
+- use when:
+    - a set of objects communicate in a well defined but complex way
+    - reuse of an object is difficult because it communicates with many other objects
+    - a behavior thats distributed between several classes should be customizable without
+      a lot of subclassing
+
+- participants:
+    - Mediator
+    - Concrete Mediator
+    - Colleague classes
+        - each Colleague knows its Mediator object
+        - each Colleague communicates with its Mediator in place of another Colleague
+
+- collaborations:
+    - colleagues send and receive requests from a Mediator object
+    - the Mediator implements the cooperative behavior by routing requests between appropriate
+      colleagues
+
+- consequences:
+    - it limits subclassing
+    - it decouples colleagues
+    - it simplifies object protocols
+    - it abstracts how objects cooperate
+    - it centralizes control
+
+- implementation:
+
+- related patterns:
+    - Facade - unidirectional simplification of interaction with many objects
+    - Colleagues can communicate with the Mediator using the Observer pattern
+
+## Memento
+- intent:
+    - capture and externalize and object's internal state so that the object can be restored
+      to this state later without violating encapsulation
+
+- use when:
+    - a snapshot of some object's state must be saved so that it can be restore later
+    - a direct interface to obtaining the state would expose implementation details and break
+      the object's encapsulation
+
+- participants:
+    - Memento
+    - Originator
+    - Caretaker
+
+- consequences:
+    - preserving encapsulation boundaries
+    - it simplifies Originator (keeps versions of the internal state requested by clients)
+    - using mementos might be expensive
+    - defining narrow and wider interfaces
+    - hidden costs in caring for mementos
+
+- implementation:
+
+- related patterns:
+    - Comand - use Mementos to maintain state for undoable patterns
+    - Iterator - can be used for Iteration as described earlier
+
+## Observer (aka Publish-Subscribe)
+- intent:
+    - define a one-to-many dependency between objects so that when one object changes state
+      all dependents are notified and updated automatically
+
+- use when:
+    - an abstraction has two aspects, one dependent on the other (and they can vary independently)
+    - when a change to one object requires changing others (and you don't know how many objects need to be changed)
+    - when an object needs to be able to notify other objects without making assumptions about
+      who those objects are (i.e. need loos coupling)
+
+- participants:
+    - Subject
+    - Observer
+    - Concrete Subject
+    - Concrete Observer
+
+- collaborations:
+    - Concrete Subject notifies observer when pertinent changes occur
+    - Concrete Observers may query the Subject for more info after a notification
+
+- consequences:
+    - abstract coupling between subject and observer
+    - support for broadcast communication
+    - unexpected updates
+
+- implementation:
+
+- related patterns:
+    - Mediator - Change Manager acts as a Mediator between Subjects and Observers
+    - Singleton - the Change Manager may be a Singleton
+
+## State
+- intent:
+    - allow an object to alter its behavior when its internal state changes
+    - the object will appear to change its class
+
+- use when:
+    - an object's behavior depends on its state and it must change its behavior at run-time
+      based on its state
+    - objects have large multipart conditional statements that depend on the object's state
+      (usually represented by one or more enumerated constants) -> puts each branch of the
+      conditional in a separate class
+
+- participants:
+    - Context
+    - State
+    - Concrete State subclasses
+
+- collaborations:
+    - delegates state-specific requests to current Concrete State object
+    - can pass Context to the State object handling the request
+    - Context is the primary interface for clients and can be configured
+    - the Context or Concrete State subclasses can decide which state succeeds another
+      and under what circumstances
+
+- consequences:
+    - it localizes state specific behavior and partitions behavior for different states
+    - it makes state transitions explicit
+    - state objects can be shared
+
+- implementation:
+
+- related patterns:
+    - Flyweight manages when and how State objects can be shared
+    - State objects are often Singletons
+
+## Strategy
+- intent:
+    - define a family of algorithms, encapsulate each one, and make them interchangeable
+    - allows algorithms to vary independently of the clients that use them
+
+- use when:
+    - many related classes need a way to be configured with one of many behaviors
+    - you need different variants of an algorithm
+    - an algorithm uses data that clients shouldn't know about
+    - a class defines many behaviors, and these appear as multiple conditional statements in
+      its operations
+
+- participants:
+    - Strategy
+    - Concrete Strategy
+    - Context
+
+- collaborations:
+    - Strategy and Context interact to implement the chosen algorithm
+    - Context forwards requests from its clients to its strategy
+
+- consequences:
+    - families of related algorithms
+    - an alternative to subclassing
+    - strategies eliminate conditional statements
+    - provide a choice of implementations
+    - clients must be aware of different strategies
+    - communication overhead between Strategy and Context
+    - increased number of objects
+
+- implementation:
+
+- related patterns:
+    - Flyweight - Strategy objects make good Flyweights
+
+## Template Method
+- intent:
+    - define the skeleton in an operation, deferring some steps to subclasses
+    - allow subclasses to redefine certain steps in an algorithm without changing the
+      algorithm's structure
+
+- use when:
+    - a class of algorithms share a common structure and subclasses should implement the
+      variant part
+    - a common class should be used to avoid code duplication
+    - to control subclass extensions
+
+- participants:
+    - Abstract Class
+    - Concrete Class
+
+- collaborations:
+    - Concrete Class relies on Abstract Class to implement the invariant steps of the algorithm
+
+- consequences:
+    - leads to inverted code structure
+    - Template Methods call the following kinds of operations:
+        - concrete operations
+        - operations that are generally useful to subclasses
+        - primitive operations (i.e. abstract method operations)
+        - Factory Methods
+        - hook operations with default behaviors for subclasses
+
+- implementation:
+
+- related patterns:
+    - Factory Methods are often called by template methods
+    - Strategy - Template Methods use inheritance to vary part of an algorithm whereas Strategies
+      use delegation to vary the entire algorithm
+
+## Visitor
+- intent:
+    - represent an operation to be performed on the elements of an object structure
+    - Visitor lets you define a new operation without changing the classes of the elements
+      on which it operates
+
+- use when:
+    - an object structure contains many classes with differing interfaces
+    - many distinct and unrelated operations need to be performed on objects in an object structure
+    - the classes defining the object structure rarely change but new operations are often defined
+      on the structure
+
+- participants:
+    - Visitor
+    - Concrete Visitor
+    - Element
+    - Concrete Element
+    - Object Structure
+
+- collaborations:
+    - a client that uses the Visitor pattern must create a concrete instance to traverse a structure
+    - an object is passed as an argument to the Visitor and the operation that corresponds to
+      that object's class is called
+
+- consequences:
+    - visitor makes adding new operations easy
+    - a visitor gathers related operations and separates unrelated ones
+    - adding new Concrete Element classes is hard
+    - visiting can occur across class hierarchies
+
+- implementation:
+
+- related patterns:
+    - Composite - Visitors can be used to apply an operation over an object structure defined
+      by the Composite pattern
+    - Interpreter - Visitor is applied to an AST to do the interpretation
