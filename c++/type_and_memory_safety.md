@@ -176,7 +176,7 @@ class MyClass {
 
 ## II. Informal overview and rationale
 - shared owner (shared_ptr, raw_shared_owner) -> can't dangle
-- unique owner (containers, unique_ptr, owne) -> can't dangle
+- unique owner (containers, unique_ptr, owner) -> can't dangle
 - pointer non-owning (raw * and &, iterators, ranges, views) -> can dangle
 
 ### 1. Aliasing: taking addresses and dereferencing

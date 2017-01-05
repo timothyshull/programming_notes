@@ -259,4 +259,135 @@ public:
 - two seemingly different graphs can potentially be equivalent through vertex renaming
 - do not use adjacency matrices for large sparse graphs (due to the use of V^2 space)
 
-##
+## Adjacency List Representation
+- preferred standard representation
+- for undirected graphs, add an edge by adding vertex v to w's adjacency list
+  and w to v's adjacency list
+- be sure to include destructors, copy constructors (and move constructors, assignment operators)
+  for various implementations
+- includes array (or vector) of linked lists
+```
+// Program 17.9 here Sparse_multigraph
+// Program 17.10 here Sparse_multigraph_iterator
+```
+- basic implementations do not remove parallel edges on edge insertion
+  (constant time vs. time proportional to V to remove parallel edges)
+- this approach is not suitable for large adjacency lists
+- can associate non-integer vertex names with integers but cannot determine
+  isomorphism because of the difficult of the graph isomorphism problem
+- numerous representations of the same graph even for a set numbering
+- primary advantage is the use of space E + V (as opposed to V^2)
+
+## Variations, Extensions, and Costs
+- methods for improvement:
+    - adjacency matrices and adjacency lists can be extended easily
+    - additional features with advanced data structures
+    - graph processing with task specific classes
+- examples:
+    - digraphs may need a method for representing edges coming into a vertex
+    - weighted graphs and networks use structures containing additional Edge information
+    - can use vertex indexed vectors to associate additional information with vertices
+    - often use special classes for graph processing with additional data structures
+      to hold vertex information
+```
+// Program 17.11 Degree class
+```
+- "fat" interfaces can have serious drawbacks for graph processing
+- an alternative to separate graph processing classes is inheritance (can be an exercise)
+```
+// Table 17.1 Worst-case cost of graph processing algorithms
+```
+- find edge and remove edge are often used and so it is sometimes beneficial
+  to use auxiliary symbol tables to improve search, etc (std::map, std::set, etc)
+- must use pointers for auxiliary symbol tables, also need doubly linked lists for efficiency
+- vertex removal is also expensive because any edges referencing that vertex must
+  also be removed
+- these operations are omitted from the text because they all relate to previous exercises, algorithms, etc
+- static graphs can replace the linked lists with vectors which can improve worst case run times
+- graph processing algorithms are not linear in time if an adjacency matrix is used to
+  represent a sparse graph or if an adjacency list is used to represent an extremely sparse graph
+  (ignored due to standard assumptions in text)
+
+## Graph Generators
+- can generate graphs from user input or randomized edges
+```
+// Program 17.12 Random graph generator
+```
+- generate pairs from 0 to V - 1 (will likely contain self loops and parallel edges)
+- removing parallel edges will generally lead to a more dense graph
+- can also randomly generate the number of vertices
+```
+// Program 17.13 Random graph generator
+```
+- have a well-studied mathematical/probabilistic background
+- can choose a probability, p, such that p = 2 * E / V (V - 1)
+- k-neighbor graph:
+    - randomly pick a vertex, v, then randomly pick the second within a constant
+      k of v (wrapping from V - 1 to 0)
+- Euclidean neighbor graph:
+    - generate V points in a plane with random coordinates between 0 and 1 and
+      then generates edges for all points within a distance d of each other
+    - if a sparse graph is generated, the graph is not likely to be connected
+- transaction graph:
+    - used to model connections between elements with id's (i.e. telephone calls, etc)
+- can use a symbol table to build a graph by equating a symbol with its index
+```
+// Program 17.14 Building a graph from pairs of symbols
+```
+- function call graph:
+    - a computer program can be represented as a graph with functions as
+      vertices and edges representing when a function is called from within
+      another function
+    - can be generated manually or instrumented within compilers
+- can use a TST to index string keys for a graph
+```
+// Program 17.15 Symbol indexing for vertex names
+```
+- often need to determine a way to map symbolic names to vertex indices to
+  represent a problem as a graph
+- degrees-of-separation graph:
+    - collection of subsets from V, item is given a degree of separation from
+      a given vertex, v, indicating the number of incident steps it takes to arrive
+      at that item from v
+- interval graph:
+    - intervals are defined on a number line, assigned as vertices, and edges
+      are defined if the intervals intersect
+- de Brujin graph:
+    - digraph with V as a power of 2, with one vertex for each non-negative integer less
+      than V, and edges from each vertex i to 2i and to (2i + 1) % lg(V)
+
+## Simple, Euler, and Hamiltonian Paths
+- simple DFS path search
+```
+// Program 17.16 Simple path search
+```
+- some simple path problems just want to know if a path exists, others want to
+  find a specific path
+- can print a path using DFS by switching the order of the inputs and printing
+  the edge after the recursive call (switch order because otherwise the printed
+  order would print the reverse path)
+- can use this same format to use a client-defined visit function
+
+- properties:
+    - we can find a path connection two given vertices in a graph in linear time
+
+- worst case DFS for adjacency lists checks all of the edges twice (once in each direction)
+- linear in graphs means within a constant factor of V + E
+- cannot refer to V^2 as linear and adjacency matrix algorithms that check all graph
+  edges are always V^2
+- paths may be found before examining all edges, thus reducing running time
+- Hamilton path -> a path between two vertices containing each vertex exactly once
+- Hamilton tour -> a Hamilton path that returns to the original vertex
+```
+// Program 17.17 Hamilton path
+```
+
+- properties:
+    - a recursive search for a Hamilton tour could take exponential time
+    - if there is not a simple path or a Hamilton path from t to w, then there is
+      not one for v to w that goes through t (where v is connected to t)
+
+- the result is that every single path in a graph may need to be checked, resulting
+  in a (V - 1)! number of recursive calls or roughly (V / e) ^ V
+
+

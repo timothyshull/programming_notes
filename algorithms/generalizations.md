@@ -373,6 +373,8 @@ mergesort
     - separability & biconnectivity
     - bfs
     - generalized search
+    - backtracking
+    - (Bloom filter)
 - digraphs and dags
     - search
     - reachability and transitive closure
@@ -399,6 +401,9 @@ mergesort
     - mincost flows
     - network simplex algorithm
     - mincost-flow reductions
+
+- coloring
+
 
 
 
@@ -491,9 +496,20 @@ mergesort
 - (space-partitioning trees)
 
 ## Graph types
+- sparse
+- dense
+- directed
+- undirected
+- cyclic
+- acyclic
+- connected
+- disconnected
+- (relationship to trees)
 
 
-- NOTE: see https://en.wikipedia.org/wiki/List_of_data_structures for more info beyond this
+- NOTE:
+    - see https://en.wikipedia.org/wiki/List_of_data_structures
+    - see https://en.wikipedia.org/wiki/List_of_algorithms
 
 
 # Later
@@ -502,3 +518,4 @@ mergesort
     - Arenas
     - Spans?
     - general partitioning
+- Descriptions of simplified dynamic memory management techniques are in Modern Compiler Design and TAOC v1
