@@ -890,3 +890,354 @@ for (i = 0; i < num_vertices; i++) {
 ```
 Program 19.8 Source-queue based topological sort
 ```
+
+## Reachability in DAGs
+- any method for topological sorting can serve as the basis for transitive closure
+  in DAGs by:
+    - iterate through vertices in reverse topological order
+    - compute the reachability vector for each vertex (the corresponding row
+      in the transitive closure matrix)
+- DFS can improve topological sort for some DAGs because there are no back edges
+  and both cross edges and down edges correspond to nodes for which DFS has completed
+- in some ways corresponds to using dynamic programming to compute the transitive closure
+```
+// Program 19.9 Transitive closure of a DAG
+```
+- properties:
+    - using dynamic programming and DFS, constant query time for the abstract transitive
+      closure of a DAG can be achieved (with space proportional to V^2 and time
+      proportional to V^2 + VX for preprocessing, where X is the number of
+      cross edges in the DFS forest)
+- the problem of finding an optimal algorithm for transitive closure of a DAG
+  (time proportional to V^2) is still unsolved, with best known worst case bound
+  of V * E
+
+## Strong Components in Digraphs
+- undirected graphs and DAGs are simpler than general digraphs because there
+  is a structural symmetry that characterizes the reachability:
+    - undirected graphs -> s - t implies t - s
+    - DAGs - s -> t means not t -> s
+    - general digraphs - s -> t give no information about t -> s
+- strong connectivity means that if t is reachable from s, then s is reachable from
+  t
+- goal:
+    - assign numbers to each vertex from 0 - n where n is one less than the
+      total number of strong components in the digraph (using a vertex indexed
+      vector)
+    - use these numbers to test whether two vertices are in the same strong component
+- brute force:
+    - using a transitive closure ADT, check reachability for each vertex in both directions
+    - define an undirected graph with an edge for each such mutually reachable pair
+- the history of better solutions than the brute force solution is instructive and should be reviewed
+- Kosaraju's algorithm:
+    - run DFS on general digraph's reverse, computing the permutation of the verties
+      defined by the postorder numbering (topological sort if the digraph is a DAG)
+    - run DFS again on the graph to find the next vertex to search and use the unvisited
+      vertex with the highest postorder number
+    - when the unvisited vertices are checked according to topological sort in this way,
+      the tress in the DFS forest define the strong components (as trees in a DFS forest
+      define the strong components in undirected graphs)
+    - two vertices are in the same strong components if and only if they are in the
+      same tree in the DFS forest
+```
+// Program 19.10 Strong components (Kosaraju's algorithm)
+```
+- Tarjan's algorithm:
+    - consider vertices in reverse topological order so that when the end of a recursive
+      call is reached, there are no more vertices in the same strong component
+    - back links in a tree provide a path from one vertex
+```
+// Program 19.10 Strong components (Trajans's algorithm)
+```
+- Gabow's algorithm:
+    - Follows Tarjan's algorithm but uses a second stack rather than a vertex indexed
+      vector of preorder numbers to decide when to pop all the vertices in each strong
+      component from the main stack
+```
+// Program 19.10 Strong components (Gabow's algorithm)
+```
+- properties:
+    - Kosaraju's method finds the strong components of a graph in linear time and space
+    - Tarjan's algorithm finds the strong components of a digraph in linear time
+    - Gabow's algorithm finds the strong components of a digraph in linear time
+- Tarjan's and Gabow's are preferable to Kosaraju's because they only require one pass through the
+  graph and they do not require computation of the reverse for sparse graphs
+
+## Transitive Closure Revisited
+- using strong components and reachability, a transitive closure algorithm can
+  be developed that offers the same worst case but better general case performance
+  over the DFS-based solution
+- process:
+    - preprocess:
+        - find strong components
+        - build the kernel DAG
+        - compute the transitive closure of the kernel DAG
+    - the information for reachability is then readily available
+- properties:
+    - given two vertices s and t in a digraph, D, let sc(s) and sc(t) be their
+      corresponding vertices in D's kernel DAG K. Then, t is reachable from s in
+      D if and only if sc(t) is reachable from sc(s) in K
+    - can support constant query time for the abstract transitive closure of a digraph
+      with space proportional to V + V^2 and time proportional to E + V^2 + vx for
+      preprocessing (computing the transitive closure) where v is the number of
+      vertices in the kernel DAG and x is the number of cross edges in its DFS
+      forest
+    - can support constant query time for the abstract transitive closure of any
+      digraph whose kernel DAG has less the V^(1/3) vertices with space propertional
+      to V and time proportional to E + V for preprocessing
+```
+Program 19.13 Strong-component-based transitive closure
+```
+- the primary limiting factor for the applicability of this method is the size of
+  the kernel DAG, i.e. the more similar the digraph is to a DAG (the larger its
+  kernel DAG) the more difficult it is to comput its transitive closure
+
+## Perspective
+- topics covered:
+    - topological sorting
+    - transitive closure
+    - shortest paths
+    - cycles
+    - strong components
+```
+                problem                 cost                algorithm
+Digraphs
+                cycle detect            E                   DFS
+                transitive closure      V * (E + V)         DFS from each vertex
+                ss shortest paths       E                   DFS
+                all shortest paths      V * (E + V)         DFS from each vertex
+                strong components       E                   Kosaraju, Tarjan, or Gabow
+                transitive closure      E + V(V + X)        kernel DAG
+
+DAGs
+                acyclic verify          E                   DFS or source queue
+                topological sort        E                   DFS or source queue
+                transitive closure      V * (V + E)         DFS
+                transitive closure      V * (V + X)         DFS/dynamic programming
+```
+
+- additional algorithms to consider:
+    - dominators: given a DAG with all vertices reachable form r, a vertex s dominates
+      a vertext if every path from r to t contains s
+    - transitive reduction: given a digraph, find a digraph that has the same transitive closure
+      and the samlest number of edges among all such digraphs
+    - directed Euler path: given a digraph, is ther a directed path connecting two vertices
+      that uses each edge in the digraph exactly once
+    - directed mail carrier: a directed tour with a minimal number of edges that uses
+      every edge in the graph at least once and can use edges multiple times
+    - directed Hamilton path: find the longest simple directed path in a digraph (NP-hard but
+      simple for DAGs)
+    - uniconnected subgraph: uniconnected - at most one directed path between any pair of vertices
+      for a digraph and an integer k, determine whether there is a uniconnected subgraph with at
+      least k edges (NP-hard)
+    - feedback vertex set: is there a subset of at most k vertices that contains at least one vertex
+      from every direct cycle (NP-hard)
+    - even cycle: find a cycle of even length in digraph (not intractable but not adequately solved)
+
+
+
+# Minimum Spanning Trees
+- many graph problems require associating weights with edges (distance, time, cost, etc)
+- important to not think of weights as distances by default
+- definitions:
+    - minimum spanning tree: a spanning tree whose total weight is no larger than the weight
+      of any other spanning tree
+- if edges have equal weights, the MST may not be unique
+- the term minimum may be misleading -> it must be specified that it refers to weight
+
+## Representations
+- in the matrix repr:
+    - edges contain weights instead of boolean values
+- in the list repr:
+    - edges in lists contain an extra weight field
+```
+// Program 20.1 ADT interface for graphs with weighted edges
+```
+```
+// program 20.2 Example of a graph-processing client function
+```
+- often a better alternative to define edge structures and manipulate pointers
+  to edges
+```
+// Program 20.3 Weighted-graph class (adjacency matrix)
+```
+```
+// Program 20.4 Iterator class for adjacency-matrix representation
+```
+- test for the existence of an edge by checking whether the pointer in the row/column is null
+- the flexibility provided by the pointers is often worth the space cost of constructing Edge
+  structures
+```
+// Program 20.5 Weighted graph class (adjacency lists)
+```
+- do not explicitly test for parallel edges in either implementation
+- MST representations:
+    - a graph (MST is a sparse graph)
+    - a linked list of edges (in no particular order) -> most straightforward
+    - a vector of pointers to edges
+    - a vertex-indexed vector with parent links (most compact) -> use two, one with parent,
+      other with the weight
+- can convert from any one representation to any other in linear time
+- default to using an MST ADT class with a private vector of pointers to edges
+
+## Underlying Principles of MST Algorithms
+- definitions:
+    - cut: a partition of the vertices into two disjoint sets
+    - crossing edge: an edge that connects a vertex in one set with a vertex in the other
+- properties:
+    - (cut property) given any cut in a graph, every minimal crossing edge belongs to
+      some MST of the graph and every MST contains a minimal crossing edge
+    - (cycle property) for a graph, G, an MST of the graph G', obtained by adding an
+      edge e to G, can be found by adding e to an MST of G and deleting a maximal edge
+      on the resulting cycle
+    - Prim's algorithm computes an MST of any connected graph
+    - Kruskal's algorithm computes an MST of any connected graph
+    - Boruvka's algorithm computes the MST of any connected graph
+- if the graph's edge weights are distinct it has a unique MST
+- no requirement that the minimal edge be the only MST edge connecting the two sets
+- the cut property is the basis for finding MSTs, and it can also serve as an optimality
+  condition that characterizes MSTs
+- Prim's algorithm:
+    - start with any vertex as a single-vertex MST
+    - add V - 1 edges to it
+        - choose a minimal edge that connects a vertex on the MST to a vertex not
+          yet on the MST
+- Kruskal's algorithm:
+    - process edges in order of their length, shortest first
+    - add to the MST each edge that does not form a cycle with a previously added edge
+    - stop after V - 1 edges have been added
+- Boruvka's algorithm:
+    - add each edge that connects eachvertex to its closest neighbor
+    - if edge weights are distinct, creates a forest of MST subtrees
+    - add an edge to each tree that connects one tree with its closest neighbor
+      (a minimal edge connecting any vertex in one tree with any vertex in another)
+    - iterate until the forest is one tree
+- generalized algorithm:
+    - begin with a forest of single-vertex MST subtrees (with no edges)
+    - add a minimal edge connecting any two subtrees in the forest
+    - continue until V - 1 edges have been added and a single MST remains
+- constituent operations:
+    - find a minimal edge connecting two subtrees
+    - determine whether adding an edge would create a cycle
+    - delete the longest edge on a cycle
+
+## Prim's Algorithm and Priority-First search
+- simplest and method of choice for dense graphs
+- general process:
+    - maintain a cut of vertices in the tree and those not yet in the tree
+    - start by putting any vertex on the MST
+    - then put a minimal crossing edge on the MST
+    - repeat V - 1 times
+- generally just need to keep track of the minimum edge and check whether vertex addition
+  requires update of the minimum using data structures that store the following:
+    - tree edges
+    - shortest edge connecting each nontree vertex to the tree
+    - the length of that edge
+- after adding a new edge:
+    - check to see whether adding the new edge brought any nontree vertex closer to the
+      tree
+    - find the next edge to add to the tree
+- Prim's algorithm is a general graph search, using a fringe that is a minimum priority queue:
+    - move a minimal edge from the fringe to the tree
+    - visit the vertex that it leads to
+    - put onto the fring any edges that lead from that vertex to a nontree vertex
+    - replace the longer edge when two edges on the fringe point to the same vertex
+- priority-first search (PFS):
+    - generalized graph search with a priority queue as the fringe
+- Prim's algorithm == PFS with edge weights for priorities
+- properties:
+    - using Prim's algorithm we acan find the MST of a dense graph in linear time
+    - using a PFS implementation of Prim's algorithm that uses a heap for the priority
+      queue, an MST can be computed in E * lg(V) time
+    - for all graph and all priority functions, we can compute a spanning tree with PFS
+      in linear time plus time proportional to the time required for V insert, V delete the
+      minimum and E decrease key operations in a priority queue of size at most V
+```
+// Program 20.6 Prim's MST algorithm
+```
+```
+// Priority-first search
+```
+- many other algorithms differ only in choice of priority queue
+- discovered by Jarnik, and later Prim and Djikstra independently (sometimes referred to by
+  each name)
+
+## Kruskal's Algorithm
+- both Prim's and Kruskal's build the MST one edge at a time, but Kruskal's finds an edge
+  that connects a tree in a spanning forest
+- can terminate in one of two ways, once V - 1 edges have been found, either an MST has been
+  built or the graph is not connected
+- properties:
+    - Kruskal's algorithm computes the MST of a graph in time proportional to E * lg(E)
+    - a priority queue based version of Kruskal's algorithm computes the MST of a graph
+      in time proportional to E + X*lg(V) where X is the number of graph edges not longer
+      than the longest edge in the MST
+```
+Program 20.8 Kruskal's MST algorithm
+```
+- typically the cost of finding an MST with Kruskal's algorithm is lower than the cost of
+  processing all edges because the MST is complete before this
+- can also apply quicksort to Kruskal's algorithm to speed up the algorithm
+
+## Boruvka's Algorithm
+- oldest MST algorithm
+- can be implemented using the union-find ADT
+- process:
+    - maintain a vertex indexed vector that identifies for each MST subtree the nearest neighbor
+    - for each edge:
+        - discard it if it connects two vertices in the same tree
+        - otherwise check the nearest neighbor distances between the two trees that the
+          edge connects and update thme if appropriate
+```
+// Prgoram 20.9 Boruvka's MST algorithm
+```
+- three factors that make the implementation efficient:
+    - cost of each find is essentially constant
+    - each stage decreases the number of MST subtrees in the forest by at least a factor of 2
+    - a substantial number of edges is discarded during each stage
+- properties:
+    - the running time of Boruvka's algorithm for computing the MST of a gaph
+      is O(E * lg(V) * lg(*E))
+- can remove the lg(*E) factor to a running time of E * lg(V) by representing MST subtrees
+  with doubly-linked lists but makes the implementation more complicated
+
+## Comparisons and Improvements
+```
+Cost of MST algorithms
+Prim(standard)          V^2             optimal for dense graphs
+Prim(PFS,heap)          E*lg(V)         conservative upper bound
+Prim(PFS,d-heap)        E*log sub d(V)  linear unless extremely sparse
+Kruskal                 E*lg(E)         sort cost dominates
+Kruskal(partial sort)   E+X*lg(V)       cost depends on longest edge
+Boruvka                 E*lg(V)         conservative upper bound
+```
+- properties:
+    - given a graph with V vertices and E edges, let d denote the density E/V. If d < 2
+      then the running time of Prim's algorithm is proportional to Vlg(V). Otherwise, we
+      can improve the worst case running time by a factor of lg(E/V) by using an E/V-ary
+      heap for the priority queue
+
+- priority queue options:
+    - Fibonacci heap (extension of binomial queue)
+    - binomial queues
+    - radix methods
+    - multiway heap
+```
+// Program 20.10 multiway heap priority queue implementation
+```
+
+## Euclidean MST
+- Euclidean MST: given a set of points in a plane, find the shortest set of lines connecting all of the
+  points
+- can use Prim's algorithm in N^2 time (N vertices and N * (N-1) / 2 edges) but this is generally
+  too slow
+- properties:
+    - the Euclidean MST of N points can be found in time proportional to N * log(N)
+    - finding the Euclidean MST of N points is no easier than sorting N numbers
+- Delauney triangulation: a planar graph whose number of edges is proportional to N that
+  contains the MST
+
+
+
+# Shortest Paths
+
