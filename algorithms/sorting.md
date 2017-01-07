@@ -326,7 +326,7 @@ void in_situ(Item data[], Index a[], int N) {
 ```
 
 - also see heapsort
-- Djikstra smoothsort (not stable)
+- Dijkstra smoothsort (not stable)
     - https://en.wikibooks.org/wiki/Algorithm_Implementation/Sorting/Smoothsort
 
 # Sorting of Linked Lists
@@ -572,7 +572,7 @@ void hybridsort(Item a[], int l, int r) {
   exposes a number of improvements that can be made
 - one method is to partition the keys such that the partitions are split
   into segments of keys less than, equal to, and greater than the partitioning element
-- NOTE: this is a Djikstra problem known as the Dutch National Flag problem
+- NOTE: this is a Dijkstra problem known as the Dutch National Flag problem
 - Bentley and McIlroy's method:
     - keep keys equal to the partitioning element in the left subfile at the left end
     - keep keys equal to the partitioning element in the right subfile at the right end

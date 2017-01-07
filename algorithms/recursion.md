@@ -1,4 +1,4 @@
-- Djikstra -> stacks and recursion
+- Dijkstra -> stacks and recursion
 
 # factorial
 ```

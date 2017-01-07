@@ -1159,7 +1159,7 @@ DAGs
 // Priority-first search
 ```
 - many other algorithms differ only in choice of priority queue
-- discovered by Jarnik, and later Prim and Djikstra independently (sometimes referred to by
+- discovered by Jarnik, and later Prim and Dijkstra independently (sometimes referred to by
   each name)
 
 ## Kruskal's Algorithm
@@ -1240,4 +1240,307 @@ Boruvka                 E*lg(V)         conservative upper bound
 
 
 # Shortest Paths
+- networks: weighted digraphs
+- use pointers to abstract edges for weighted digraphs
+- when working with networks, it is convenient to add self-loops to each representation
+- all connectivity properties of digraphs are relevant for networks
+- definitions:
+    - shortest path: a directed simple path from two vertices, s and t, in a network such
+      that no other such path has a lower weight
+- problems:
+    - source-sink shortest path: the shortest path between a start (source) and end (sink)
+      vertex
+    - single-source shortest paths: the set of shortest paths from start vertex to all other
+      vertices in a graph
+    - all-pairs shortest paths: the set of shortest paths connecting each pair of vertices
+      in the graph
+- real world relationships:
+    - road maps
+    - airline routes
+
+## Underlying Principles
+- relaxation: the process of moving through a graph, gathering information, and at each step,
+  testing whether there exists some path that is shorter than a known path
+- edge relaxation: an operation that tests whether traveling along a given edge gives a new
+  shortest path to its destination vertex
+- path relaxation: an operation that tests whether traveling through a given vertex gives a
+  new shortest path connecting two other given vertices
+- components:
+    - a vertex indexed vector that contains the shortest known paths from the start vertex to
+      to each vertex
+    - a vertex indexed vector that records the last edge on a shortest path from the source
+      to the indexed vertex (constitutes a tree)
+
+- definitions:
+    - shortest-paths tree: given a network and a designated vertex, s, the subnetwork containing
+      s and all of the vertices reachable from s that form a directed tree rooted at s such
+      that every tree path is a shortest path in the network
+
+- note that there may be multiple paths of the same length, i.e. SPTs are not necessarily unique
+- need to initialize the vertex indexed vector of weights with values that will not cause overflow
+
+- properties:
+    - if a vertex x is on a shortest path from s to t, then that path consists of a shortest path
+      from s to x followed by a shortest path from x to t
+
+- each algorithm has a direct corollary to algebraic concepts
+- need to implement an abstract + operator and < operator
+- each use the following operations:
+```
+// single-source implementations
+Edge *path_r(int w) const { return spt[w]; }
+double dist(int v) { return wt[v]; }
+// all paths implementations
+Edge *path(int w) { return p[s][t]; }
+double dist(int v) { return d[s][t]; }
+```
+
+## Dijkstra's Algorithm
+- general process (similar to Prim's algorithm):
+    - put source on SPT
+    - build SPT one edge at a time, choosing the edge that gives the shortest path
+      from the source to an edge not yet on the tree
+- properties:
+    - Dijkstra's algorithm solves the single-source shortest paths problem in
+      that have non-negative weights
+    - any SPT in a dense network can be found with Dijkstra's algorithm in linear time
+    - PFS can compute a spanning tree for all networks and all priority functions
+      in time proportional to the time required for V insert, V delete the minimum,
+      and E decrease key operations in a priority queue of size at most V
+    - Dijkstra's algorithm that uses a heap for the priority queue implementation can
+      compute any SPT in time proportional to E * lg(V)
+    - given a graph with density d (E/V), if d < 2, then the running time of Dijkstra's
+      algorithm is proportional to V*lg(V). Otherwise, the worst case running time
+      can be improved by a factor of lg(E/V) to O(E * lg sub d(V)) (which is linear
+      if E is at least V^(1+E)) by using an E/V-ary heap for the priority queue
+- Dijkstra's algorithm also solves the source sink shortest paths problem if we stop
+  when the sink comes off the priority queue
+- Dijkstra's algorithm is a PFS graph search scheme
+```
+// Dijkstra's algorithm (priority-first search)
+```
+
+```
+algorithm       priority            result
+DFS             reverse preorder    recursion tree
+BFS             preorder            SPT(edges)
+Prim            edge weight         MST
+Dijkstra        path weight         SPT
+```
+- the PFS implementation permutations are described here (before table 21.2)
+
+## All-Pairs Shortest Paths
+- can implement all-pairs shortest paths with two main methods:
+    - run Dijkstra's algorithm for each vertex
+    - run a modification of Warshall's algorithm called Floyd's algorithm
+```
+// Program 21.2 All-pairs shortest-paths ADT
+```
+- weighted diameter: for a network, the longest of the shortest path lengths for
+  each vertex
+```
+// Program 21.3 Computing the diameter of a network
+```
+- each algorithm uses space proportional to V^2 for private data members to support
+  constant time queries
+
+- properties:
+    - with Dijkstra's algorithm, we can find all shortest paths in a network that
+      has non-negative weights in time proportional to V*E log sub d(V) where d = 2
+      if E < 2V and d = E/V otherwise
+    - with Floyd's algorithm we can find all shortest paths in a network in time
+      proportional to V^3
+```
+// Program 21.4 Dijkstra's algorithm for all shortest paths
+```
+```
+// Program 21.5 Flod's algorithm for all shortest paths
+```
+- Dijkstra's method is the method of choice for sparse networks with a running time
+  close to V * E
+- Floyd's algorithm is more competitive as density increases, with time proportional
+  to V^3
+- Floyd's algorithm is widely used because it is easy to implement
+
+## Shortest Paths in Acyclic Networks
+- the shortest paths problems can be solved with more ease and simplicity for DAGs
+- may refer to weighted DAGs as acyclic networks
+- four basic ideas from ch 19 are more effective for DAGs:
+    - use DFS to solve the single-source problem
+    - use a source queue to solve the single-source problem
+    - invoke each method once for each vertex to solve the all-pairs problem
+    - use a single DFS with dynamic programming to solve the all-pairs problem
+- multisource shortest paths: given a set of start vertices, the set of shortest
+  paths for each start vertex to a separate specified vertex, w
+
+- properties:
+    - we can solve the multisource shortest-paths problem and the multisource longest
+      paths problem in acyclic networks in linear time
+    - we can solve the all-pairs shortest-paths problem in acyclic networks with a
+      single DFS in time proportional to V*E
+
+```
+// Program 21.6 Longest paths in an acyclic network
+```
+```
+// Program 21.7 All shortest paths in an acyclic network
+```
+
+## Euclidean Networks
+- Euclidean networks: networks whose vertices are points in a plane and whose
+  edge weights are defined by the geometric distances between the points
+- there is a fast algorithm for the source-sink shortest-path problem in Euclidean
+  networks
+- Euclidean networks properties:
+    - distances satisfy the triangle inequality
+    - triangle inequality: distance from s to d is never greater than the distance
+      from s to x plus distance from x to d
+    - often symmetric -> edges run in both directions
+- implement using a standard PFS version of Dijkstra's
+    - initialize `wt[s]` to dist(s, d) instead of 0.0
+    - use a priority of `wt[v] + e_.wt() + distance(w, d) - distance(v, d)`
+    - the Euclidean heuristic maintains the invariant that `wt[v] - distance(v, d)`
+      is the length of the shortest path through the network s to v for every
+      tree vertex, i.e. `wt[v]` is a lower is a lower bound on the length of the
+      shortest possible path through v from s to d
+- properties:
+    - PFS with the Euclidean heuristic solves the source-sink shortest paths
+      problem in Euclidean graphs
+- the precise savings of the Euclidean heuristic is dependent on the nature if
+  the input graph and is not guaranteed
+- the property above applies for any function that gives a lower bound on the distance
+  from each vertex to d
+- the Euclidean heuristic is a specific instance of an A* algorithm
+
+## Reduction
+- the shortest paths problem represents a mathematical model that can be used
+  to solve many other problems that are not graph related
+- definitions:
+    - reduction: one problem reduces to another if an algorithm that solves one
+      can be used to solve another in a no more than a constant multiple of
+      the worst case running time for the original
+    - equivalence: two problems are equivalent if they reduce to each other
+    - infeasible: a problem instance that does not have a solution
+- properties:
+    - the transitive closure problem reduces to the all-pairs shortest paths
+      problem with non-negative weights
+    - in networks with non constraints on edge weights, the longest-path and
+      shortest-path problems (single-source or all-pairs) are equivalent
+    - the job-scheduling problem reduces to the difference constraints problem
+    - the difference constraints problem with positive constants is equivalent
+      to the single-source longest-paths problem in an acyclic network
+    - the job scheduling with deadlines problem reduces to the shortest-paths
+      problem (with negative weights allowed)
+    - a problem is NP-hard if there is an efficient reduction to it from any
+      NP-hard problem
+    - in networks with edge weights that could be negative, shortest paths
+      problems are NP-hard
+
+- job scheduling:
+    - set of precedence relations specify an ordering of jobs and multiple jobs
+      can be worked on at the same time
+    - determine the minimum amount of time required to complete all the jobs
+      while satisfying all of the precedence constraints
+```
+// Program 21.8 Job scheduling
+```
+
+- difference constraints:
+    - assign non-negative values on a set of variables x sub 0 to x sub n that
+      minimize the value of x sub n while satisfying a set of difference
+      constraints on the variables, each of which specifies that the difference
+      between two of the variables must be greater than or equal to a given
+      constant
+
+- linear programming:
+    - assign non-negative values on a set of variables x sub 0 to x sub n that
+      minimize the value of the value of the specified linear combination of
+      the variables, subject to a set of constraints on the variables, each
+      of which specifies that a given linear combination of the variables
+      must be greater than or equal to a given constant
+
+- job scheduling with deadlines:
+    - adds the constraint to the job scheduling problem that jobs must start
+      within a given amount of time of the start job
+
+- NP-hard:
+    - no efficient algorithm is known that is guaranteed to solve the problem
+    - there is not a good possibility of solving the problem
+
+- see table 21.3 for a table of reduction implications with upper bounds and
+  lower bounds relationships
+
+- PERT chart: a network representation for job-scheduling problems with jobs
+  as edges
+
+## Negative weights
+- TODO: add more info here
+- negative weights complicate shortest paths problems
+- low-weight shortest paths tend to have more edges than higher weight paths
+- shortest paths in networks with no negative cycles:
+    - given a network that may have negative weights but no negative cycles
+      solve the shortest path problem, single-source shortest path problem,
+      and all-pairs problem
+- negative cycle detection
+- arbitrage
+- Bellman-Ford algorithm:
+    - solves the single-source shortest paths problem in networks that contain
+      no negative cycles
+    - TODO: explain here
+- reweighting:
+    - to reweight an edge, add to that edge's weight the difference between the
+      weights of the edge's source and destination
+    - to reweight a network, reweight all of that network's edges
+- Johnson's algorithm:
+    - TODO: explain here
+- properties:
+    - the job scheduling with deadlines problem reduces to the shortest-paths
+      problem in networks that contain no negative cycles
+    - Floyd's algorithm solves the negative cycle detection problem and the
+      all-pairs shortest paths problem in networks that contain no negative
+      cycles in tim eproportional to V^3
+    - the Bellman-Ford algorithm solves the single-source shortest paths problem
+      in networks that contain no negative cycles in time proportional to V*E
+    - the Bellmain-Ford algorithm can solve the negative cycle detection problem
+      in time proportional to V*E
+    - reweighting a network does not affect its shortest paths
+    - in any network with no negative cycles, pick any vertex s and assign to
+      each vertex v a weight equal to the length of a shortest path to v from s.
+      Reweighting the network with these vertex weights yields non-negative
+      edge weights for each edge that connects vertices reachable from s
+    - Johnson' algorithm solves the all-pairs shortest paths problem in networks
+      that contain no negative cycles in time proportional to V*E log sub d(V),
+      where d = 2 if E < 2V, and d = E/V otherwise
+```
+// Program 21.9 Bellman-Ford algorithm
+```
+- summary for all-pairs shortest paths in networks with negative weights but no
+  negative cycles:
+    - use Bellmain-Ford to find a shortest paths forest in the original network
+    - if the algorithm detects a negative cycle, report and terminate
+    - reweight the network from the forest
+    - apply the all-pairs version of Dijkstra's algorithm to the reweighted
+      network
+
+## Perspective
+```
+Table 21.4 of shortest-paths algorithms
+                weight constraint           algorithm           cost            comment
+single-source
+                non-negative                Dijkstra            V^2             optimal (dense networks)
+                non-negative                Dijkstra (PFS)      E*lg(V)         conservative bound
+                acyclic                     source queue        E               optimal
+                no neg cycles               Bellman-Ford        V*E             can be improved
+                none                        open                ?               NP-hard
+
+all-pairs
+                non-negative                Floyd               V^3             same for all networks
+                non-negative                Dijkstra (PFS)      V*E*lg(V)       conservative bound
+                acyclic                     DFS                 V*E             same for all networks
+                no neg cycles               Floyd               V^3             same for all networks
+                no neg cycles               Johnson             V*E*lg(V)       conservative bound
+                none                        open                ?               NP-hard
+```
+- shares general properties with transitive closure in digraphs
+- entry point to network-flow problems and linear programming
 

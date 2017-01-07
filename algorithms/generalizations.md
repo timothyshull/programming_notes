@@ -219,7 +219,7 @@ int         compareTo(Edge that)
 ## MST (Prim, Kruskal)
 
 ## Shortest Path (edge-weighted (acyclic) digraph)
-- Djikstra
+- Dijkstra
 - Acyclic
 - Bellman-Ford
 
@@ -387,7 +387,7 @@ mergesort
     - Boruvka
     - Euclidean MST
 - shortest paths
-    - Djikstra
+    - Dijkstra
     - all-pairs shortest path
     - acyclic networks
     - Euclidean networks
