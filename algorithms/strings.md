@@ -1,6 +1,6 @@
 https://www.gnu.org/software/libc/manual/html_node/String-and-Array-Utilities.html
 
-# string processing
+# simple string processing
 ## strlen(a)
 ```
 int i;
@@ -43,3 +43,48 @@ return *(a - 1) - *(b - 1);
 ```
 strcpy(a + strlen(a), b);
 ```
+
+
+# Strings (from Algorithms)
+- uses:
+    - information processing
+    - genomics
+    - communications systems
+    - programming systems
+- string characteristics:
+    - characters
+        - generally 2^16 (16 bit Unicode)
+        - previously 7 bit or extended 8 bit Unicode
+    - immutability (string literal pool)
+    - indexing (0 indexed)
+    - length
+    - substrings in constant time (review how)
+    - concatenation in linear time
+    - character arrays
+    - alphabets (collections of character sets)
+        - binary
+        - DNA
+        - octal
+        - decimal
+        - hexadecimal
+        - protein
+        - lowercase
+        - uppercase
+        - base 64
+        - ascii
+        - extended ascii
+        - unicode 16
+    - numbers
+
+## String Sorts
+- two general methods:
+    - LSD - examines characters from right-to-left
+    - MSD - examines characters from left-to-right
+- affected by the number of characters in the alphabet (256 for 8 bit, 65,536 for
+  16 bit Unicode)
+
+### Key-indexed counting
+1. compute frequency counts
+    - use keys of small integers
+    - maintain and increment the index of the key + 1 in an array
+    - use the counts as indices

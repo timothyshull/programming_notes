@@ -1544,3 +1544,379 @@ all-pairs
 - shares general properties with transitive closure in digraphs
 - entry point to network-flow problems and linear programming
 
+
+
+
+# Network Flow
+- networks with dynamic material flowing through edges with different costs
+  for different routes
+- have many equivalent problems, i.e. reductions from one to another and many
+  good flow solutions have been created
+- distribution problems (movement from one vertex to another):
+    - merchandise distribution: distribution from factories to distribution outlets
+      with varying capacities and varying costs. Find a way to make supply meet
+      demand at least cost
+    - communications: requests from servers between channels at varying rates of
+      exchange. Find the maximum rate between two servers. Find the cheapest way
+      to send information.
+    - traffic flow: many related questions
+- matching problems (connecting one vertex to another):
+    - job placement
+    - minimum distance point matching: with two sets of N points, find the set of
+      N line segments, with one endpoint from each point, with the minimum total
+      length
+- cut problems (remove edges to cut network into two or more pieces):
+    - network reliability
+    - cutting supply lines
+- consider minflow and maxflow problems
+- many real world problems can be reduced to these graph and network problems
+  but it takes time to realize how and effort to determine if they are intractable
+  or solvable
+
+## Flow Networks
+- aids intuition to imagine a set of fluid pipes with valves at each end with a single
+  source and single sink, each vertex has a flow equilibrium, and consider flow
+  and capacity
+- can model with a network (weighted digraph) with a single source and single sink
+- related to fluid flow, distribution, communications, traffic flow, etc.
+- definitions:
+    - st-network: a network with a designated source, s, and a designated sink, t
+    - flow network: an st-network with positive edge weights
+    - capacities: the weights of edges in a flow network
+    - flow: a set of non-negative edge weights with no flow larger than
+      the edge's capacity and total flow into a vertex == total flow out
+    - edge flows: non-negative edge weights
+    - circulation: a flow between s and t that is set to equal the total network flow
+    - uncapacitated: edges with infinite capacity
+- maximum flow (maxflow):
+    - given an st-network, find a flow such that no other flow from s to t has
+      a larger value
+- properties:
+    - any st-flow has the property the property that outflow from s is equal to
+      the inflow to t
+    - the value of the flow for the union of two sets of vertices is equal to the
+      sum of the values of the flows for the two sets minus the sum of the weights
+      of the edges that connect a vertex in one to a vertex in the other
+    - (Flow decomposition theorem) Any circulation can be represented as flow along
+      a set of at most E directed cycles
+    - any st-network has a maxflow such that the subgraph induced by non-zero flow
+      values is acyclic
+    - any st-network has a maxflow that can be represented as flow along a set of
+      at most E directed paths from s to t
+- use a standard Graph (typically sparse, sparse multigraph) representation with
+  pointers to an Edge class that contain pcap and pflow (private capacity and
+  private flow) members with public getters
+- assume all weights are m bit integers to test for equality among linear combinations
+  and running times can depend on the relative value of weights
+- use M = 2^m for m-bit integers where the ratio of the largest to smallest non-zero
+  flow is M
+```
+// Program 22.1 Flow check and value computation
+```
+
+## Augmenting Path Maxflow Algorithms
+- TODO: more work in the running time analysis at the end of this section
+- Ford-Fulkerson (augmenting-path method) - method for increasing flows incrementally
+  along paths from source to sink
+- simple process:
+    - given a minimum of unused capacities of edges on a path, x, increase the flow
+      of each edge along that path
+    - continue until all paths from source to sink have at least one full edge
+      (an edge at max capacity)
+- improvement:
+    - classify forward edges and backward edges (from source to sink, or vice versa)
+    - for any path with no full forward edges and no empty backward edges,
+      increase flow by increasing forward edges and decreasing backward edges
+- Ford-Fulkerson:
+    - start with zero flow everywhere
+    - increase the flow along any path from source to sink with no full forward
+      edges or empty backward edges
+    - continue until there are no such paths in the network
+- Ford-Fulkerson leads to maximal flow value and can be shown by the maxflow-mincut
+  theorem
+
+- definitions:
+    - st-cut: a cut that places vertex s in one of its sets and vertex t in the other
+    - cross edge: an edge that connects a vertex in one set with a vertex in the other
+    - cut set: set of crossing edges
+    - st-cut capacity: sum of the st-cut's st-edges
+    - flow across: difference between the sum of the st-edges and the sum of the ts-edges
+    - residual network: for a flow network and a flow, the network produced if the
+      flow has the same vertices as the original and one or two edges in the
+      residual network for each edge in the original, defined as follows:
+        - for each edge, v-w, in the original, let f be the flow capacity
+        - if f is positive, include an edge w-v in the residual with capacity f
+        - if f is less than c, include an edge v-w in the residual with capacity
+          c-f
+
+- properties:
+    - for any st-flow, the flow across each st-cut is equal to the value of the flow
+    - no st-flow's calue can exceed the capacity of any st-cut
+    - IMPORTANT!!!
+    - maxflow-mincut theorem: the maximum value among all st-flows in a network is
+      equal to the minimum capacity among all st-cuts
+    - for a maximum edge capacity, M, the number of augmenting paths needed by any
+      implementation of the Ford-Fulkerson algorithm is at most equal to VM
+    - the time required to find a maxflow if O(VEM), which is O(V^2M) for sparse
+      networks
+    - the number of augmenting paths needed in the shortest-augmenting path
+      implementation of the Ford-Fulkerson algorithm is at most V*E/2
+    - the time required to find a maxflow in a sparse network is O(V^3)
+    - the number of augmenting paths needed in the maximal-augmenting path
+      implementation of Ford-Fulkerson is at most `2*E*lg(M)`
+    - the time required to find a maxflow in a sparse network is O(V^2*lg(M)*lg(V))
+- minimum cut: given an st-network, find an st-cut such that the capacity of no other
+  cut is smaller
+
+```
+// Program 22.2 Flow-network edges
+```
+```
+// Program 22.3 Augmenting-paths maxflow implementation
+```
+```
+// Program 22.4 PFS for augmenting-paths implementation
+```
+- Ford-Fulkerson has many implementations based on various research efforts
+- simplest (Edmonds & Karp's shortest augmenting path) uses a queue for the fringe
+- another (Edmonds & Karp's maximum-capacity augmenting path)
+    - augment along the path that increases the flow by the largest amount using
+      this for the priority
+- difficulties in measuring performance -> many versions depend on V, E, and the edge capacities
+
+## Preflow-Push Maxflow Algorithms
+- incrementally move flow along outgoing edges of vertices that have more inflow
+  than outflow
+- Goldberg and Tarjan
+- definition:
+    - preflow: a set of positive edge flows satisfying the conditions that the
+      flow on each edge is no greater than tha edge's capacity and that inflow
+      if no smaller than outflow for every internal vertex
+    - active vertex: internal vertex whose inflow is larger than its outflow
+      (by convention, the source and sink are never active)
+    - height function: a set of non-negative vertices h(0)...h(V-1) for a given
+      flow in a flow network such thath(t) = 0 for the sink t and h(u) <= h(v)+1
+      for every edge u-v in the residual network for the flow
+    - eligible edge: an edge u-v in the residual network with h(u) = h(v)+1
+- properties:
+    - for any flow and associated height function, a vertexs height is no larger
+      than the length of the shortest path from that vertex to the sink in the
+      residual network
+    - if a vertex's height is greater than V, then there is not path from that
+      vertex to the sink in the residual network
+    - the edge-based preflow-push algorithm preserves the validity of the height
+      function
+    - while the preflow-push algorithm is in execution on a flow network, there
+      exists a (directed) path in that flow network's residual network from each
+      active vertex to the source, and there are no (directed) paths from source
+      to sink in the residual network
+    - during the preflow-push algorithm, vertex heights are always less than 2*V
+    - the preflow-push algorithm computes a maxflow
+    - the worst-case running time of the FIFO queue implementation of the
+      preflow-push algorithm is proportional to V^2*E
+```
+// Program 22.5 Preflow-push maxflow implementation
+```
+
+## Maxflow Reductions
+- TODO: more description of the problems here
+- consider a number of maxflow reductions to show its general applicability
+- problems:
+    - maxflow in general networks: the flow in a network that maximizes the total
+      outflow from its sources (and the total inflow to its sinks)
+    - vertex-capacity constraints: find maxflow satisfying additional constraints
+      specifying that the flow through each vertex must not exceed som fixed
+      capacity
+    - acyclic networks: maxflow in an acyclic network
+    - maxflow in undirected networks:
+        - undirected flow networks: a weighted graph with integer edge weights
+          that are interpreted as capacities
+        - circulation (in undirected flow networks): an assignment of weights
+          and directions to the edges satisfying the conditions that the flow
+          on each edge is no greater than that edge's capacity and that the total
+          flow into each vertex is equal to the total flow out of that vertex
+        - find a circulation that maximizes the flow in a specified direction
+          in a specified edge
+    - feasible flow:
+    - maximum-cardinality bipartite matching:
+    - edge connectivity:
+    - vertex connectivity:
+
+- properties:
+    - the maxflow problem for general networks is equivalent to the maxflow
+      problem for st-networks
+    - the maxflow problem for flow networks with capacity constraints on vertices
+      equivalent to the standard maxflow problem
+    - the maxflow problem for acyclic networks is equivalent to the standard maxflow
+      problem
+    - the maxflow problem for undirected st-networks reduces to the maxflow problem
+      for st-networks
+    - the feasible flow problem reduces to the maxflow problem
+    - the bipartite-matching problem reduces to the maxflow problem
+    - the time required to find a maximum-cardinality matching in a bipartite
+      graph is O(V*E)
+    - (Menger's Theorem) the minimum number of edges whose removal disconnects two
+      vertices in a digraph is equal to the maximum number of edge-disjoint paths
+      between the two vertices
+    - the time required to determine the edge connectivity of an undirected graph
+      is O(E^2)
+```
+// Program 22.6 Feasible flow via reduction to maxflow
+```
+```
+// Program 22.7 Bipartite matching via reduction to maxflow
+```
+
+## Mincost Flows
+- many solutions for a given maxflow problem
+- one with the fewest edges is mincost flow which are generally more difficult
+- definitions:
+    - cost: the sum of the flow costs of that flows edges
+    - flow cost: the product of an edge's flow and cost for an edge in a flow
+      network
+    - residual network: for a flow network and a flow, the network produced if the
+      flow has the same vertices as the original and one or two edges in the
+      residual network for each edge in the original, defined as follows:
+        - for each edge, v-w, in the original, let f be the flow capacity
+        - if f is positive, include an edge w-v in the residual with capacity f
+        - if f is less than c, include an edge v-w in the residual with capacity
+          c-f
+- mincost maxflow: the maxflow for a flow network with a minimum cost
+- mincost feasible flow: a flow is feasible if the vertex weights (supply if
+  positive, demand if negative) if the sum of the vertex weights is negative and
+  the difference between each vertex's outflow and inflow. The problem finds
+  a feasible flow of minimum cost.
+```
+// Program 22.8 Computing flow cost
+```
+- properties:
+    - the mincost-feasible flow problem and the mincost maxflow problems are
+      equivalent
+    - a maxflow is a mincost maxflow if and only if its residual network contains
+      no negative cost (directed) cycle
+    - the number of augmenting cycles needed in the generic cycle canceling
+      algorithm is less than ECM
+    - the time required to solve the mincost-flow problem in a sparse network
+      is O(V^3CM)
+- cycle canceling algorithm:
+    - find a maxflow
+    - augment the flow along any negative-cost cycle in the residual network
+    - continue until none remain
+```
+// Program 22.9 Cycle canceling
+```
+
+## Network Simplex Algorithm
+- TODO: more detail of the implementation and development
+- the running time of the cycle canceling algorithm is based on the number of
+  negative cost cycles, the flow cost, and the time to find the cycles
+- the network simplex algorithm drastically reduces cost for finding the cycle
+
+- definitions:
+    - feasible spanning tree: any spanning tree of the network that contains
+      all of the flow's partial edges for a maxflow with no cycle of partial
+      edges
+    - reduced cost: given a flow in a flow network with edge costs, let c(u, v)
+      denote the cost of u-v in the flow's residual network. For any potential
+      function, P, the reduced cost of an edge u-v in the residual network
+      with respect to P, denoted by c(u, v), is defined as c(u, v) - (P(u) - P(V))
+    - valid (set of vertices): if all tree edges have zero reduced cost
+    - eligible (nontree edge): a nontree edges is eligible if the cycle
+      that it creates with tree edges is a negative-cost cycle in the residual
+      network
+
+- network simplex algorithm:
+    - with respect to any flow, each edge u-v is in one of three states:
+        - empty: so flow can be pushed from only u to v
+        - full: so flow can be pushed from only v to u
+        - partial (neither empty or full): so flow can be pushed either way
+    - build a spanning tree
+        - option 1 - build a maxflow, break cycles of partial edges by augmenting
+          along each cycle to fill or empty one of its edges, then add full
+          or empty edges to the remaining partial edges to make a spanning tree
+        - option 2 - start with a maxflow in a dummy edge from source to sink, then,
+          using the edge as the only possible partial edge, build a spanning tree
+          with any graph search
+    - at this point, adding any edge creates a cycle
+    - maintain a vertex-indexed vector (spanning tree) and compute the reduced cost
+      an edge and set the value of the vertex potentials such that all tree edges
+      have zero reduced cost
+
+- properties:
+    - an edge is eligible if and only if it is a full edge with positive reduced
+      cost or an empty edge with negative reduced cost
+    - if we have a flow and a feasible spanning tree with no eligible edges,
+      the flow is a mincost flow
+    - if the generic network simplex algorithm terminates, it computes a mincost
+      flow
+
+- choosing the spanning tree representation:
+    - related computations:
+        - computing the vertex potentials
+        - augmenting along the cycle
+        - identifying an empty or a full edge on it
+        - inserting a new edge and removing an edge on the cycle formed
+
+```
+// Program 22.10 Vertex potential calculation
+```
+```
+// Program 22.11 Augmenting along a cycle
+```
+```
+// Program 22.12 Spanning tree substitution
+```
+```
+// Program 22.13 Eligible edge search
+```
+```
+// Program 22.14 Network simplex (basic implementation)
+```
+```
+// Program 22.15 Network simplex (improved implementation)
+```
+
+## Mincost-Flow Reductions
+- TODO: more detail here
+- problems:
+    - transportation:
+    - assignment:
+    - mail carrier:
+
+- properties:
+    - the single-source shortest paths problem (in networks with no negative
+      cycles) reduces to the mincost-feasible flow problem
+    - in mincost-flow problems, we can assume, without loss of generality,
+      that edge costs are non-negative
+    - the transportation problem is equivalent to the mincost-flow problem
+    - the assignment problem reduces to the mincost-flow problem
+    - the mail carrier's problem reduces to the mincost-flow problem
+
+## Perspective
+- end study with network flow because:
+    - the network flow model validates the practical utility of the graph abstraction
+      in countless applications
+    - the maxflow and mincost-flow algorithms are natural extensions of graph algorithms
+      for simpler problems
+    - the implementations exemplify the important role of fundamental algorithms and data
+      structures in achieving good performance
+    - the maxflow and mincost-flow models illustrate the utility of the approach of
+      developing increasingly general problem solving models and using them to solve
+      broad classes of problems
+- problems:
+    - maximum matching: the subset of edges in which no vertex appears more than once
+      and whose total weight is such that no other such set of edges has a higher total
+      weight (for a graph with edge weights)
+    - multicommodity flow: computing a second flow such that the sum of an edge's two
+      flows is limited by that edge's capacity, both flows are in equilibrium, and
+      the total cost is minimized
+    - convex and nonlinear costs: many network flow applications call for non-linear
+      or more complex cost functions and combinations of variables
+    - scheduling: much more complex and generally useful scheduling problems
+- general problem solving algorithms:
+    - shortest paths
+    - maxflow
+    - mincost-flow
+- generic algorithms:
+    - Bellman-Ford
+    - more
