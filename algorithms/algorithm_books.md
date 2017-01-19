@@ -1,12 +1,13 @@
-Regular - 
-Mastering Algorithms with C -> use this first
-Algorithms in C++ (its 1 & 2) -> and this
+Regular -
+Algorithms in C++ (its 1 & 2)
 Algorithms
+Mastering Algorithms with C
 Introduction to Algorithms
 Python Algorithms
 
 C++ Data Structures from Scratch
 Data Structures and Algorithms in C++
+Data Structures and Algorithms in Python
 The Art of Computer Programming 1 & 3
 The Algorithm Design Manual
 

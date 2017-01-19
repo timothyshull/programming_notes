@@ -262,44 +262,17 @@ void traverse(int k, void visit(int)) {
       an adjacency list representation
 
 
+- NOTE: see implementation doc for more traversal information
 
 
-
-
-
-
-
-
-
-
-
-
-
-# Implementation
-
-## Iterators (in C++)
-- need a parent link in the node to just store a pointer
-- useful to use a dummy root node to implement end
-- with no parent link, can construct a linear structure (stack, queue, vector, etc) to
-  store node pointers in a specific order but this will easily be invalidated
-
-## Handling misses in APIs that take keys as an argument
-- Java implementation allows for null, this requires a pointer type in C++
-- the misses return null (Java)
-- the C++ std library returns an iterator that references an element or is equivalent
-  to the end() iterator
-- Herb Sutter says for DAG/tree that hands out strong references to data work with shared_ptr<Data>
-  (since keys can be data/large data also, makes sense to use them here as well)
-
-## Value semantics
-- in general, do not make as much effort to avoid value semantics
-- libraries use references for speed but value semantics simplifies
-  APIs and can be more understandable
-
-## Options
-- APIs use references
-- use pair to store key & value
-- use smart pointers to store key & value
-- add parent pointers to nodes
-- to solve the issue of the usage of null in Java API's, instead of storing
-  as a pointer, can just return the address of the data as a T* (Non_owning_raw_pointer)
+## Balancing Binary Trees
+- definition:
+    - height balanced (balanced): (binary tree) if the difference in height
+      of both subtrees of any node in the tree is either zero or one
+    - perfectly balanced: balanced and all leaves are in (the last) one or two levels
+- some algorithms keep balanced on insertion
+- some rebalance by restructuring/reordering the tree and then constructing a balanced tree
+- balancing from ordered array
+- DSW algorithm
+- AVL tree
+- Red-black trees
