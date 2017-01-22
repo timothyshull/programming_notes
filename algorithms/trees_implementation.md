@@ -291,3 +291,4 @@ inherit and add logic for the common interface methods
 - add parent pointers to nodes
 - to solve the issue of the usage of null in Java API's, instead of storing
   as a pointer, can just return the address of the data as a T* (Non_owning_raw_pointer)
+- use weak_ptr to return references to shared_ptr
