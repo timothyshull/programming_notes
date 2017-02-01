@@ -299,3 +299,11 @@ class X : public Mixins... {
     X(const Mixins&... mixins) : Mixins(mixins)... { }
 };
 ```
+
+
+
+## Additional Notes
+# Vectors and defaults after reserve
+- if the default ctor is defined, it is called
+- if the default ctor does not do anything, all primitives are garbage
+- if the default ctor is deleted, results in a compiler error

@@ -18,9 +18,9 @@ http://aggregate.org/MAGIC/
 ~0
 ```
 
-## Create a mask with 0's in the rightmost n bits
+## All 1's unsigned
 ```
-~(~0 << n)
+~0u
 ```
 
 ## Turn off bits (leaving remainder untouched)
@@ -30,35 +30,51 @@ x & 0x0000FFFF
 
 ## Turn on bits
 ```
-x | 0x
+x | 0x...
+```
+
+## Create a mask with 0's in the rightmost n bits
+```
+~0 << n
 ```
 
 ## Create a mask with 0's in the leftmost n bits
 ```
+~0 >> n
+```
+
+## Create a mask with 1's in the rightmost n bits
+```
+~(~0 << n)
+```
+
+## Create a mask with 1's in the leftmost n bits
+```
 ~(~0 >> n)
 ```
 
-## Move a desired field to the right end of a word
+## Move a desired range to the right end of a word (0 indexed p)
 ```
+(considers index p and n elements to its right and moves to rightmost position, i.e. for p = 4 and n = 3, initial elements 4,3,2 will be all the way right)
 x >> (p + 1 - n)
 ```
 
-## Set a bit
+## Set a bit (0 indexed)
 ```
 x |= (1 << n)
 ```
 
-## Clear a bit
+## Clear a bit (0 indexed)
 ```
 x &= ~(1 << n)
 ```
 
-## Toggle a bit
+## Toggle a bit (0 indexed)
 ```
 x ^= (1 << n)
 ```
 
-## Test a bit
+## Test a bit (0 indexed)
 ```
 x & (1 << n)
 ```
@@ -175,3 +191,55 @@ x ^ y == (~x & y) | (x & ~y)
 1111   -1
 1110   -2
 ```
+
+## One's complement of a number (operator ~)
+```
+0101 -> 1010
+```
+
+## Two's complement of a number
+```
+bitwise NOT (~) of number then add 1 (ignore overflow of two's complement of 0)
+returns the numerical complement
+```
+
+
+
+
+
+
+
+
+
+## Hexadecimal
+## All 1's
+## All 1's unsigned
+## Turn off bits (leaving remainder untouched)
+## Turn on bits
+## Create a mask with 0's in the rightmost n bits
+## Create a mask with 0's in the leftmost n bits
+## Create a mask with 1's in the rightmost n bits
+## Create a mask with 1's in the leftmost n bits
+## Move a range field to the right end of a word
+## Set a bit
+## Clear a bit
+## Toggle a bit
+## Test a bit
+## Naive left shift with rotate
+## Safe left shift with rotate
+## Drop lowest set bit
+## Clear least significant bit
+## Swap bits i & j
+## Count number of set bits (Hamming Weight for bit strings or popcount/population count)
+## Absolute value of an int
+## Round up to next power of 2
+## Properties of XOR
+#### Identity -> a number XOR'ed with 0 returns the number
+#### Bitwise negation
+#### Inverting the identity
+#### Associativity
+#### Commutativity
+#### Swap
+#### Bitwise XOR equivalent
+## One's complement
+## Two's complement
