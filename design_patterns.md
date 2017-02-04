@@ -854,3 +854,92 @@
     - Composite - Visitors can be used to apply an operation over an object structure defined
       by the Composite pattern
     - Interpreter - Visitor is applied to an AST to do the interpretation
+
+
+# Overview
+## creational - cab feet per second (cab fps)
+- abstract factory
+- builder
+- factory method
+- prototype
+- singleton
+
+## structural - structure of abcd ffp
+- adapter
+- bridge
+- composite
+- decorator
+- facade
+- flyweight
+- proxy
+
+## behavioral - behavior of cciimm oss tv
+- chain of responsibility
+- command
+- interpreter
+- iterator
+- mediator
+- memento
+- observer
+- state
+- strategy
+- template method
+- visitor
+
+
+(from Wikipedia - see https://en.wikipedia.org/wiki/Software_design_pattern for more )
+## creational
+- abstract factory
+    - provide an interface for creating families of related or dependent objects without specifying their concrete classes
+- builder
+    - separate the construction of a complex object from its representation, allowing the same construction process to create various representations
+- factory method
+    - define an interface for creating a single object, but let subclasses decide which class to instantiate. Factory Method lets a class defer instantiation to subclasses (dependency injection)
+- prototype
+    - specify the kinds of objects to create using a prototypical instance, and create new objects from the 'skeleton' of an existing object, thus boosting performance and keeping memory footprints to a minimum
+- singleton
+    - ensure a class has only one instance, and provide a global point of access to it
+
+## structural
+- adapter
+    - convert the interface of a class into another interface clients expect. An adapter lets classes work together that could not otherwise because of incompatible interfaces. The enterprise integration pattern equivalent is the translator
+- bridge
+    - decouple an abstraction from its implementation allowing the two to vary independently
+- composite
+    - compose objects into tree structures to represent part-whole hierarchies. Composite lets clients treat individual objects and compositions of objects uniformly
+- decorator
+    - attach additional responsibilities to an object dynamically keeping the same interface. Decorators provide a flexible alternative to subclassing for extending functionality
+- facade
+    - provide a unified interface to a set of interfaces in a subsystem. Facade defines a higher-level interface that makes the subsystem easier to use
+- flyweight
+    - use sharing to support large numbers of similar objects efficiently
+- proxy
+    - provide a surrogate or placeholder for another object to control access to it
+
+## behavioral
+- chain of responsibility
+    - avoid coupling the sender of a request to its receiver by giving more than one object a chance to handle the request. Chain the receiving objects and pass the request along the chain until an object handles it
+- command
+    - encapsulate a request as an object, thereby allowing for the parameterization of clients with different requests, and the queuing or logging of requests. It also allows for the support of undoable operations
+- interpreter
+    - given a language, define a representation for its grammar along with an interpreter that uses the representation to interpret sentences in the language
+- iterator
+    - provide a way to access the elements of an aggregate object sequentially without exposing its underlying representation
+- mediator
+    - define an object that encapsulates how a set of objects interact. Mediator promotes loose coupling by keeping objects from referring to each other explicitly, and it allows their interaction to vary independently
+- memento
+    - without violating encapsulation, capture and externalize an object's internal state allowing the object to be restored to this state later
+- observer
+    - define a one-to-many dependency between objects where a state change in one object results in all its dependents being notified and updated automatically (remember push vs. pull)
+- state
+    - allow an object to alter its behavior when its internal state changes. The object will appear to change its class
+- strategy
+    - define a family of algorithms, encapsulate each one, and make them interchangeable. Strategy lets the algorithm vary independently from clients that use it
+- template method
+    - define the skeleton of an algorithm in an operation, deferring some steps to subclasses. Template method lets subclasses redefine certain steps of an algorithm without changing the algorithm's structure
+- visitor
+    - represent an operation to be performed on the elements of an object structure. Visitor lets a new operation be defined without changing the classes of the elements on which it operates
+
+
+
+## Concurrency patterns

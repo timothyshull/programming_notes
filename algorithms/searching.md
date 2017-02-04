@@ -857,7 +857,7 @@ public:
 - non-prime M's result in unfortunate mathematical recurrences
 - Mersenne primes: (2 ^ t - 1) <= 31 -> 2,3,5,7,13,17,19,31
 - fastest to store a table of the largest primes less than 2^n for 8 <= n <= 32
-- hash function for string keys (Horner's algorithm):
+- hash function for string keys (close to Horner's algorithm, NOTE: Horner's algorithm is larger, for computing polynomials):
 ```
 int hash(char *v, int M) {
     int h = 0, a = 127;

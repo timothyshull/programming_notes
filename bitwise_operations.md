@@ -13,6 +13,19 @@ http://bits.stephan-brumme.com/
 http://aggregate.org/MAGIC/
 
 # Basic bitwise
+## Left shift - multiplies by 2
+## Right shift - divides by 2
+
+## Even
+```
+~(x & 1)
+```
+
+## Is power of 2
+```
+x && !(x & x - 1)
+```
+
 ## All 1's
 ```
 ~0
@@ -81,22 +94,22 @@ x & (1 << n)
 
 ## Naive left shift with rotate
 ```
-unsigned int y = (x << n) | (x >> (32 - n))
+unsigned y = (x << n) | (x >> (32 - n))
 ```
 
 ## Safe left shift with rotate
 ```
-unsigned int y = (x << n) | (x >> (-n & 31))
-```
-
-## Drop lowest set bit
-```
-x &= ~(x - 1)
+unsigned y = (x << n) | (x >> (-n & 31))
 ```
 
 ## Clear least significant bit
 ```
 v &= v - 1
+```
+
+## Mask of least significant bit
+```
+x &= ~(x - 1)
 ```
 
 ## Swap bits i & j
