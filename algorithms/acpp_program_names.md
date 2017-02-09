@@ -3,7 +3,7 @@ Program 1.2 - Quick-union solution to connectivity problem
 Program 1.3 - Weighted version of quick union
 Program 1.4 - Path compression by halving
 Program 2.1 - Sequential search
-Program 2.2 - Binary search
+Program 2.2 - Binary search **
 Program 3.1 - Function definition
 Program 3.2 - Types of numbers
 Program 3.3 - Point data type interface
@@ -63,10 +63,10 @@ Program 5.11 - Fibonacci numbers (dynamic programming)
 Program 5.12 - Knapsack problem (recursive implementation)
 Program 5.13 - Knapsack problem (dynamic programming)
 Program 5.14 - Recursive tree traversal
-Program 5.15 - Preorder traversal (nonrecursive)
-Program 5.16 - Level-order traversal
+Program 5.15 - Preorder traversal (nonrecursive) **
+Program 5.16 - Level-order traversal **
 Program 5.17 - Computation of tree parameters
-Program 5.18 - Quick tree-print function // inorder traversal
+Program 5.18 - Quick tree-print function // inorder traversal **
 Program 5.19 - Construction of a tournament
 Program 5.20 - Construction of a parse tree
 Program 5.21 - Depth-first search
@@ -88,11 +88,11 @@ Program 6.14 - In-place sort
 Program 6.15 - Linked-list type interface
 Program 6.16 - Linked-list selection sort
 Program 6.17 - Key-indexed counting
-Program 7.1 - Quicksort
-Program 7.2 - Partitioning
-Program 7.3 - Nonrecursive quicksort
-Program 7.4 - Improved quicksort
-Program 7.5 - Quicksort with three-way partitioning
+Program 7.1 - Quicksort **
+Program 7.2 - Partitioning **
+Program 7.3 - Nonrecursive quicksort **
+Program 7.4 - Improved quicksort **
+Program 7.5 - Quicksort with three-way partitioning **
 
 Program 8.6 - Selection
 Program 8.7 - Nonrecursive selection
@@ -187,7 +187,7 @@ Program 16.8 - Extendible hashing directory insertion
 
 Program 17.1 - Graph ADT interface
 Program 17.2 - Example of a graph-processing client
-Program 17.3 - A client function that prints a graph
+Program 17.3 - A client function that prints a graph **
 Program 17.4 - Graph-processing input/output interface
 Program 17.5 - Connectivity interface
 Program 17.6 - Example of a graph-processing client program
@@ -220,9 +220,9 @@ Program 19.2 - DFS of a digraph
 Program 19.3 - Warshall's algorithm
 Program 19.4 - DFS-based transitive closure
 Program 19.5 - Representing a binary tree with a binary DAG
-Program 19.6 - Reverse topological sort
-Program 19.7 - Topological sort
-Program 19.8 - Source-queue-based topological sort
+Program 19.6 - Reverse topological sort **
+Program 19.7 - Topological sort **
+Program 19.8 - Source-queue-based topological sort **
 Program 19.9 - Transitive closure of a DAG
 Program 19.10 - Strong components (Kosaraju's algorithm)
 Program 19.11 - Strong components (Tarjan's algorithm)
