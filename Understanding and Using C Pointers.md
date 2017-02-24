@@ -149,9 +149,17 @@ intptr_t *pi = &num;
 char c;
 uintptr_t *pc = (uintptr_t*)&c;
 ```
-        
+
 - use these in place of casting pointers to integers
-   
+- from stack overflow
+    - some applications actually require integer-type operations (bitwise, etc) on
+      pointer valuew
+    - intptr_t and uintptr_t are guaranteed to be the size of a pointer, whereas int is not
+    - C++ requires a reinterpret_cast to cast from a pointer to intptr_t or unintptr_t
+      (fundamemtally unsafe)
+    - casts to void pointers for use with general pointers and function pointers are
+      guaranteed to work (use static_cast)
+
 ## Pointer Operators 
 ### Pointer Arithmetic
 - Adding an integer to a pointer
@@ -184,14 +192,16 @@ printf("%d\n",*pi); // Displays 28
     - the difference between two pointers is the integer number of units by which they differ
 - Comparing pointers
     - can use the standard comparison operators to compare pointers, i.e. <, >, <=, >=
+
 ## Common Uses of Pointers 
 ### Multiple Levels of Indirection
 - it is common to see double pointers or a pointer to a pointer, i.e. argv
 - this simplifies certain operations
 - NOTE: generally just use these in C for:
-    - passing a pointer variable to a function when the original pointer will be modified within the function
+    - passing a pointer variable to a function when the original pointer will be modified within the function (i.e. like a reference)
     - this should be done in C++ using a pointer reference
     - arrays of C-style strings
+    - arrays of arrays
 ### Constants and Pointers
 - pointers to constants
 
@@ -215,7 +225,9 @@ int *const cpi = &num;
 
 - constant pointers to constants
 
-            const int * const cpci = &limit;
+```
+const int * const cpci = &limit;
+```
 
     - can be initialized with a non-constant variable
 
@@ -246,9 +258,11 @@ const int * const * pcpci;
 2. Use this memory to support the application
 3. Deallocate the memory using the free function
 
-            int *pi = (int*) malloc(sizeof(int)); *pi = 5;
-            printf("*pi: %d\n", *pi);
-            free(pi);
+```
+int *pi = (int*) malloc(sizeof(int)); *pi = 5;
+printf("*pi: %d\n", *pi);
+free(pi);
+```
 
 - use free to deallocate memory
 - do not access a pointer once the memory it points to has been freed
@@ -477,13 +491,15 @@ foo();
 ### Using Exception Handlers
 
 ```
-void exceptionExample() { int *pi = NULL;
-__try {
-    pi = (int*)malloc(sizeof(int)); *pi = 5;
-    printf("%d\n",*pi);
-}
-__finally {
-    free(pi); }
+void exceptionExample() {
+    int *pi = NULL;
+    __try {
+        pi = (int*)malloc(sizeof(int)); *pi = 5;
+        printf("%d\n",*pi);
+    }
+    __finally {
+        free(pi); }
+    }
 }
 ```
 
@@ -512,7 +528,8 @@ __finally {
 - the function can modify the data
 
 ```
-void swapWithPointers(int* pnum1, int* pnum2) { int tmp;
+void swapWithPointers(int* pnum1, int* pnum2) {
+    int tmp;
     tmp = *pnum1;
     *pnum1 = *pnum2;
     *pnum2 = tmp;
@@ -666,18 +683,21 @@ sizeof(vector)/sizeof(int);
 - declaration/initialization:
 
 ```
-int matrix[2][3] = {{1,2,3},{4,5,6}};
+int matrix[2][3] = {
+    {1,2,3},
+    {4,5,6}
+};
 ```
             
 - memory layout:
 
 ```
 - matrix[0][0] 100 - 1
-- matrix[0][1] 100 - 2
-- matrix[0][2] 100 - 3
-- matrix[1][0] 100 - 4
-- matrix[1][1] 100 - 5
-- matrix[1][2] 100 - 6
+- matrix[0][1] 104 - 2
+- matrix[0][2] 108 - 3
+- matrix[1][0] 112 - 4
+- matrix[1][1] 116 - 5
+- matrix[1][2] 120 - 6
 ```
 
 - conceptual layout:
@@ -693,8 +713,7 @@ row
 
 ```
 for (int i = 0; i < 2; i++) {
-    printf("&matrix[%d]: %p sizeof(matrix[%d]): %d\n",
-        i, &matrix[i], i, sizeof(matrix[i]));
+    printf("&matrix[%d]: %p sizeof(matrix[%d]): %d\n", i, &matrix[i], i, sizeof(matrix[i]));
 }
 ```
            
@@ -736,26 +755,26 @@ pv[i]
 - array notation is like "shift and dereference"
 
 ### Differences Between Arrays and Pointers
-- vector\[i\] and vector + i
-    - the machine code is different. vector\[i\] moves i positions from the location
+- `vector[i]` and `vector + i`
+    - the machine code is different. `vector[i]` moves i positions from the location
       pointed to by 'vector' and uses the contents of the new location. vector + i
       uses the address as a value, adds i to the address and then gets the contents
       of that address
     - the sizeof operator will return the number of elements times the size of the element
       type when used with an array whereas it will return the size of a pointer when
       used with a pointer
-    - a pointer is an lvalue and as such must be modifiable. An array name is not modifiable.
+    - a pointer is an lvalue and as such is modifiable (when not declared const). An array name is not modifiable.
 ## Using malloc to Create a One-Dimensional Array
 - the memory sits on the heap and is the size of the content type times the size of the array
 
 ```
 int *pv = (int*) malloc(5 * sizeof(int));
-for(int i=0; i<5; i++) {
-    pv[i] = i+1;
+for(int i=0; i < 5; i++) {
+    pv[i] = i;
 }
 
-for(int i=0; i<5; i++) {
-    *(pv+i) = i+1;
+for(int i=0; i < 5; i++) {
+    *(pv+i) = i;
 }
 ```
 
@@ -767,28 +786,33 @@ for(int i=0; i<5; i++) {
 
 ```
 char* getLine(void) {
-    const size_t sizeIncrement = 10; char* buffer = malloc(sizeIncrement); char* currentPosition = buffer; size_t maximumLength = sizeIncrement; size_t length = 0;
+    const size_t sizeIncrement = 10;
+    char* buffer = malloc(sizeIncrement);
+    char* currentPosition = buffer;
+    size_t maximumLength = sizeIncrement;
+    size_t length = 0;
     int character;
     if(currentPosition == NULL) { return NULL; }
-    while(1) {
-    character = fgetc(stdin); if(character == '\n') { break; }
-    if(++length >= maximumLength) {
-    char *newBuffer = realloc(buffer, maximumLength += sizeIncrement);
-    if(newBuffer == NULL) {
-        free(buffer);
-        return NULL;
-    }
-                    currentPosition = newBuffer + (currentPosition - buffer);
-                    buffer = newBuffer;
-                }
-                *currentPosition++ = character;
+    while (1) {
+        character = fgetc(stdin);
+        if(character == '\n') { break; }
+        if (++length >= maximumLength) {
+            char *newBuffer = realloc(buffer, maximumLength += sizeIncrement);
+            if (newBuffer == NULL) {
+                free(buffer);
+                return NULL;
             }
-            *currentPosition = '\0';
+            currentPosition = newBuffer + (currentPosition - buffer);
+            buffer = newBuffer;
+        }
+        *currentPosition++ = character;
+    }
+    *currentPosition = '\0';
     return buffer;
 }
 ```
-
 - realloc can also be used to decrease the amount of space used by a pointer
+
 ## Passing a One-Dimensional Array
 - when a one-dimensional array is passed to a function, the array's address is passed by value
 - normally, this means that the size should also be passed because the function only knows the 

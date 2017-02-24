@@ -99,3 +99,11 @@ class Type {
     Type operator>>(const Type& rhs) const; // Right shift
 };
 ```
+
+
+
+```
+PointerType operator->() const { return pointee_; }
+
+ReferenceType operator*() const { return *pointee_; }
+```

@@ -1920,3 +1920,136 @@ all-pairs
 - generic algorithms:
     - Bellman-Ford
     - more
+
+
+
+
+
+
+
+
+
+
+# NOTES:
+- st in the search implementations means search tree and is the parent-link representation
+  of the search tree
+- st in st-network stands for source-sink where s = source and t = sink
+- edge classification:
+    - tree edge:
+        - an edge corresponding to a recursive call
+        - edge that is visited for the first time the first time its destination vertex is encountered
+        - link from v-w is a tree link if w is unmarked
+        - link from v-w is a parent link if `st[w]` is v
+        - each tree edge in a graph corresponds to a tree link and a parent link in a DFS tree
+        - tree edges are tree links on the first encounter and parent links on the second
+    - back edge:
+        - edge connecting a vertex with an ancestor in its DFS tree that is not its parent
+        - an edge that is visited for the first time and its destination vertex has been encountered and it is an ancestor of the source
+        - a link from v-w is a back link if `ord[w] < ord[v]`
+        - a link from v-w is a down link if `ord[v] < ord[w]`
+        - each back edge in a graph corresponds to a back link and a down link in a DFS tree
+        - back edges are back links on the first encounter and down links on the second encounter
+        - in a DFS forest for a digraph, a back edge is an edge to a visited node with a higher
+          postorder number
+    - forward edge: an edge that is visited for the first time and its destination vertex has been encountered and it is a descendant of the source
+    - cross edge:
+        - an edge visited for the first time that is neither a back edge or a forward edge
+        - in a DFS forest for a digraph, a cross edge is an edge to a visited node with a lower
+          preorder number
+    - down edge:
+        - in a DFS forest for a digraph, a down edge is an edge to a visited vertex with a higher
+          preorder number
+
+    - NOTE: parent links and back links both have order[w] < order[v], so if
+      search_tree[w] is not v means v-w is a back link
+
+- by contrast with undirected graphs, DFS on a digraph does not give full information
+  about reachability from any vertex other than the start vertex because tree edges
+  are directed and the search structures have cross edges (cannot assume there is a way to get back)
+
+
+- simple pseudocode:
+```
+DFS(u)
+for each neighbor v of u
+  if v is unvisited, tree edge, DFS(v)
+  else if v is explored, bidirectional/back edge
+  else if v is visited, forward/cross edge
+```
+
+- more detail:
+```
+DFS(u)
+for each neighbor v of u
+  if v is unvisited, tree edge, DFS(v)
+  else if v is explored, bidirectional/back edge
+  else if v is visited, forward/cross edge
+```
+
+- from "Python Algorithms"
+```
+In describing traversal, I have distinguished between three kinds of nodes:
+those we don’t know about,
+those in our queue,
+and those we’ve visited (and whose neighbors are now in the queue).
+
+Some books (such as Introduction to Algorithms, by Cormen et al., mentioned in Chapter 1)
+introduce a form of node coloring, which is especially important in DFS.
+
+Each node is considered white to begin with;
+they’re gray in the interval between their discover time and their finish time,
+and they’re black thereafter.
+
+You don’t really need this classification in order to implement DFS,
+but it can be useful in understanding it...
+
+In terms of Trémaux’s algorithm,
+gray intersections would be ones we’ve seen but have since avoided;
+black intersections would be the ones we’ve been forced to enter a second time
+(while backtracking).
+
+These colors can also be used to classify the edges in the DFS tree.
+
+If an edge uv is explored and the node v is white,
+the edge is a tree edge—that is, it’s part of the traversal tree.
+
+If v is gray, it’s a so-called back edge, one that goes back to an ancestor
+in the DFS tree.
+
+Finally, if v is black, the edge is either what is called a forward edge or a
+cross edge.
+
+A forward edge is an edge to a descendant in the traversal tree,
+while a cross edge is any other edge (that is, not a tree, back or forward edge).
+
+Note that you can classify the edges without actually using any explicit color
+labeling.
+
+Let the time span of a node be the interval from its discover time to its finish time.
+
+A descendant will then have a time span contained in its ancestor’s,
+while nodes unrelated by ancestry will have nonoverlapping intervals.
+
+Thus, you can use the timestamps to figure out whether something is, say,
+a back or forward edge.
+
+If your timestamps are incremented in single steps,
+a child interval (forward edge) will be “just inside” the parent’s interval.
+Even with a color labeling, you’d need to consult the timestamps to differentiate
+between forward and cross edges.
+
+You probably won’t need this classification much, although it does have one important use.
+
+If you find a back edge, the graph contains a cycle, but if you don’t, it doesn’t. ...
+In other words, you can use DFS to check whether a graph is a DAG
+(or, for undirected graphs, a tree).
+```
+
+
+- need to be careful in use of graph.adjacent() and pushing to queue:
+    - if the call returns edges and the queue contains edges, make sure to visit
+      the destination edge
+    - if the call returns edges and the queue contains vertex indices, push
+      the destination vertex
+    - if the call returns vertex indices and the queue contains edges,
+      make sure to push a constructed edge with proper source/dest
