@@ -125,21 +125,48 @@ for (c = 0; v; c++) {
 }
 ```
 
+## Sign of an int
+```
+int sign = -(v < 0);
+// not portable
+int sign = v >> (sizeof(int) * CHAR_BIT - 1);
+```
+
+## Detect if integers have opposite signs
+```
+return ((x ^ y) < 0);
+```
+
 ## Absolute value of an int
 ```
-int bit_31 = x >> 31;
-return (x ^ bit_31) - bit_31;
+const int mask = v >> sizeof(int) * CHAR_BIT - 1;
+return (x ^ mask) - mask;
+```
+
+## Find the minimum
+```
+return y ^ ((x ^ y) & -(x < y)); // min(x, y)
+```
+
+## Find the maximum
+```
+return x ^ ((x ^ y) & -(x < y)); // max(x, y)
+```
+
+## Is power of two
+```
+return v && !(v & (v - 1));
 ```
 
 ## Round up to next power of 2
 ```
-x--;
+--x;
 x |= x >> 1;
 x |= x >> 2;
 x |= x >> 4;
 x |= x >> 8;
 x |= x >> 16;
-x++;
+++x;
 
 return x;
 ```

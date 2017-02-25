@@ -18,6 +18,12 @@
 ## Clear least significant bit
 ## Swap bits i & j
 ## Count number of set bits (Hamming Weight for bit strings or popcount/population count)
+## Sign of an int
+## Detect if integers have opposite signs
+## Absolute value of an int
+## Find the minimum
+## Find the maximum
+## Is power of two
 ## Absolute value of an int
 ## Round up to next power of 2
 ## Properties of XOR

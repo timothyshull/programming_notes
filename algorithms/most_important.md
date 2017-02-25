@@ -14,3 +14,9 @@
         - inorder
         - postorder
 - level order tree printing
+
+- permutations (iterative and recursive)
+- backtracking
+- basic linear programming
+- basic dynamic programming
+- basic greedy programming

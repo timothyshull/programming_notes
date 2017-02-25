@@ -660,7 +660,7 @@ for (auto pos=coll.begin(), end=coll.end(); pos!=end; ++pos) {
     - removes elements and frees memory
     - calls dtor for each element
     - a v d l fl s ms m mm us ums um umm str
-## Nonmodifying Operations
+## Non-modifying Operations
 ### Size Operations
 - empty() const
     - contains no elements
@@ -681,7 +681,7 @@ for (auto pos=coll.begin(), end=coll.end(); pos!=end; ++pos) {
     - uses lexicographical_compare
     - linear
     - a v d l fl s ms m mm str
-## Nonmodifying Operations for Associative and Unordered Containers
+## Non-modifying Operations for Associative and Unordered Containers
 - count(const T& value) const
     - num elements equal to value
     - logarithmic
@@ -760,8 +760,15 @@ string              random access
 - rbegin
 - rend
 ## Inserting and Removing Elements
-- TODO: more work here
-- insert(value)
+### Inserting Single Elements
+- iterator container::insert(const T& value)
+- iterator container::insert(T&& value)
+- pair<iterator,bool> container::insert(const T& value)
+- pair<iterator,bool> container::insert (T&& value)
+    - inserts into assoc. or unordered container
+    - lvalue refs are copied
+    - rvalue refs are moved from
+    - TODO: restart here
     - a v d l fl s ms m mm us ums um umm
 - emplace(args)
     - a v d l fl s ms m mm us ums um umm
