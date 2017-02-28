@@ -41,3 +41,24 @@
     - can also liquidate size list and rebuild
 
 ### Buddy Systems
+
+
+# Caching
+## FIFO
+
+## LRU (Least recently used)
+
+## LFU
+
+
+- NOTE: Knuth and Compiler Techniques have more discussions in this area
+
+- memory management
+    - sequential-fit methods
+    - nonsequential-fit methods
+    - garbage collection
+        - mark-and-sweep
+        - copying methods
+        - incremental
+        - generational
+    - caching

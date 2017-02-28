@@ -20,3 +20,11 @@ Distributed -
 Distributed Algorithms
 Reliable and Secure Distributed Programming
 (Distributed Systems Concepts)
+
+More -
+Matters Computational
+Combinatorial Optimization
+Purely Functional Data Structures
+Specifying Systems (TLA)
+Little Book of Semaphores
+Concrete Mathematics

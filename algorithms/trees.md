@@ -402,7 +402,7 @@ void traverse(int k, void visit(int)) {
          - on the way up, split any temporary 4-nodes
     - deletion:
         - TODO: more here and review deletion in normal BSTs
-         - use same transformations as delete the minimum
+        - use same transformations as delete the minimum
 
 - properties:
     - all symbol table operations in red-black BST's are guaranteed to be
@@ -444,3 +444,20 @@ BST             N           N           1.39*lg(N)      1.39*lg(N)  yes
 - DSW algorithm
 - AVL tree
 - Red-black trees
+
+
+
+
+
+# Additional
+- B-trees & Multiway Trees
+    - B-trees
+    - B*-trees
+    - B+-trees
+    - prefix B+-trees
+    - K-d B-trees
+    - bit-trees
+    - R-trees
+    - 2-4 trees
+
+- van Emde Boas Trees
