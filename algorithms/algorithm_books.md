@@ -21,7 +21,7 @@ Distributed Algorithms
 Reliable and Secure Distributed Programming
 (Distributed Systems Concepts)
 
-More -
+Don't worry -
 Matters Computational
 Combinatorial Optimization
 Purely Functional Data Structures

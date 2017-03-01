@@ -39,8 +39,6 @@
 # strings
 - NFA building
 
-# multithreaded algorithms
-
 # linear programming
 
 # sets
@@ -50,19 +48,3 @@
 
 # heaps and priority queues
 - Fibonacci heaps
-
-# compression
-- Ziv-Lempel Code
-- LZW
-- run-length
-- Huffman
-
-# memory management
-- sequential-fit methods
-- nonsequential-fit methods
-- garbage collection
-    - mark-and-sweep
-    - copying methods
-    - incremental
-    - generational
-- caching

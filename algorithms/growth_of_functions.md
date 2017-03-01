@@ -5,7 +5,7 @@
 
 ## Asymptotic notation
 - input domain is natural numbers N = {0, 1, 2, 3, ...}
-- sometimes extended to real numbers R = {..., -2, -1, 0, 1, 2, ...}
+- sometimes extended to real numbers R
 
 ### Asymptotic notation, functions, and running times
 - generally reduce to largest element for running time

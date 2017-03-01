@@ -1,0 +1,51 @@
+## Set APIs (from Algorithms, 4th ed.)
+- much like the symbol table APIs but only need the keys as values
+- only need:
+    - add
+    - delete
+    - contains
+    - empty
+    - size
+- can add set operations such as
+    - union
+        - for elem in both lhs and rhs add to tmp set and return tmp
+    - intersection
+        - create tmp
+        - if size of lhs < size of rhs -> for elem in lhs if also in rhs, add to tmp
+        - else for elem in rhs, if also in lhs, add to tmp
+        - return tmp
+    - complement
+        - need set containing all elements possible
+        - create tmp set
+        - for elem in all elements, if not in arg add to tmp
+        - return tmp
+- can implement using linked list, trees (red-black) (ordered), or hash tables (unordered)
+- can have set or multiset
+- commonly used for filter clients i.e. whitelist or blacklist, or deduplication
+
+## Mathematical notation
+- 0 - empty set
+- Z - set of integers { ... -1, 0, 1, ... }
+- R - set of real numbers
+- N - set of natural numbers {0, 1, 2, ... } or {1, 2, 3, ...}
+- specifies information about subsets and proper subets
+- defines set intersection, union, and difference
+- empty set law
+- idempotency laws
+- commutative laws
+- associative laws
+- ditributive laws
+- absorption laws
+- DeMorgan's laws
+- set complement
+- disjoint
+- partition
+- finite
+- infinite
+- n- set
+- singleton
+- k-subset
+- power set
+- ordered pair
+- Cartesian product
+- n-tuples

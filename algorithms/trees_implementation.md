@@ -272,6 +272,7 @@ inherit and add logic for the common interface methods
 - can also always store parent and current ptr in iterator and set parent to nullptr for root (doesn't work, cannot move back up still)
 
 ## Handling misses in APIs that take keys as an argument
+- C++ -> first option is to choose is throw std::out_of_range or related
 - Java implementation allows for null, this requires a pointer type in C++
 - the misses return null (Java)
 - the C++ std library returns an iterator that references an element or is equivalent
