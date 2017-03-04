@@ -2,16 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6716ed24-d6c0-4182-9070-9b5b6cdf732d" name="Default" comment="">
-      <change type="MOVED" beforePath="$PROJECT_DIR$/algorithms/todos.md" afterPath="$PROJECT_DIR$/algorithms/TODOS.md" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/algorithm_books.md" afterPath="$PROJECT_DIR$/algorithms/algorithm_books.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/compression.md" afterPath="$PROJECT_DIR$/algorithms/compression.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/growth_of_functions.md" afterPath="$PROJECT_DIR$/algorithms/growth_of_functions.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/memory_management.md" afterPath="$PROJECT_DIR$/algorithms/memory_management.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/multithreading_and_parallelism.md" afterPath="$PROJECT_DIR$/algorithms/multithreading_and_parallelism.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/sets.md" afterPath="$PROJECT_DIR$/algorithms/sets.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/strings.md" afterPath="$PROJECT_DIR$/algorithms/strings.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/trees_implementation.md" afterPath="$PROJECT_DIR$/algorithms/trees_implementation.md" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/algorithms/most_important.md" afterPath="$PROJECT_DIR$/algorithms/most_important.md" />
     </list>
     <ignored path="Notes.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -38,12 +30,12 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="TODOS.md" pinned="false" current-in-tab="false">
+      <file leaf-file-name="TODOS.md" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/algorithms/TODOS.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="527">
-                <caret line="50" column="0" lean-forward="true" selection-start-line="50" selection-start-column="0" selection-end-line="50" selection-end-column="0" />
+              <first_editor relative-caret-position="750">
+                <caret line="50" column="0" lean-forward="false" selection-start-line="50" selection-start-column="0" selection-end-line="50" selection-end-column="0" />
                 <folding />
               </first_editor>
               <second_editor>
@@ -53,42 +45,12 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="generalizations.md" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/algorithms/generalizations.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="205">
-                <caret line="281" column="2" lean-forward="false" selection-start-line="281" selection-start-column="2" selection-end-line="281" selection-end-column="2" />
-                <folding />
-              </first_editor>
-              <second_editor>
-                <js_state />
-              </second_editor>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="strings.md" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/algorithms/strings.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="527">
-                <caret line="472" column="0" lean-forward="false" selection-start-line="472" selection-start-column="0" selection-end-line="472" selection-end-column="0" />
-                <folding />
-              </first_editor>
-              <second_editor>
-                <js_state />
-              </second_editor>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="sets.md" pinned="false" current-in-tab="true">
+      <file leaf-file-name="sets.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/algorithms/sets.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="362">
-                <caret line="35" column="18" lean-forward="true" selection-start-line="35" selection-start-column="18" selection-end-line="35" selection-end-column="18" />
+              <first_editor relative-caret-position="450">
+                <caret line="30" column="21" lean-forward="false" selection-start-line="30" selection-start-column="21" selection-end-line="30" selection-end-column="21" />
                 <folding />
               </first_editor>
               <second_editor>
@@ -113,56 +75,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="sorting.md" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/algorithms/sorting.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="11325">
-                <caret line="755" column="2" lean-forward="false" selection-start-line="755" selection-start-column="2" selection-end-line="755" selection-end-column="2" />
-                <folding />
-              </first_editor>
-              <second_editor>
-                <js_state />
-              </second_editor>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="memory_management.md" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/algorithms/memory_management.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="512">
-                <caret line="419" column="28" lean-forward="false" selection-start-line="419" selection-start-column="28" selection-end-line="419" selection-end-column="28" />
-                <folding />
-              </first_editor>
-              <second_editor>
-                <js_state />
-              </second_editor>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="compression.md" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/algorithms/compression.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="407">
-                <caret line="161" column="50" lean-forward="false" selection-start-line="161" selection-start-column="50" selection-end-line="161" selection-end-column="50" />
-                <folding />
-              </first_editor>
-              <second_editor>
-                <js_state />
-              </second_editor>
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="backtracking.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/algorithms/backtracking.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
             <state split_layout="FIRST">
-              <first_editor relative-caret-position="15">
+              <first_editor relative-caret-position="840">
                 <caret line="56" column="0" lean-forward="false" selection-start-line="56" selection-start-column="0" selection-end-line="56" selection-end-column="0" />
                 <folding />
               </first_editor>
@@ -188,13 +105,87 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="most_important.md" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/algorithms/most_important.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="FIRST">
+              <first_editor relative-caret-position="544">
+                <caret line="74" column="0" lean-forward="true" selection-start-line="74" selection-start-column="0" selection-end-line="74" selection-end-column="0" />
+                <folding />
+              </first_editor>
+              <second_editor>
+                <js_state />
+              </second_editor>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="argument_passing.md" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/c++/argument_passing.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="FIRST">
+              <first_editor relative-caret-position="514">
+                <caret line="48" column="14" lean-forward="true" selection-start-line="48" selection-start-column="14" selection-end-line="48" selection-end-column="14" />
+                <folding />
+              </first_editor>
+              <second_editor>
+                <js_state />
+              </second_editor>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="the_c++_programming_lang_advice.md" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/c++/the_c++_programming_lang_advice.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="FIRST">
+              <first_editor relative-caret-position="405">
+                <caret line="270" column="77" lean-forward="true" selection-start-line="270" selection-start-column="77" selection-end-line="270" selection-end-column="77" />
+                <folding />
+              </first_editor>
+              <second_editor>
+                <js_state>
+                  <onLoadScroll type="JSON" value="{&quot;x&quot;:0,&quot;y&quot;:640}" />
+                </js_state>
+              </second_editor>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="debugging_to_remember.md" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/debugging_to_remember.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="FIRST">
+              <first_editor relative-caret-position="562">
+                <caret line="81" column="28" lean-forward="false" selection-start-line="81" selection-start-column="23" selection-end-line="81" selection-end-column="28" />
+                <folding />
+              </first_editor>
+              <second_editor>
+                <js_state />
+              </second_editor>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="bitwise_review.md" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/bitwise_review.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="FIRST">
+              <first_editor relative-caret-position="450">
+                <caret line="30" column="21" lean-forward="false" selection-start-line="30" selection-start-column="21" selection-end-line="30" selection-end-column="21" />
+                <folding />
+              </first_editor>
+              <second_editor>
+                <js_state />
+              </second_editor>
+            </state>
+          </provider>
+        </entry>
+      </file>
     </leaf>
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>red</find>
-      <find>min</find>
-      <find>incident</find>
       <find>\n([^#]*)\n</find>
       <find>rotate right</find>
       <find>link x</find>
@@ -222,15 +213,18 @@
       <find>TODO</find>
       <find>LZW</find>
       <find>real number</find>
+      <find>source</find>
+      <find>focus</find>
+      <find>;.*\n</find>
     </findStrings>
     <replaceStrings>
       <replace>##</replace>
       <replace>minmax</replace>
-      <replace>\n</replace>
       <replace>\n\n#</replace>
       <replace>\n\n</replace>
       <replace>log(n)</replace>
       <replace>-</replace>
+      <replace>\n</replace>
     </replaceStrings>
     <dirStrings>
       <dir>$PROJECT_DIR$</dir>
@@ -243,8 +237,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/concurrency.md" />
-        <option value="$PROJECT_DIR$/algorithms/c_strings.md" />
         <option value="$PROJECT_DIR$/bash_to_remember.md" />
         <option value="$PROJECT_DIR$/c++/type_and_memory_safety.md" />
         <option value="$PROJECT_DIR$/algorithms/generalizations.md" />
@@ -278,7 +270,6 @@
         <option value="$PROJECT_DIR$/tmp.json" />
         <option value="$PROJECT_DIR$/algorithms/searching.md" />
         <option value="$PROJECT_DIR$/algorithms/hashing.md" />
-        <option value="$PROJECT_DIR$/algorithms/most_important.md" />
         <option value="$PROJECT_DIR$/algorithms/sorting.md" />
         <option value="$PROJECT_DIR$/algorithms/heaps_and_priority_queues.md" />
         <option value="$PROJECT_DIR$/algorithms/caching.md" />
@@ -294,6 +285,9 @@
         <option value="$PROJECT_DIR$/algorithms/TODOS.md" />
         <option value="$PROJECT_DIR$/algorithms/growth_of_functions.md" />
         <option value="$PROJECT_DIR$/algorithms/sets.md" />
+        <option value="$PROJECT_DIR$/algorithms/most_important.md" />
+        <option value="$PROJECT_DIR$/c++/argument_passing.md" />
+        <option value="$PROJECT_DIR$/c++/the_c++_programming_lang_advice.md" />
       </list>
     </option>
   </component>
@@ -304,9 +298,8 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="840" />
     <option name="y" value="23" />
-    <option name="width" value="840" />
+    <option name="width" value="1680" />
     <option name="height" value="1023" />
   </component>
   <component name="ProjectLevelVcsManager">
@@ -328,6 +321,7 @@
     </navigator>
     <panes>
       <pane id="Scope" />
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -350,13 +344,26 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
+              <option name="myItemId" value="c++" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Notes" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Notes" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
               <option name="myItemId" value="algorithms" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -619,12 +626,19 @@
       <workItem from="1488225584919" duration="1890000" />
       <workItem from="1488256155905" duration="3947000" />
       <workItem from="1488297353979" duration="10335000" />
-      <workItem from="1488320688600" duration="5626000" />
+      <workItem from="1488320688600" duration="5667000" />
+      <workItem from="1488334315448" duration="995000" />
+      <workItem from="1488374522584" duration="374000" />
+      <workItem from="1488479229105" duration="189000" />
+      <workItem from="1488554813144" duration="226000" />
+      <workItem from="1488568085395" duration="164000" />
+      <workItem from="1488574386545" duration="402000" />
+      <workItem from="1488600308726" duration="4916000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="487267000" />
+    <option name="totallyTimeSpent" value="494574000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -636,15 +650,14 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="840" y="23" width="840" height="1023" extended-state="0" />
-    <editor active="true" />
+    <frame x="0" y="23" width="1680" height="1023" extended-state="6" />
+    <editor active="false" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.21666667" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.108333334" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="DB Browser" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="DB Execution Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32967034" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3126873" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
@@ -655,6 +668,7 @@
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32967034" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
     </layout>
@@ -696,30 +710,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/c++/initialization.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="4620">
-            <caret line="308" column="61" lean-forward="false" selection-start-line="308" selection-start-column="61" selection-end-line="308" selection-end-column="61" />
-          </first_editor>
-          <second_editor>
-            <js_state />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/c++/string_operations_to_memorize.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="375">
-            <caret line="25" column="35" lean-forward="false" selection-start-line="25" selection-start-column="35" selection-end-line="25" selection-end-column="35" />
-          </first_editor>
-          <second_editor>
-            <js_state />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/bash_to_remember.md">
       <provider editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -826,19 +816,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/bitwise_review.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="450">
-            <caret line="30" column="21" lean-forward="false" selection-start-line="30" selection-start-column="21" selection-end-line="30" selection-end-column="21" />
-            <folding />
-          </first_editor>
-          <second_editor>
-            <js_state />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/c++/the_c++_standard_library.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
@@ -869,19 +846,6 @@
         <state split_layout="FIRST">
           <first_editor relative-caret-position="8280">
             <caret line="552" column="14" lean-forward="false" selection-start-line="552" selection-start-column="3" selection-end-line="552" selection-end-column="14" />
-            <folding />
-          </first_editor>
-          <second_editor>
-            <js_state />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/debugging_to_remember.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="5730">
-            <caret line="382" column="0" lean-forward="false" selection-start-line="382" selection-start-column="0" selection-end-line="382" selection-end-column="0" />
             <folding />
           </first_editor>
           <second_editor>
@@ -1138,19 +1102,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/algorithms/most_important.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="285">
-            <caret line="19" column="0" lean-forward="false" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
-            <folding />
-          </first_editor>
-          <second_editor>
-            <js_state />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/trees_implementation.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
@@ -1195,23 +1146,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/algorithms/multithreading_and_parallelism.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="1260">
-            <caret line="84" column="93" lean-forward="false" selection-start-line="84" selection-start-column="93" selection-end-line="84" selection-end-column="93" />
-            <folding />
-          </first_editor>
-          <second_editor>
-            <js_state />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/algorithms/memory_management.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="512">
+          <first_editor relative-caret-position="6285">
             <caret line="419" column="28" lean-forward="false" selection-start-line="419" selection-start-column="28" selection-end-line="419" selection-end-column="28" />
             <folding />
           </first_editor>
@@ -1229,7 +1167,7 @@
       </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="205">
+          <first_editor relative-caret-position="4215">
             <caret line="281" column="2" lean-forward="false" selection-start-line="281" selection-start-column="2" selection-end-line="281" selection-end-column="2" />
             <folding />
           </first_editor>
@@ -1247,7 +1185,7 @@
       </provider>
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="527">
+          <first_editor relative-caret-position="7080">
             <caret line="472" column="0" lean-forward="false" selection-start-line="472" selection-start-column="0" selection-end-line="472" selection-end-column="0" />
             <folding />
           </first_editor>
@@ -1260,7 +1198,7 @@
     <entry file="file://$PROJECT_DIR$/algorithms/compression.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="407">
+          <first_editor relative-caret-position="2415">
             <caret line="161" column="50" lean-forward="false" selection-start-line="161" selection-start-column="50" selection-end-line="161" selection-end-column="50" />
             <folding />
           </first_editor>
@@ -1273,7 +1211,7 @@
     <entry file="file://$PROJECT_DIR$/algorithms/backtracking.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="15">
+          <first_editor relative-caret-position="840">
             <caret line="56" column="0" lean-forward="false" selection-start-line="56" selection-start-column="0" selection-end-line="56" selection-end-column="0" />
             <folding />
           </first_editor>
@@ -1296,11 +1234,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/algorithms/TODOS.md">
+    <entry file="file://$PROJECT_DIR$/algorithms/sets.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="527">
-            <caret line="50" column="0" lean-forward="true" selection-start-line="50" selection-start-column="0" selection-end-line="50" selection-end-column="0" />
+          <first_editor relative-caret-position="450">
+            <caret line="30" column="21" lean-forward="false" selection-start-line="30" selection-start-column="21" selection-end-line="30" selection-end-column="21" />
             <folding />
           </first_editor>
           <second_editor>
@@ -1309,11 +1247,91 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/algorithms/sets.md">
+    <entry file="file://$PROJECT_DIR$/algorithms/multithreading_and_parallelism.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
         <state split_layout="FIRST">
-          <first_editor relative-caret-position="362">
-            <caret line="35" column="18" lean-forward="true" selection-start-line="35" selection-start-column="18" selection-end-line="35" selection-end-column="18" />
+          <first_editor relative-caret-position="1260">
+            <caret line="84" column="93" lean-forward="false" selection-start-line="84" selection-start-column="93" selection-end-line="84" selection-end-column="93" />
+            <folding />
+          </first_editor>
+          <second_editor>
+            <js_state />
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/debugging_to_remember.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="562">
+            <caret line="81" column="28" lean-forward="false" selection-start-line="81" selection-start-column="23" selection-end-line="81" selection-end-column="28" />
+            <folding />
+          </first_editor>
+          <second_editor>
+            <js_state />
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/bitwise_review.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="450">
+            <caret line="30" column="21" lean-forward="false" selection-start-line="30" selection-start-column="21" selection-end-line="30" selection-end-column="21" />
+            <folding />
+          </first_editor>
+          <second_editor>
+            <js_state />
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/algorithms/most_important.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="544">
+            <caret line="74" column="0" lean-forward="true" selection-start-line="74" selection-start-column="0" selection-end-line="74" selection-end-column="0" />
+            <folding />
+          </first_editor>
+          <second_editor>
+            <js_state />
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/c++/argument_passing.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="514">
+            <caret line="48" column="14" lean-forward="true" selection-start-line="48" selection-start-column="14" selection-end-line="48" selection-end-column="14" />
+            <folding />
+          </first_editor>
+          <second_editor>
+            <js_state />
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/c++/the_c++_programming_lang_advice.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="405">
+            <caret line="270" column="77" lean-forward="true" selection-start-line="270" selection-start-column="77" selection-end-line="270" selection-end-column="77" />
+            <folding />
+          </first_editor>
+          <second_editor>
+            <js_state>
+              <onLoadScroll type="JSON" value="{&quot;x&quot;:0,&quot;y&quot;:640}" />
+            </js_state>
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/algorithms/TODOS.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="FIRST">
+          <first_editor relative-caret-position="750">
+            <caret line="50" column="0" lean-forward="false" selection-start-line="50" selection-start-column="0" selection-end-line="50" selection-end-column="0" />
             <folding />
           </first_editor>
           <second_editor>
