@@ -1,7 +1,7 @@
 # Effective C++
 ## Accustoming Yourself to C++
 1. View C++ as a federation of languages
-2. Prefer consts, enums, and inlines to ##defines
+2. Prefer consts, enums, and inlines to #defines
 3. Use const whenever possible
 4. Make sure that objects are initialized before they're used
 
@@ -29,8 +29,8 @@
 21. Don't try to return a reference when you must return an object
 22. Declare data members private
 23. Prefer non-member non-friend functions to member functions
-24. Declare non-member functions when type conversions should apply to all
-    parameters
+24. Declare non-member functions when type conversions should
+    apply to all parameters
 25. Consider support for a non-throwing swap
 
 ## Implementations
@@ -92,9 +92,9 @@
 9. Use destructors to prevent resource leaks
 10. Prevent resource leaks in constructors
 11. Prevent exceptions from leaving destructors
-12. Understand how throwing an exception differs from passing a parameter or
-    calling a virtual function
-13. Catch exceptions be reference
+12. Understand how throwing an exception differs from
+    passing a parameter or calling a virtual function
+13. Catch exceptions by reference
 14. Use exception specifications judiciously
 15. Understand the costs of exception handling
 
@@ -107,8 +107,8 @@
 21. Overload to avoid implicit type conversions
 22. Consider using op= instead of stand-alone op
 23. Consider alternative libraries
-24. Understand the costs of virtual functions, multiple inheritance, virtual
-    base classes, and RTTI
+24. Understand the costs of virtual functions, multiple
+    inheritance, virtual base classes, and RTTI
 
 # Techniques
 25. Virtualizing constructors and non-member functions
@@ -117,7 +117,8 @@
 28. Smart pointers
 29. Reference counting
 30. Proxy classes
-31. Making functions virtual with respect to more than one object
+31. Making functions virtual with respect to more than one
+    object
 
 # Miscellany
 32. Program in the future tense
@@ -130,25 +131,28 @@
 # Effective STL
 ## Containers
 1. Choose your containers with care
-2. Beware the illusion container independent code
+2. Beware the illusion of container independent code
 3. Make copying cheap and correct for objects in containers
 4. Call empty instead of checking size() against zero
 5. Prefer range member functions to their single-element counterparts
 6. Be alert for C++'s most vexing parse
-7. When using containers of newed pointers, remember to delete the pointers
-   when the container is destroyed
+7. When using containers of newed pointers, remember to delete
+   the pointers when the container is destroyed
 8. Never create containers of auto_pts
 9. Choose carefully among erasing options
 10. Be aware of allocator conventions and restrictions
 11. Understand the legitimate uses of custom allocators
-12. Have realistic expectations about the thread safety of STL containers
+12. Have realistic expectations about the thread safety of STL
+    containers
 
 ## vector and string
 13. Prefer vector and string to dynamically allocated arrays
 14. Use reserve to avoid unnecessary reallocations
-15. Be aware of variations in string implementations (some removed by C++11)
+15. Be aware of variations in string implementations (some
+    removed by C++11)
 16. Know how to pass vector and string data to legacy APIs
-17. Use "the swap trick" to trim excess capacity (use .shrink_to_fit after C++11)
+17. Use "the swap trick" to trim excess capacity (use
+    .shrink_to_fit after C++11)
 18. Avoid using vector<bool>
 
 ## Associative Containers
@@ -157,40 +161,45 @@
 21. Always have comparison functions return false for equal values
 22. Avoid in-place key modification in set and multiset
 23. Consider replacing associative containers with sorted vectors
-24. Choose carefully between `map::operator[]` and map::insert when efficiency
-    is important
+24. Choose carefully between `map::operator[]` and
+    map::insert when efficiency is important
 25. Familiarize yourself with the nonstandard hashed containers
 
 ## Iterators
-26. Prefer iterator to const_iterator, reverse_iterator, and const_reverse_iterator
-27. Use distance and advance to convert a container's const_iterators to iterators
+26. Prefer iterator to const_iterator, reverse_iterator,
+    and const_reverse_iterator
+27. Use distance and advance to convert a container's
+    const_iterators to iterators
 28. Understand how to use reverse iterator's base iterator
-29. Consider isterambuf iterators for character-by-character input
+29. Consider istreambuf iterators for character-by-character input
 
 ## Algorithms
 30. Make sure destination ranges are big enough
 31. Know your sorting options
-32. Follow remove-like algorithms by erase if you really want to remove something
+32. Follow remove-like algorithms by erase if you really want
+    to remove something
 33. Be wary of remove-like algorithms on containers of pointers
 34. Note which algorithms expect sorted ranges
-35. Implement simple case-insensitive string comparisons via mismatch or
-    lexicographical_compare
+35. Implement simple case-insensitive string comparisons via
+    mismatch or lexicographical_compare
 36. Understand the proper implementation of copy_if
 37. Use accumulate or for_each to summarize ranges
 
 ## Functors, Functor Classes, Functions, etc
-38. Design functor classes for passs-by-value
+38. Design functor classes for pass-by-value
 39. Make predicates pure functions
 40. Make functor classes adaptable
-41. Understand the reasons for ptr_fun, mem_fun, and mem_fun_ref
+41. Understand the reasons for ptr_fun, mem_fun, and
+    mem_fun_ref
 42. Make sure less<t> means operator<
 
 ## Programming with the STL
 43. Prefer algorithm calls to hand-written loops
 44. Prefer member functions to algorithms with the same names
-45. Distinguish among count, find, binary_search, lower_bound, upper_bound, and
-    equal_range
-46. Consider function objects instead of functions as algorithm parameters
+45. Distinguish among count, find, binary_search, lower_bound,
+    upper_bound, and equal_range
+46. Consider function objects instead of functions as algorithm
+    parameters
 47. Avoid producing write-only code
 48. Always #include the proper headers
 49. Learn to decipher STL-related compiler diagnostics
@@ -207,7 +216,8 @@
 
 ## auto
 5. Prefer auto to explicit type declarations
-6. Use the explicitly typed initializer idiom when auto deduces undesired types
+6. Use the explicitly typed initializer idiom when auto
+   deduces undesired types
 
 ## Moving to Modern C++
 7. Distinguish between () and {} when creating objects
@@ -223,22 +233,30 @@
 17. Understand special member function generation
 
 ## Smart Pointers
-18. Use std::unique_ptr for exclusive-ownership resource management
-19. Use std::hared_ptr for shared-ownership resource management
-20. Use std::weak_ptr for std::shared_ptr-like pointers that can dangle
-21. Prefer std::make_unique and std::make_shared to direct use of new
-22. When using the Pimpl idiom, define special member functions in the
-    implementation file
+18. Use std::unique_ptr for exclusive-ownership resource
+    management
+19. Use std::shared_ptr for shared-ownership resource
+    management
+20. Use std::weak_ptr for std::shared_ptr-like pointers that
+    can dangle
+21. Prefer std::make_unique and std::make_shared to direct
+    use of new
+22. When using the Pimpl idiom, define special member
+    functions in the implementation file
 
 ## Rvalue References, Move Semantics, and Perfect Forwarding
 23. Understand std::move and std::forward
 24. Distinguish universal references from rvalue references
-25. Use std::move on rvalue references, std::forward on universal references
+25. Use std::move on rvalue references, std::forward on
+    universal references
 26. Avoid overloading on universal references
-27. Familiarize yourself with overloading on universal references
+27. Familiarize yourself with overloading on universal
+    references
 28. Understand reference collapsing
-29. Assume that move operations are not present, are not cheap, and not used
-30. Familiarize yourself with perfect forwarding failure cases
+29. Assume that move operations are not present, are not
+    cheap, and not used
+30. Familiarize yourself with perfect forwarding failure
+    cases
 
 ## Lambda Expressions
 31. Avoid default capture modes
@@ -255,6 +273,6 @@
 40. Use std::atomic for concurrency, volatile for special memory
 
 ## Tweaks
-41. Consider pass-by-value for copyable parameters that are cheap to move
-    and always copied
+41. Consider pass-by-value for copyable parameters that are
+    cheap to move and always copied
 42. Consider emplacement instead of insertion

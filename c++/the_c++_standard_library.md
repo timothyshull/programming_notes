@@ -761,7 +761,19 @@ string              random access
 - rend
 ## Inserting and Removing Elements
 ### Inserting Single Elements
+- void container::insert(init-list)
+    - inserts copies
+    - references remain valid
+    - associative containers iterators remain valid
+    - unordered containers - iterators remain valid if no rehashing is forced
+    - s ms m mm us ums um umm
 - iterator container::insert(const T& value)
+Inserts copies of the elements of initializer-list at the position of iterator pos.
+    - returns the position of the first inserted element or pos if initializer-list is empty.
+    - for vectors, this operation invalidates iterators and references to other elements if reallocation happens (the new number of elements exceeds the previous capacity).
+    - for deques, this operation invalidates iterators and references to other elements.
+    - for lists, the function either succeeds or has no effect.
+    - v d l s
 - iterator container::insert(T&& value)
 - pair<iterator,bool> container::insert(const T& value)
 - pair<iterator,bool> container::insert (T&& value)
@@ -787,6 +799,134 @@ string              random access
     - v d l str
 - emplace_back(args)
     - v d l
+
+### Inserting Multiple Elements
+- void container::insert (initializer-list)
+    - inserts copies of the elements of initializer-list into an associative container
+    - for all containers, references to existing elements remain valid
+    - for associative containers, all iterators to existing elements remain valid
+    - for unordered containers, iterators to existing elements remain valid if no rehashing is forced
+      (if the number of resulting elements is equal to or greater than the bucket count times the maximum load factor)
+    - s ms m mm us ums um umm
+
+- iterator container::insert (const_iterator pos, initializer-list)
+    - inserts copies of the elements of initializer-list at the position of iterator pos
+    - returns the position of the first inserted element or pos if initializer-list is empty
+    - for vectors, this operation invalidates iterators and references to other elements if
+      reallocation happens (the new number of elements exceeds the previous capacity)
+    - for deques, this operation invalidates iterators and references to other elements
+    - for lists, the function either succeeds or has no effect.
+    - v d l str
+
+- iterator container::insert (const_iterator pos, size_type num, const T& value)
+    - inserts num copies of value at the position of iterator pos
+    - returns the position of the first inserted element or pos if num==0 (before c++11. nothing was returned)
+    - for vectors, this operation invalidates iterators and references to other elements
+      if reallocation happens (the new number of elements exceeds the previous capacity)
+    - for deques, this operation invalidates iterators and references to other elements
+    - t is the type of the container elements. thus, for maps and multimaps, it is a key/value pair
+    - for strings, value is passed by value
+    - for vectors and deques, if the copy/move operations (constructor and assignment operator) of
+      the elements don’t throw, the function either succeeds or has no effect. for lists, the function
+      either succeeds or has no effect
+    - before c++11, type iterator was used instead of const_iterator and the return type was void
+    - v d l str
+
+- void container::insert (InputIterator beg, InputIterator end)
+    - inserts copies of all elements of the range [beg,end) into the associative container
+    - this function is a member template
+    - the elements of the source range may have any type convertible into the element type of the container
+    - for all containers, references to existing elements remain valid
+    - for associative containers, all iterators to existing elements remain valid
+    - for unordered containers, iterators to existing elements remain valid if no rehashing is forced
+      (if the number of resulting elements is equal to or greater than the bucket count times the maximum load factor)
+    - the function either succeeds or has no effect, provided that for unordered containers the hash function does not throw
+    - s ms m mm us ums um umm
+
+- iterator container::insert (const_iterator pos, InputIterator beg, InputIterator end)
+    - inserts copies of all elements of the range [beg,end) at the position of iterator pos
+    - returns the position of the first inserted element or pos if beg==end (before c++11, nothing was returned)
+    - this function is a member template
+    - the elements of the source range may have any type convertible into the element type of the container
+    - for vectors, this operation invalidates iterators and references to other
+    - elements if reallocation happens (the new number of elements exceeds the previous capacity)
+    - for vectors and deques, this operation might invalidate iterators and references to other elements
+    - for lists, the function either succeeds or has no effect
+    - before c++11, type iterator was used instead of const_iterator and the return type was void
+    - v d l str
+
+
+### Removing Elements
+size_type container::erase(const T& value)
+    - removes all elements equivalent to value from an associative or unordered container
+    - returns the number of removed elements
+    - calls the destructors of the removed elements
+    - T is the type of the sorted value:
+        - for (unordered) sets and multisets, it is the type of the elements
+        - for (unordered) maps and multimaps, it is the type of the keys
+    - the function does not invalidate iterators and references to other elements
+    - the function may throw if the comparison test or hash function object throws
+    - for (forward) lists, remove() provides the same functionality
+    - for other containers, the remove() algorithm can be used
+    - provided by set, multiset, map, multimap, unordered set, unordered multiset, unordered map, unordered multimap.
+    - s ms m mm us ums um umm
+
+- iterator container::erase (const_iterator pos)
+    - removes the element at the position of iterator pos
+    - returns the position of the following element (or end())
+    - calls the destructor of the removed element
+    - the caller must ensure that the iterator pos is valid. for example: coll.erase(coll.end()); // error -> undefined behavior
+    - for vectors and deques, this operation might invalidate iterators and references to other elements
+    - for all other containers, iterators and references to other elements remain valid
+    - for vectors, deques, and lists, the function does not throw
+    - for associative and unordered containers, the function may throw if the comparison test or hash function object throws
+    - before C++11, the return type was void for associative containers, and type iterator was used instead of const_iterator
+    - for sets that use iterators as elements, calling erase() might be ambiguous since C++11
+    - C++11 currently gets fixed to provide overloads for both erase(iterator) and erase(const_iterator)
+    - v d l s ms m mm us ums um umm str
+
+- iterator container::erase (const_iterator beg, const_iterator end)
+    - removes the elements of the range [beg,end)
+    - returns the position of the element that was behind the last removed element on entry (or end())
+    - as always for ranges, all elements, including beg but excluding end, are removed
+    - calls the destructors of the removed elements
+    - the caller must ensure that beg and end define a valid range that is part of the container
+    - for vectors and deques, this operation might invalidate iterators and references to other elements
+    - for all other containers, iterators and references to other elements remain valid
+    - for vectors, deques, and lists the function does not throw
+    - for associative and unordered containers, the function may throw if the comparison test or hash function object throws
+    - before C++11, the return type was void for associative containers and type iterator was used instead of const_iterator
+    - v d l s ms m mm us ums um umm str
+
+- void container::pop_front()
+    - removes the first element of the container
+    - is equivalent to
+        - container.erase(container.begin())
+        - container.erase_after(container.before_begin()) for forward lists
+    - if empty, the behavior is undefined
+    - thus, the caller must ensure that the container contains at least one element (!empty())
+    - the function does not throw
+    - iterators and references to other elements remain valid
+    - d l fl
+
+- void container::pop_back()
+    - removes the last element of the container
+    - is equivalent to
+        - container.erase(prev(container.end()))
+    - if empty, the behavior is undefined
+    - the caller must ensure that the container contains at least one element (!empty())
+    - the function does not throw
+    - iterators and references to other elements remain valid
+    - for strings, it is provided since c++11
+    - v d l str
+
+- void container::clear()
+    - removes all elements (empties the container)
+    - calls the destructors of the removed elements
+    - invalidates all iterators and references to elements of the container
+    - for vectors, deques, and strings, it even invalidates any past-the-end-iterator, which was returned by end() or cend()
+    - the function does not throw (before c++11, for vectors and deques, the function could throw if the copy constructor or assignment operator throws)
+    - v d l fl s ms m mm us ums um umm str
 
 ## Special Member Functions for Lists and Forward Lists
 ## Container Policy Interfaces

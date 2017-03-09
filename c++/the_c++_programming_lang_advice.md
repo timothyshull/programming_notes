@@ -11,7 +11,7 @@
 5. Use resource handles and RAII to manage resources
 6. Use abstract classes as interfaces when complete separation of interface and implementation is needed
 7. Use class hierarchies to represent concepts with inherent hierarchical structure
-8. When designing a class hierarchy, distinguish between implementation inheritance and inter- face inheritance
+8. When designing a class hierarchy, distinguish between implementation inheritance and interface inheritance
 9. Control construction, copy, move, and destruction of objects
 10. Return containers by value (relying on move for efficiency)
 11. Provide strong resource safety
@@ -26,7 +26,7 @@
 3. Do not think that the standard library is ideal for everything
 4. Remember to #include the headers for the facilities you use
 5. Remember that standard-library facilities are defined in namespace std
-6. Prefer strings over C-style strings (a char∗
+6. Prefer strings over C-style strings
 7. iostreams are type sensitive, type-safe, and extensible
 8. Prefer vector<T>, map<K,T>, and unordered_map<K,T> over `T[]`
 9. Know your standard containers and their tradeoffs
@@ -66,7 +66,7 @@
 9. Prefer plain char over signed char and unsigned char
 10. Beware of conversions between signed and unsigned types
 11. Declare one name (only) per declaration
-12. Keep common and local names short, and keep uncommon and nonlocal names longer
+12. Keep common and local names short, and keep uncommon and non-local names longer
 13. Avoid similar-looking names
 14. Name an object to reflect its meaning rather than its type
 15. Maintain a consistent naming style
@@ -92,7 +92,7 @@
 9. Prefer const reference arguments to plain reference arguments
 10. Use rvalue references (only) for forwarding and move semantics
 11. Keep pointers that represent ownership inside handle classes
-12. Avoid void∗ except in low-level code
+12. Avoid void* except in low-level code
 13. Use const pointers and const references to express immutability in interfaces
 14. Prefer references to pointers as arguments, except where "no object" is a reasonable option
 
@@ -161,7 +161,7 @@
 11. Pass a pointer if "no object" is a valid alternative (and represent "no object" by nullptr)
 12. Use pass-by-non-const-reference only if you have to
 13. Use const extensively and consistently
-14. Assume that a char∗ or a const char∗ argument points to a C-style string
+14. Assume that a char* or a const char* argument points to a C-style string
 15. Avoid passing arrays as pointers
 16. Pass a homogeneous list of unknown length as an initializer_list<T> (or as some other container)
 17. Avoid unspecified numbers of arguments (...)
@@ -234,7 +234,7 @@
 9. Make headers self-contained
 10. Distinguish between users’ interfaces and implementers’ interfaces
 11. Distinguish between average users’ interfaces and expert users’ interfaces
-12. Avoid nonlocal objects that require run-time initialization in code intended for use as part of non-C++ programs
+12. Avoid non-local objects that require run-time initialization in code intended for use as part of non-C++ programs
 
 # Chapter 16 - Classes
 1. Represent concepts as classes
@@ -301,7 +301,7 @@
 6. Define member operator new() and member operator delete() to control allocation and deallocation of objects of a specific class or hierarchy of classes
 7. Use user-defined literals to mimic conventional notation
 8. Place literal operators in separate namespaces to allow selective use
-9. For nonspecialized uses, prefer the standard string (Chapter 36) to the result of your own exercises
+9. For non-specialized uses, prefer the standard string to the result of your own exercises
 10. Use a friend function if you need a nonmember function to have access to the representation of a class (e.g., to improve notation or to access the representation of two classes)
 11. Prefer member functions to friend functions for granting access to the implementation of a class
 
@@ -322,7 +322,7 @@
 
 # Chapter 21 - Class Hierarchies
 1. Use unique_ptr or shared_ptr to avoid forgetting to delete objects created using new
-2. Avoid date members in base classes intended as interfaces
+2. Avoid data members in base classes intended as interfaces
 3. Use abstract classes to express interfaces
 4. Give an abstract class a virtual destructor to ensure proper cleanup
 5. Use override to make overriding explicit in large class hierarchies
@@ -351,8 +351,12 @@
 4. When defining a template, first design and debug a non-template version adding parameters
 5. Templates are type-safe, but checking happens too late
 6. When designing a template, carefully consider the concepts (requirements) assumed for its template arguments
+
+
 7. If a class template should be copyable, give it a non-template copy constructor and a non-template copy assignment
 8. If a class template should be movable, give it a non-template move constructor and a non-template move assignment
+
+
 9. A virtual function member cannot be a template member function
 10. Define a type as a member of a template only if it depends on all the class template’s arguments
 11. Use function templates to deduce class template argument types
@@ -476,7 +480,7 @@
 4. Use standard-library facilities as a model for flexible, widely usable software
 5. The standard-library facilities are defined in namespace std and found in standard-library headers
 6. A C standard-library header X.h is presented as a C++ standard-library header in <cX>
-7. Do not try to use a standard-library facility without #includeing its header
+7. Do not try to use a standard-library facility without #include-ing its header
 8. To use a range-for on a built-in array, #include<iterator>
 9. Prefer exception-based error handling over return-code-based error handling
 10. Always catch exception& (for standard-library and language support exceptions) and ... (for unexpected exceptions)
