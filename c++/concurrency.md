@@ -1,4 +1,4 @@
-# NOTE: this document is highly incomplete
+# NOTE: this document is incomplete
 - a full section covering C++ concurrency, pthreads, and parallel programming/algorithms, and multithreaded programming/algorithms
   will be added in time
 
