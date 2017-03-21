@@ -1,3 +1,8 @@
+# NOTE: this document is highly incomplete
+- a full section covering C++ concurrency, pthreads, and parallel programming/algorithms, and multithreaded programming/algorithms
+  will be added in time
+
+
 # mutexes and locks
 - a mutex can be locked directly using try_lock and unlock (Lockable concept)
 - std::lock is a function taking a variable number of Lockable arguments and 

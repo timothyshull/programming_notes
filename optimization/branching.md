@@ -1,4 +1,6 @@
-1. make the if clause more likely than the else clause 
+# NOTE: this section is incomplete -> notes for O'Reilly C++ optimization will be added
+
+1. make the if clause more likely than the else clause
     - this allows the processor to take advantage of instructions already in the instruction fetch buffer
     - place early returns (especially for error conditions) in the else statement
 2. compilers optimize for and while loops to move the conditional to the end and then execute an unconditional segement

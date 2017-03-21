@@ -1,3 +1,65 @@
+1. Let’s Get Started
+Creating an Xcode Project
+Getting around in Xcode
+Application Design
+Model-View-Controller
+Creating the MainWindowController class
+Creating the User Interface in Interface Builder
+Adding view objects
+Configuring view objects
+XIB files and NIB files
+Showing the Window
+Making Connections
+Creating an outlet
+Connecting an outlet
+Defining an action method
+Connecting actions
+Creating the Model Layer
+Connecting the Model Layer to the Controller
+Improving Controller Design
+
+2. Swift Types
+Introducing Swift
+Types in Swift
+Using Standard Types
+Inferring types
+Specifying types
+Literals and subscripting
+Initializers
+Properties
+Instance methods
+Optionals
+Subscripting dictionaries
+Loops and String Interpolation
+Enumerations and the Switch Statement
+Enumerations and raw values
+Exploring Apple’s Swift Documentation
+
+3. Structures and Classes
+Structures
+Instance methods
+Operator Overloading
+Classes
+Designated and convenience initializers
+Add an instance method
+Inheritance
+Computed Properties
+Reference and Value Types
+Implications of reference and value types
+Choosing between reference and value types
+Making Types Printable
+Swift and Objective-C
+Working with Foundation Types
+Basic bridging
+Bridging with collections
+Runtime Errors
+More Exploring of Apple’s Swift
+Documentation
+Challenge: Safe Landing
+Challenge: Vector Angle
+
+
+
 # 4. Memory Management
 - value type memory is reclaimed when the object goes out of scope
 - value types that are members of reference types are reclaimed when the
@@ -1092,21 +1154,204 @@ optional func windowWillReturnUndoManager( window: NSWindow) -> NSUndoManager?
 - key window: active window (Cocoa term because it gets keyboard events)
 
 # 12. Archiving
+- object-oriented program is composed of complex graph of interconnected objects
+- archiving is a mechanism to represent this graph as a stream of bytes
+- aka serialization
+- only need properties, property values, and name of class, not methods in archive
+- XIB files use their own archiving and unarchiving (via XML)
+- two steps -> define how to archive and indicate when to archive
 ## NSCoder and NSCoding
-## Encoding Decoding
+- NSCoding protocol
+    - init(coder aDecoder: NSCoder)
+    - encodeWithCoder(aCoder: NSCoder)
+- add to Employee
+- NSCoder is an abstract class
+- will create NSKeyedArchiver and NSKeyedUnarchiver as concrete classes
+## Encoding
+- commonly use encodeObject(anObject: AnyObject?, forKey aKey: String)
+    - triggers encodeWithCoder on anObject
+- NSCoder has the following for common value types
+```
+func encodeBool(boolv: Bool, forKey key: String)
+func encodeDouble(realv: Double, forKey key: String)
+func encodeFloat(realv: Float, forKey key: String)
+func encodeInt(intv: Int32, forKey key: String)
+```
+- inherit from NSCoding in Employee
+```
+func encodeWithCoder(aCoder: NSCoder) {
+    if let name = name { aCoder.encodeObject(name, forKey: "name") }
+    aCoder.encodeFloat( raise, forKey: "raise")
+}
+// or if superclass also implements
+override func encodeWithCoder(aCoder: NSCoder) {
+    super.encodeWithCoder(aCoder)
+    if let name = name { aCoder.encodeObject( name, forKey: "name") }
+    aCoder.encodeFloat( raise, forKey: "raise")
+}
+```
+## Decoding
+- methods for decoding common value types
+```
+func decodeObjectForKey(key: String) -> AnyObject?
+func decodeBoolForKey(key: String) -> Bool
+func decodeDoubleForKey(key: String) -> Double
+func decodeFloatForKey(key: String) -> Float
+func decodeIntForKey(key: String) -> Int32
+```
+- add following methods
+```
+// call super.init(coder:) if it has it
+required init(coder aDecoder: NSCoder) {
+    name = aDecoder.decodeObjectForKey("name") as! String?
+    raise = aDecoder.decodeFloatForKey("raise")
+    super.init()
+}
+// also add init()
+```
+- do not always need to inherit or add init methods in Swift
 ## The Document Architecture
+- composed of 3 classes
+    - NSDocumentController
+    - NSDocument
+    - NSWindowController
+- handles MVC and directly or via array controller
+    - save model data to file
+    - load data from file
+    - give view data to display
+    - handle user input and update model
 ## Info.plist and NSDocumentController
+- Info.plist contains application info
+- indicates whether app is document based (and creates NSDocumentController on load if so)
+- rarely interact with doc controller
+```
+let documentController = NSDocumentController.sharedDocumentController()
+```
 ## NSDocument
+- generally can just subclass and not interact with the rest of the doc architecture
+- may need to add NSWindowController subclasses for view components
+- for save, save all, and save as
+```
+func dataOfType(typeName: String, error outError: NSErrorPointer) -> NSData?
+func fileWrapperOfType(typeName: String!, error outError: NSErrorPointer) -> NSFileWrapper?
+func writeToURL(url: NSURL, ofType typeName: String, error outError: NSErrorPointer)
+```
+- NSErrorPointer -> errors are stored in NSErrorPointer's memory field -> must create
+  error if method fails
+- for open, open recent, revert to saved
+```
+func readFromData(data: NSData, ofType typeName: String, error outError: NSErrorPointer) -> Bool
+func readFromFileWrapper(fileWrapper: NSFileWrapper, ofType typeName: String, error outError: NSErrorPointer) -> Bool
+func readFromURL(url: NSURL, ofType typeName: String, error outError: NSErrorPointer) -> Bool
+```
+- need to call the following to set up the UI after loading
+```
+func windowControllerDidLoadNib(windowController: NSWindowController!)
+// or for revert to saved update UI in load method by checking outlets for nil
+```
+-
+
 ## NSWindowController
+- one instance for each window displayed (in windowControllers property)
+- generally can rely on the default behavior of the single window controller
+- cases for customizing
+    - more than one window on same document i.e. design, CAD, DAW
+    - separate UI controller and model controller logic
 ## Saving and NSKeyedArchiver
+- saving requires an NSData object -> returning this will allow writing to file
+- NSKeyedArchiver has the following method
+```
+class func archivedDataWithRootObject(rootObject: AnyObject) -> NSData
+```
+- encoding is performed through a propagating process of encoding
+- to be able to save
+```
+override func dataOfType(typeName: String, error outError: NSErrorPointer) -> NSData? {
+    // End editing
+    tableView.window?.endEditingFor(nil)
+    // Create an NSData object from the employees array
+    return NSKeyedArchiver.archivedDataWithRootObject(employees)
+}
+```
+- will not throw
 ## Loading and NSKeyedUnarchiver
+- use NSKeyedUnarchiver's method
+```
+class func unarchiveObjectWithData( data: NSData) -> AnyObject?
+```
+- modify Document
+```
+override func readFromData(
+    data: NSData,
+    ofType typeName: String,
+    error outError: NSErrorPointer
+) -> Bool {
+    print("About to read data of type \(typeName).")
+    employees = NSKeyedUnarchiver.unarchiveObjectWithData(data) as! [Employee]
+    return true
+}
+```
+- NSArrayController handles UI updates but will later modify windowControllerDidLoadNib
+- document specifies nib through windowNibName property
 ## Setting the Extension and Icon for the File Type
+- for icon, add .icns file to project by dragging into Supporting Files and copying if necessary
+- for doc type info, select RaiseMan in project navigator
+    - Info
+        - set name, Icon and identifier, and UTI under target info
+        - set UTI Description, Identifier, and Extensions to settings above
+        - Conforms To -> public.data
+- UTI - describes the data contained in the file
+- changes are saved to Info.plist
 ## Application Data and URLs
+- shoebox app (collections of documents of type) should store data in ~/Library/Application Support
+- do not build many of these default URLs manually
+- for common directories, use NSFileManager's URLsForDirectory(_:inDomains:)
+    - ApplicationSupportDirectory
+    - CachesDirectory
+    - DocumentDirectory
+- for the first time, create directory using NSFileManager's createDirectoryAtURL(_:withIntermediateDirectories:attributes:error:)
 ## For the More Curious: Preventing Infinite Loops
+- for archiving object graphs with cycles, NSKeyedArchiver creates objects with tokens
+- if an object is encountered again, only its token is added to the stream
+- when unarchiving, if a token is found with no data, the NSKeyedUnarchiver knows to look
+  up the token in the table
+- the following NSCoder method is often confusing to developers
+```
+func encodeConditionalObject(objv: AnyObject?, forKey key: String)
+```
+- used for when object A has a ref to B but B does not need to be archived
+- if another object has archived B, A adds B's token to stream, otherwise treat as nil
 ## For the More Curious: Creating a Protocol
+- define interface using protocol keyword
+- tagging with @objc adds the ability to add optional methods
 ## For the More Curious: Automatic Document Saving
+- 10.7 and after added auto saving which is triggered by a change count and allows
+  browsing of versions via a Time Machine-like interface
+- opt in
+```
+override class func autosavesInPlace() -> Bool { return true }
+```
+- see Mac App Programming Guide for more info
 ## For the More Curious: Document-Based Applications Without Undo
+- NSDocument keeps track of the number of changes
+```
+func updateChangeCount(change: NSDocumentChangeType)
+```
+- has following types
+    - ChangeDone - increments
+    - ChangeUndone - decrements
+    - ChangeCleared - zeroes
+- window marked dirty when change count is not 0
 ## For the More Curious: Universal Type Identifiers
+- answering question what a file represents is answered in a number of ways
+    - file extensions
+    - creator codes
+    - MIME types
+- Apple's long term solution is UTI
+- hierarchically organized
+- documents can read a set of UTIs (including custom) specified in Info.plist
+- pasteboard also uses UTIs to identify data types
+- see Uniform Type Identifiers Reference guide for more info
 
 # 13. Basic Core Data
 ## Defining the Object Model
@@ -1376,70 +1621,4 @@ optional func windowWillReturnUndoManager( window: NSWindow) -> NSUndoManager?
 ## Local receipt verification
 ## Server-based verification
 
-
-
-
-
-
-
-
-1. Let’s Get Started
-Creating an Xcode Project
-Getting around in Xcode
-Application Design
-Model-View-Controller
-Creating the MainWindowController class
-Creating the User Interface in Interface Builder
-Adding view objects
-Configuring view objects
-XIB files and NIB files
-Showing the Window
-Making Connections
-Creating an outlet
-Connecting an outlet
-Defining an action method
-Connecting actions
-Creating the Model Layer
-Connecting the Model Layer to the Controller
-Improving Controller Design
-
-2. Swift Types
-Introducing Swift
-Types in Swift
-Using Standard Types
-Inferring types
-Specifying types
-Literals and subscripting
-Initializers
-Properties
-Instance methods
-Optionals
-Subscripting dictionaries
-Loops and String Interpolation
-Enumerations and the Switch Statement
-Enumerations and raw values
-Exploring Apple’s Swift Documentation
-
-3. Structures and Classes
-Structures
-Instance methods
-Operator Overloading
-Classes
-Designated and convenience initializers
-Add an instance method
-Inheritance
-Computed Properties
-Reference and Value Types
-Implications of reference and value types
-Choosing between reference and value types
-Making Types Printable
-Swift and Objective-C
-Working with Foundation Types
-Basic bridging
-Bridging with collections
-Runtime Errors
-More Exploring of Apple’s Swift
-Documentation
-Challenge: Safe Landing
-Challenge: Vector Angle
 
