@@ -857,14 +857,14 @@
 
 
 # Overview
-## creational - cab feet per second (cab fps)
+## creational
 - abstract factory
 - builder
 - factory method
 - prototype
 - singleton
 
-## structural - structure of abcd ffp
+## structural
 - adapter
 - bridge
 - composite
@@ -873,7 +873,7 @@
 - flyweight
 - proxy
 
-## behavioral - behavior of cciimm oss tv
+## behavioral
 - chain of responsibility
 - command
 - interpreter
