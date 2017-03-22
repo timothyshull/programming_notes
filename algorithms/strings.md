@@ -1,6 +1,8 @@
 https://www.gnu.org/software/libc/manual/html_node/String-and-Array-Utilities.html
 
 # simple string processing
+## NOTE: in general avoid many of these unsafe C-string functions (see CERT)
+## glibc docs explicitly state that usage of strcat is the sign of a lazy programmer
 ## strlen(a)
 ```
 int i;

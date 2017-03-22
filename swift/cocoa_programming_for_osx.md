@@ -1354,42 +1354,514 @@ func updateChangeCount(change: NSDocumentChangeType)
 - see Uniform Type Identifiers Reference guide for more info
 
 # 13. Basic Core Data
+- core data handles writing data objects (i.e. generates the object definition from
+  a schema), saving, loading, and undo
 ## Defining the Object Model
+- must define the managed object model
+- entities: similar to object, has attributes (value types) and relationships (refs to
+  other objects)
+- stored in an .xcdatamodeld file and instance of NSManagedObjectModel class
+- documents subclass NSPersistentDocument to manage reading and saving
+- NSManagedObjectContext manages all of the entities (create, get, delete)
+  (managedObjectContext property on NSPersistentDocument)
+- NSManagedObject is the base class for models
+- create Xcode project
+    - document based
+    - ignore extension
+    - use core data
+- open Document.xcdatamodeld
+    - Add Entity -> Car
+        - condition -> Integer 16
+        - datePurchased -> Date
+        - makeModel -> String
+        - onSpecial -> Boolean
+        - photo -> Transformable
+        - price -> Decimal
 ## Configure the Array Controller
-## Add the Views Connections and Bindings
+- add array controller
+- Bindings Inspector
+    - Bind to -> File's Owner
+    - Model Key Path -> managedObjectContext
+- Attributes Inspector
+    - Object Controller
+        - Mode -> Entity Name
+        - Entity Name -> Car
+        - Prepares Content -> On
+- Prepares Content to on makes the controller fetch immediately after creation
+- to add a label to an object in IB
+    - Identity Inspector
+        - Label -> value
+- set NSArrayController's label to Cars
+## Add the Views
+- add a table view
+- Attributes Inspector
+    - Columns -> 3
+- Column names -> Make/Model, Price, Special
+- Delete the table cell view in the first column and drop and drop an Image & Text
+  Table Cell View onto it
+- add a number formatter to second column
+    - Style -> Currency
+- remove table cell view in third column and replace with a checkbox (Check Box Cell)
+- Attributes Inspector for text fields in Make/Model column and Price column
+    - Editable -> X
+- add add and remove buttons, NSDatePicker, NSImage (Image Wells), NSLevelIndicator,
+  and 2 labels
+- NSImageView
+    - Attributes Inspector
+        - Editable -> X
+- NSLevelIndicator
+    - Attributes Inspector
+        - Level Indicator
+            - Style -> Rating
+            - State -> Editable (X)
+        - Value
+            - Minimum -> 0
+            - Maximum -> 5
+- Select date picker, image view, 2 labels, and level indicator
+    - top menu
+        - Editor
+            - Embed In
+                - Box
+## Connections and Bindings
+- table view
+    - Content -> arrangedObjects of Car
+    - Model Key Path -> ""
+    - Selection Indexes -> selectionIndexes of Car
+- each column's table cell view
+     - First
+        - Image View
+            - Binding -> Value
+            - Bind to -> Table Cell View
+            - Controller Key -> ""
+            - Key Path -> objectValue
+        - Text Field
+            - Binding -> Value
+            - Bind to -> Table Cell View
+            - Controller Key -> ""
+            - Key Path -> objectValue
+     - Second
+        - Binding -> Value
+        - Bind to -> Table Cell View
+        - Controller Key -> ""
+        - Key Path -> objectValue
+     - Third
+        - Binding -> Value
+        - Bind to -> Table Cell View
+        - Controller Key -> ""
+        - Key Path -> objectValue
+- add button -> action s/b add:
+- remove button -> action s/b remove:
+    - Bindings Inspector
+        - Enabled -> Cars array controller
+        - Controller Key -> canRemove
+        - Model Key Path -> ""
+- detail controls bindings
+    - textual date picker with stepper
+        - Binding -> Value
+        - Bind to -> Cars
+        - Controller Key -> selection
+        - Key Path -> datePurchased
+    - rating level indicator
+        - Binding -> Value
+        - Bind to -> Cars
+        - Controller Key -> selection
+        - Key Path -> condition
+    - image well
+        - Binding -> Value
+        - Bind to -> Cars
+        - Controller Key -> selection
+        - Key Path -> photo
+        - Conditionally Set Editable -> X
+- NSBox
+    - Title With Pattern
+        - Display Pattern Title1 -> Cars
+    - Controller Key -> selection
+    - Model Key Path -> makeModel
+    - Display Pattern -> Details for %{title}@
+    - No Selection Placeholder -> <no selection>
+    - Null Placeholder -> <no Make/Model>
+- first two column text fields
+    - Font Bold
+        - Value -> Table Cell View
+        - Controller Key -> ""
+        - Model Key Path -> objectValue.onSpecial
 ## How Core Data Works
+- NSPersistentDocument reads in the model and creates NSManagedObjectModel
+- object model has 1 NSEntityDescription (describes Car)
+    - has several instances of NSAttributeDescription
+- doc creates instance of NSPersistentStoreCoordinator and NSManagedObjectContext
+- NSManagedObjectContext fetches instances of NSManagedObject from the object store
+- while objects are in memory, context observes them
+    - when changed, registers undo with NSUndoManager
+    - knows when objects need to be saved on change
+- NSManagedObjectContext is the object most interacted with by programmers
+    - fetch objects and save change to object graph
 ## Fetching Objects from the NSManagedObjectContext
+- create NSFetchRequest (typically only used once)
+    - use name of entity
+    - add NSPredicate and NSSortDescriptor to manage filtering and sorting
+```
+// Build the fetch request:
+let fetchRequest = NSFetchRequest(entityName: "Car")
+fetchRequest.predicate = NSPredicate(format: "price > = 1000")
+fetchRequest.sortDescriptors = [NSSortDescriptor( key: "makeModel", ascending: true)]
+// Execute the fetch request:
+var error: NSError?
+let fetchResult: [AnyObject]? = managedObjectContext.executeFetchRequest(fetchRequest, error: &error)
+
+// usage
+if let cars = fetchResult as? [NSManagedObject] {
+    for car in cars {
+        if let makeModel = car.valueForKey("makeModel") as? String {
+            print(" Fetched car: \( makeModel)")
+        }
+    }
+}
+```
 ## Persistent Store Types
+- supported persistent store types
+    - for saving and loading
+        - SQlite
+        - XML
+        - Binary
+    - caching
+        - In-Memory
+- prefer SQLite for most applications
+- XML is slower
+- Core Data is not a database adapter so you cannot use your own databases with it
+- see Core Data Programming Guide
 ## Choosing a Cocoa Persistence Technology
+- complex topic
+- uses faulting to only load fetched objects
+- handles tracking changes, helping to manage schema versions and more
+- downside is that it is a black box and can be difficult to debug
+- remember NSManagedObject instances are closely tied to the NSManagedObjectContext
+  from which they were fetched
+- archiving and core data both handle saving and loading, core data has speed over
+  the need to save and load the entire object graph
+- prefer core data for medium level persistence needs
 ## Customizing Objects Created by NSArrayController
+- create CarArrayController.swift and add
+```
+override func newObject() -> AnyObject {
+    let newObj = super.newObject() as! NSObject
+    let now = NSDate() newObj.setValue(now, forKey:" datePurchased")
+    return newObj
+}
+```
+- set class of array controller to CarArrayController in Identity Inspector
 ## Challenge: Begin Editing on Add
+- look at RaiseMan Document.addEmployee(_:)
+- requires an outlet on CarArrayController
 ## Challenge: Implement RaiseMan Using Core Data
 
 # 14. User Defaults
+- store preferences for behavior or appearance in user's defaults database
 ## NSUserDefaults
+- NSUserDefaults class
+- can use factory defaults
+- at an application level, the user modifies preferences
+- NSUserDefaults works with defaults
+    - register, write, and read defaults to reflect user's preferences
+- uses strings for settings like keys in a dictionary
+- shared defaults
+```
+class func standardUserDefaults() -> NSUserDefaults
+// returns the shared defaults object
+```
+- registering defaults
+```
+func registerDefaults(registrationDictionary: [NSObject : AnyObject])
+// registers the factory defaults for the application
+```
+- setting defaults
+```
+func setBool(value: Bool, forKey defaultName: String)
+func setFloat(value: Float, forKey defaultName: String)
+func setInteger(value: Int, forKey defaultName: String)
+func setObject(value: AnyObject?, forKey defaultName: String)
+// set the value for the defaultName default
+// use the method that is correct for the type of value that is being stored
+```
+- removing defaults
+```
+func removeObjectForKey(defaultName: String)
+// removes the value for the defaultName default
+// the application will return to using the value given by the factory defaults or
+// elsewhere
+```
+- reading defaults
+```
+func boolForKey(defaultName: String) -> Bool
+func floatForKey(defaultName: String) -> Float
+func integerForKey(defaultName: String) -> Int
+func objectForKey(defaultName: String) -> AnyObject?
+// read the value for the defaultName default
+// usually this will be the user’s previously stored default
+// value, or, if it has not been set, the factory default
+```
+
 ## Adding User Defaults to SpeakLine
+- use a PreferenceManager wrapper class
+```
+class PreferenceManager {
+    private let userDefaults = NSUserDefaults.standardUserDefaults()
+}
+```
 ## Create Names for the Defaults
+```
+private let activeVoiceKey = "activeVoice"
+private let activeTextKey = "activeText"
+```
+- use global variables to allow compiler to check typos
 ## Register Factory Defaults for the Preferences
+- import Cocoa for NSSpeechSynthesizer
+```
+func registerDefaultPreferences() {
+    let defaults = [
+        activeVoiceKey : NSSpeechSynthesizer.defaultVoice(),
+        activeTextKey : "Able was I ere I saw Elba."
+    ]
+    userDefaults.registerDefaults(defaults)
+}
+
+init() { registerDefaultPreferences() }
+```
+- add init to prevent any code from registering the value for a default before the
+  factory default has been registered
+- add to MainWindowController
+```
+let preferenceManager = PreferenceManager()
+```
 ## Reading the Preferences
+- add computed properties to preference class
+    - activeVoice
+    - activeText
+```
+var activeVoice: String? {
+    get { return userDefaults.objectForKey(activeVoiceKey) as? String }
+}
+var activeText: String? {
+    get { return userDefaults.objectForKey(activeTextKey) as? String }
+}
+```
 ## Reflecting the Preferences in the UI
+- read properties from from PreferenceManager in MainWindowController on window load
+```
+func windowDidLoad() {
+    super.windowDidLoad()
+    updateButtons()
+    speechSynth.delegate = self
+    for voice in voices {
+        print(voiceNameForIdentifier(voice)!)
+    }
+    let defaultVoice = preferenceManager.activeVoice! // **
+    if let defaultRow = find(voices, defaultVoice) {
+        let indices = NSIndexSet(index: defaultRow)
+        tableView.selectRowIndexes(indices, byExtendingSelection: false)
+        tableView.scrollRowToVisible(defaultRow)
+    }
+    textField.stringValue = preferenceManager.activeText! // **
+}
+```
 ## Writing the Preferences to User Defaults
+```
+var activeVoice: String? {
+    set (newActiveVoice) {
+        userDefaults.setObject(newActiveVoice, forKey: activeVoiceKey)
+    }
+    get { return userDefaults.objectForKey( activeVoiceKey) as? String }
+}
+var activeText: String? {
+    set (newActiveText) {
+        userDefaults.setObject(newActiveText, forKey: activeTextKey)
+    }
+    get { return userDefaults.objectForKey( activeTextKey) as? String }
+}
+```
 ## Storing the User Defaults
+- in tableViewSelectionDidChange save user's selection of voice into preferences
+```
+preferenceManager.activeVoice = voice
+```
+- persist spoken text across runs
+    - conform to NSTextFieldDelegate
+    - connect IB text field connection menu
+        - delegate -> File's Owner
+    - implement controlTextDidChange(_:)
+```
+override func controlTextDidChange(notification: NSNotification) {
+    preferenceManager.activeText = textField.stringValue
+}
+```
 ## What Can Be Stored in NSUserDefaults?
+- property list objects: instances of Objective-C classes
+    - NSDictionary
+    - NSArray
+    - NSString
+    - NSNumber
+- plist data structure must be composed entirely of these objects
+- can store any data structure in NSUserDefaults that can be represented
+  as a plist
+- Swift basic types are bridged to these types so they can be stored without issues
 ## Precedence of Types of Defaults
+- highest to lowest priority
+    - CLI args
+        - rarely used on mac OS in production app
+    - application
+        - settings in the user’s defaults database.
+    - global defaults
+        - system-wide defaults
+    - language defaults
+        - based on the user’s preferred language
+    - registered defaults
+        - factory defaults registered at launch
 ## What is the User’s Defaults Database?
+- ~/Library/Preferences/*.plist (can be viewed with Xcode, binary plist files)
+- uses bundle identifier as the name
+- could edit on older OSes but managed by daemon in Mavericks and later
+- use `defaults` command-line tool for Mavericks and later
 ## For the More Curious: Reading/ Writing Defaults from the Command Line
+- read
+```
+defaults read com.apple.dt.Xcode
+```
+- write
+```
+defaults write com.apple.Xcode NSNavLastRootDirectoryForOpen /Users
+```
+- read global defaults
+```
+defaults read NSGlobalDomain
+```
 ## For the More Curious: NSUserDefaultsController
+- to bind to a value from the NSUserDefaults object, use NSUserDefaultsController
+- SpeakLine's text field Bindings Inspector
+    - Bind to -> Shared User Defaults Controller
+    - Controller Key -> values
+    - Model Key Path -> activeTextKey
 ## Challenge: Reset Preferences
+- must update window to reflect changes after reset
 
 # 15. Alerts and Closures
+- use NSAlert to warn user
 ## NSAlert
+- for simple alert
+```
+let alert = NSAlert()
+alert.messageText = "Alert message."
+alert.informativeText = "A more detailed description of the situation."
+alert.addButtonWithTitle("Default")
+alert.addButtonWithTitle("Alternative")
+alert.addButtonWithTitle("Other")
+let result = alert.runModal()
+```
+- NSAlert properties
+    - configure the text that the alert will display
+        - var messageText: String?
+        - var informativeText: String?
+    - configure the images that the alert will display (you can supply an icon but by default the alert will use the application’s icon)
+        - var icon: NSImage!
+        - var alertStyle: NSAlertStyle
+- NSAlert methods
+    - add the buttons on alert
+        - func addButtonWithTitle( title: String) -> NSButton
+    - present
+        - func runModal
+- check result
+```
+let result = alert.runModal()
+switch result {
+    case NSAlertFirstButtonReturn: // The user clicked "Default"
+        break
+    case NSAlertSecondButtonReturn: // The user clicked "Alternative"
+        break
+    case NSAlertThirdButtonReturn: // The user clicked "Other"
+        break
+    default:
+        break
+}
+```
+- automatically adds an OK button if no buttons are added
 ## Modals and Sheets
+- shows modal and blocks until user dismisses the alert
+- can also run as a sheet on top of other windows
+    - stops events for related window
+    - other windows in app will receive events
 ## Completion Handlers and Closures
+- completion handler = callback
+    - wait for user
+    - network
+    - calculations on a separate thread
+- uses closures in Swift
+```
+let say = { (text: String) -> Void in print(" The closure says: \( text)"") }
+say(" Hello")
+```
+- for alerts as sheets, configure alert and then use beginSheetModalForWindow(_:completionHandler:)
+```
+let alert = NSAlert() ...
+let completionHandler = { (response: NSModalResponse) -> Void in print("The user selected \(response).") }
+alert.beginSheetModalForWindow(window, completionHandler: completionHandler)
+```
 ## Closures and capturing
+- can capture constants and variables in enclosing scope
+- captures reference objects with strong reference by default
+- this can cause strong reference cycle
+- solution is a capture list
+```
+chauffeur.completionHandler = { [unowned chauffeur] in chauffeur.sendMessage(" I have arrived at the portico.") }
+```
+- use keywords unowned and weak
+- unowned -> captured reference should never be deallocated before the closure (similar
+  to implicitly unwrapped optional)
+- weak -> treats capture as optional and may be deallocated before closure
+- to capture properties or methods, must use the self reference and can include in capture list
 ## Make the User Confirm the Deletion
-## For the More Curious: Functional Methods and Minimizing Closure ## Syntax
+- in RaiseMan open Document.xib
+    - select table view Attributes Inspector
+        - Selection
+            - Multiple -> X
+- Document -> display alert as sheet and call remove depending on selection
+```
+@IBAction func removeEmployees(sender: NSButton) {
+    let selectedPeople: [Employee] = arrayController.selectedObjects as! [Employee]
+    let alert = NSAlert()
+    alert.messageText = "Do you really want to remove these people?"
+    alert.informativeText = "\(selectedPeople.count) people will be removed."
+    alert.addButtonWithTitle("Remove")
+    alert.addButtonWithTitle("Cancel")
+    let window = sender.window!
+    alert.beginSheetModalForWindow(
+        window,
+        completionHandler: { (response) -> Void in
+            // If the user chose "Remove", tell the array controller to delete the people
+            switch response {
+                // The array controller will delete the selected objects
+                // The argument to remove() is ignored
+                case NSAlertFirstButtonReturn:
+                    self.arrayController.remove(nil)
+                default: break
+            }
+        }
+    )
+}
+```
+- need to change target action on remove button
+    - File's Owner -> removeEmployees:
+## For the More Curious: Functional Methods and Minimizing Closure Syntax
+- map, reduce, filter
+- if closure is last parameter it can sit outside of parens
+- if closure is only parameter, no parens are needed
+- if closure is single statement, can leave off return keyword from closure
+- for simple closures, can use $0, $1, etc for parameters
 ## Challenge: Don’t Fire Them Quite Yet
+- add "Keep, but no raise" button which does not delete employee and sets raise
+  to 0
 ## Challenge: Different Messages for Different Situations
+- modify informativeText to handle various plural cases and display the name of
+  the employee for one person
+- modify messageText to handle various plural cases
 
 # 16. Using Notifications
 ## What Notifications Are
