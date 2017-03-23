@@ -2527,13 +2527,201 @@ override func insertBacktab(sender: AnyObject?) { window?.selectPreviousKeyView(
 
 ## 20. Drawing Text with Attributes
 ## NSFont
+- two types of methods
+    - class methods for getting the font you want
+    - methods for getting metrics on the font, such as letter height
+```
+class func systemFontOfSize(fontSize: CGFloat) -> NSFont!
+class func boldSystemFontOfSize(fontSize: CGFloat) -> NSFont!
+class func labelFontOfSize(fontSize: CGFloat) -> NSFont!
+class func userFontOfSize(fontSize: CGFloat) -> NSFont!
+class func userFixedPitchFontOfSize(fontSize: fontSize: CGFloat) -> NSFont!
+class func titleBarFontOfSize(fontSize: CGFloat) -> NSFont!
+class func messageFontOfSize(fontSize: CGFloat) -> NSFont!
+class func toolTipsFontOfSize(fontSize: CGFloat) -> NSFont!
+
+init(name fontName: String!, size fontSize: CGFloat) -> NSFont
+```
+- recommended to use previous methods over init to maintain consistency with
+  the system
 ## NSAttributedString
+- used to set attributes for a range of a string
+- NSRange
+    - location: Int
+    - length: Int
+- can use NSMakeRange() but faster to use range expression initializer NSRange(0...4)
+- Cocoa has NSAttributedString and NSMutableAttributedString
+```
+let attrStr = NSMutableAttributedString(string: "Big Nerd Ranch")
+attrStr.addAttribute(
+    NSFontAttributeName,
+    value: NSFont.boldSystemFontOfSize(22),
+    range: NSRange(0...2)
+)
+attrStr.addAttribute(
+    NSForegroundColorAttributeName,
+    value: NSColor.orangeColor(),
+    range: NSRange(4...7)
+)
+attrStr.addAttribute(
+    NSUnderlineStyleAttributeName,
+    value: 1,
+    range: NSRange(9...13)
+)
+```
+- global vars for most commonly used attributes
+    - NSFontAttributeName - font object - 12-point Helvetica
+    - ForegroundColorAttributeName - color - Black
+    - ParagraphStyleAttributeName - NSParagraphStyle object - Standard paragraph style
+    - UnderlineColorAttributeName - color - same as the foreground
+    - UnderlineStyleAttributeName - number - 0
+    - SuperscriptAttributeName - number - 0 (which means no superscripting or subscripting)
+    - ShadowAttributeName - NSShadow object
+- easiest way to create is from a file
+- can read
+    - string: typically from a plain-text file
+    - RTF: Rich Text Format is a standard for text with multiple fonts and colors
+           read and set the contents of the attributed string with an instance of NSData
+    - RTFD: RTF with attachments and images
+    - HTML: attributed string can do basic HTML layout
+            use WebView for best quality
+    - Word: attributed string can read and write simple .doc files
+    - OpenOffice: attributed string can read and write simple .odt files
+- dictionary can contain extra data for attributed string or supply nil
+```
+let rtfUrl = ... // Obtain an NSURL
+var error: NSError?
+let rtfData = NSData.dataWithContentsOfURL(
+    rtfUrl,
+    options: NSDataReadingOptions.DataReadingMappedIfSafe, error: &error) // -> NSData!
+)
+if rtfData != nil {
+    var docAttrs: NSDictionary?
+    let rtfAttrStr = NSAttributedString(
+        data: rtfData,
+        options: nil,
+        documentAttributes: &docAttrs,
+        error: &error
+    )
+    button.attributedTitle = rtfAttrStr
+}
+```
 ## Drawing Strings and Attributed Strings
+- drawing NSAttributedString onto views
+```
+func drawAtPoint(point: NSPoint)
+func drawInRect(rect: NSRect)
+var size: NSSize { get }
+```
+- drawing NSString onto views
+```
+func drawAtPoint(point: NSPoint, withAttributes attrs: [NSObject : AnyObject]!)
+func drawInRect(rect: NSRect, withAttributes attrs: [NSObject : AnyObject]!)
+func sizeWithAttributes(attrs: [NSObject : AnyObject]!) -> NSSize
+```
 ## Drawing Text Die Faces
+- in DieView drawDieWithSize
+```
+...
+    if intValue == 6 {
+        drawDot(0, 0.5) // Mid left/right
+        drawDot(1, 0.5)
+    }
+} else {
+    var paraStyle = NSParagraphStyle.defaultParagraphStyle().mutableCopy() as! NSMutableParagraphStyle
+    paraStyle.alignment = .CenterTextAlignment
+    let font = NSFont.systemFontOfSize(edgeLength * 0.5)
+    let attrs = [NSForegroundColorAttributeName: NSColor.blackColor(), NSFontAttributeName: font, NSParagraphStyleAttributeName: paraStyle]
+    let string = "\(intValue)" as NSString string.drawInRect(dieFrame, withAttributes: attrs)
+}
+```
+- options to center
+    1. inline in the method where it is needed -> works but clutters code
+    2. add a method to the class to find the correct rect ->
+       enables encapsulation, options for reuse are limited to instances of this class
+    3. create new method on NSString that draws the centered string ->
+       best choice... enables code reuse (use extensions)
 ## Extensions
+- cannot add stored properties on extensions
+- can add computed properties but cannot add new storage to a class using them
+- in NSString+Drawing.swift
+```
+import Cocoa
+
+extension NSString {
+    func drawCenteredInRect(rect: NSRect, attributes: [NSString: AnyObject]!) {
+        let stringSize = sizeWithAttributes(attributes)
+        let point = NSPoint(x: rect.origin.x + (rect.width - stringSize.width) / 2.0, y: rect.origin.y + (rect.height - stringSize.height)/ 2.0)
+        drawAtPoint(point, withAttributes: attributes)
+    }
+}
+```
+- use in DieView
+```
+let string = "\(intValue)" as NSString
+string.drawCenteredInRect(dieFrame, attributes: attrs)
+```
+- common naming convention for extension files is ?ClassName?+?descr of extension?.swift
 ## Getting Your View to Generate PDF Data
+- AppKit provides methods for drawing views to PDFs
+```
+func dataWithPDFInsideRect( rect: NSRect) -> NSData
+```
+- in DieView
+```
+@IBAction func savePDF(sender: AnyObject!) {
+    let savePanel = NSSavePanel()
+    savePanel.allowedFileTypes = ["pdf"]
+    savePanel.beginSheetModalForWindow(
+        window!,
+        completionHandler: { [unowned savePanel] (result) in
+            if result == NSModalResponseOK {
+                let data = self.dataWithPDFInsideRect(self.bounds)
+                var error: NSError?
+                let ok = data.writeToURL(
+                    savePanel.URL!,
+                    options: NSDataWritingOptions.DataWritingAtomic,
+                    error: &error
+                )
+                if !ok {
+                    let alert = NSAlert(error: error!)
+                    alert.runModal()
+                }
+            }
+        }
+    )
+}
+```
+- in .xib, add new menu item from object library to the File menu
+- relabel to Save To PDF...
+- ctrl-drag from new menu item to First Responder
+    - connect to savePDF: method
 ## For the More Curious: NSFontManager
+- NSFontManager can be used to customize fonts
+```
+let fontManager = NSFontManager.sharedFontManager()
+let boldFont = fontManager.convertFont(someFont, toHaveTrait: NSFontTraitMask.BoldFontMask)
+```
 ## Challenge: Color Text as SpeakLine Speaks It
+- from NSSpeechSynthesizerDelegate, add
+```
+optional func speechSynthesizer(sender: NSSpeechSynthesizer, willSpeakWord characterRange: NSRange, ofString string: String!)
+```
+- use the range and NSAttributedString to change colors of words
+```
+let range: NSRange = ...
+let theString: String = ...
+let attributedString = NSMutableAttributedString(string: theString)
+attributedString.addAttribute(NSForegroundColorAttributeName, value:NSColor.greenColor(), range: characterRange)
+```
+- read and write text field's attributedStringValue property (from NSControl)
+- enable and disable text field during speaking
+```
+func updateTextField() {
+    if speechSynth.speaking { textField.enabled = false }
+    else { textField.enabled = true }
+}
+```
 
 # 21. Pasteboards and Nil-Targeted Actions
 ## NSPasteboard
