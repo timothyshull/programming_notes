@@ -1865,57 +1865,665 @@ chauffeur.completionHandler = { [unowned chauffeur] in chauffeur.sendMessage(" I
 
 # 16. Using Notifications
 ## What Notifications Are
+- each application has a single instance of NSNotificationCenter
+- objects register as observers and posters
+- when a poster posts a notification that is forwarded to all related observers
 ## What Notifications Are Not
+- not IPC, limited to same application
+- look at NSDistributedNotification center for passing notifications
+  between applications
 ## NSNotification
+- properties
+    - name: String
+    - object: AnyObject?
+- object is almost always the object that posted the notification
 ## NSNotificationCenter
+- 3 main pieces of functionality:
+    - register observers
+    - post notifications
+    - unregister observers
+- commonly used methods
+```
+class func defaultCenter() -> NSNotificationCenter
+func addObserver(observer: AnyObject, selector aSelector: Selector, name aName: String?, object anObject: AnyObject?)
+func postNotification(notification: NSNotification)
+func postNotificationName(aName: String, object anObject: AnyObject?)
+func removeObserver(observer: AnyObject)
+```
 ## Starting the Chatter Application
+- create Xcode project as usual (uncheck Use Storyboards, Create Document-Based Application, and Use Core Data)
+- remove MainMenu.xib window and outlet to window in AppDelegate.swift
+- create ChatWindowController.swift and .xib
+- xib Attributes Inspector
+    - Visible at Launch -> `[]` (will not display until showWindow is called)
+- add windowNibName
+```
+class ChatWindowController: NSWindowController {
+    // MARK: - Lifecycle override
+    var windowNibName: String { return "ChatWindowController" }
+    ...
+```
+- in AppDelegate
+```
+var windowControllers: [ChatWindowController] = []
+
+func addWindowController() {
+    let windowController = ChatWindowController()
+    windowController.showWindow(self)
+    windowControllers.append(windowController)
+}
+
+func applicationDidFinishLaunching(aNotification: NSNotification) { addWindowController() }
+
+@IBAction func displayNewWindow(sender: NSMenuItem) { addWindowController() }
+```
+- in .xib ctrl-drag from menu
+    - File -> New -> App Delegate
+        - action -> displayNewWindow:
+- in ChatWindowController.swift
+```
+dynamic var log: NSAttributedString = NSAttributedString(string: "")
+dynamic var message: String? // NSTextView does not support weak references.
+@IBOutlet var textView: NSTextView!
+
+@IBAction func send(sender: AnyObject) { }
+```
+- add text view, text field and button to .xib
+- text view Bindings Inspector
+    - Attributed String -> File's Owner log property
+- text view Attributes Inspector
+    - Editable -> `[]`
+- File's Owner's textView -> text view
+- text field Bindings Inspector
+    - Value -> File's Owner message property
+- button connections pop-up
+    - target -> File's Owner
+    - action -> send:
+- window connections pop-up
+    - initialFirstResponder -> text field (makes text field active on window open)
 ## Using Notifications in Chatter
-## For the More Curious: Delegates and Notifications Challenge: ## Beep-beep!
+- each window controller posts a notification when a user sends a message
+- each window observes and when they observe a message they update text views
+  to display message text
+- in ChatWindowController.swift
+    1. name of notification to post
+    2. key in the notification's user info dictionary to store the message
+```
+// global constants
+private let ChatWindowControllerDidSendMessageNotification = "com.bignerdranch.chatter.ChatWindowControllerDidSendMessageNotification"
+private let ChatWindowControllerMessageKey = "com.bignerdranch.chatter.ChatWindowControllerMessageKey"
+
+... in class
+
+override func windowDidLoad() {
+    super.windowDidLoad()
+
+    let notificationCenter = NSNotificationCenter.defaultCenter()
+    notificationCenter.addObserver(self, selector: Selector("receiveDidSendMessageNotification:"), name: ChatWindowControllerDidSendMessageNotification, object: nil)
+}
+
+@IBAction func send(sender: AnyObject) {
+    sender.window?.endEditingFor(nil)
+    if let message = message {
+        let userInfo = [ChatWindowControllerMessageKey : message]
+        let notificationCenter = NSNotificationCenter.defaultCenter()
+        notificationCenter.postNotificationName(ChatWindowControllerDidSendMessageNotification, object: self, userInfo: userInfo)
+    }
+    message = ""
+}
+
+// ChatWindowControllerDidSendMessageNotification
+func receiveDidSendMessageNotification(note: NSNotification) {
+    let mutableLog = log.mutableCopy() as! NSMutableAttributedString
+    if log.length > 0 {
+        mutableLog.appendAttributedString(NSAttributedString( string: "\ n"))
+    }
+    let userInfo = note.userInfo! as! [String : String]
+    let message = userInfo[ChatWindowControllerMessageKey]!
+    let logLine = NSAttributedString(string: message)
+    mutableLog.appendAttributedString(logLine)
+    log = mutableLog.copy() as! NSAttributedString
+    textView.scrollRangeToVisible(NSRange( location: log.length, length: 0))
+}
+
+deinit {
+    let notificationCenter = NSNotificationCenter.defaultCenter()
+    notificationCenter.removeObserver(self)
+}
+```
+- add ChatWindowController to the default notification center as an observer of ChatWindowControllerDidSendMessageNotification
+  whenever any object posts to it inside windowDidLoad
+- send
+    - check if message is non-nil
+    - if not, add to user info dictionary
+    - post to notification center
+- handle a notification by posting text to text view and scroll to ensure display
+- windows observe notifications from themselves as well
+- add cleanup in deinit
+## For the More Curious: Delegates and Notifications
+- a delegate for an object should (most-likely) receive notifications for that
+  object
+- for standard Cocoa objects, the delegate is automatically registered as an
+  observer for the methods it implements
+- method naming convention
+    - name of notification -> NS?some notification name?Notification
+    - downcase first letter ?some notification name? (removing NS and Notification)
+    - argument is (notification: NSNotification)
+- refer to docs for each delegate type
+## Challenge: Beep-beep!
+- to beep when relinquishing an application's active status, use NSApplication's
+  NSApplicationDidResignActiveNotification notification
+- AppDelegate handles this
+- NSBeep() causes a system beep
 ## Challenge: Add Usernames
-## Challenge: Colored Text Challenge: Disabling the Send Button
+- add text field to the top of ChatWindowController to enter a username
+- add username or a good default to notifications
+- display username in text window
+## Challenge: Colored Text
+- to distinguish messages from current window vs other windows
+    - in receiveDidSendMessageNotification(_:) handle posting by self
+    - add attribute to logLine to display other color with NSForegroundColorAttributeName
+## Challenge: Disabling the Send Button
+- should disable send button when no text has been entered
+- bind send button's Enabled -> File's Owner message property
+- to handle String -> Bool conversion, use subclass of NSValueTransformer (IsNoteEmptyTransformer)
+- update button state as user types
+    - text field's Bindings Inspector
+        - Value -> Continuously Updates Value -> X
 
 # 17. NSView and Drawing
+- visible objects are windows or views (NSWindow or NSView)
+- window has collection of views
+    - view draws inside rectangles and handles events
+- subclasses of NSView so far
+    - NSButton
+    - NSTextField
+    - NSTableView
+    - NSColorWell
+- to expand functionality, subclass NSView
 ## Setting Up the Dice Application
+- setup Xcode project (unchecking usual)
+- add AppDelegate snippet
+```
+class AppDelegate: NSObject, NSApplicationDelegate {
+    var mainWindowController: MainWindowController?
+    func applicationDidFinishLaunching(aNotification: NSNotification) {
+        let mainWindowController = MainWindowController()
+        mainWindowController.showWindow(self)
+        self.mainWindowController = mainWindowController
+    }
+}
+```
+- create MainWindowController.swift and .xib
+- override windowNibName
+```
+class MainWindowController: NSWindowController {
+    override var windowNibName: String { return "MainWindowController" }
+    override func windowDidLoad() { super.windowDidLoad() }
+}
+```
 ## Creating a view subclass
+- create DieView class
+```
+import Cocoa
+class DieView: NSView { }
+```
+- add Custom View to .xib
+- custom view Identity Inspector
+    - Custom Class
+        - Class -> DieView
 ## Views, Rectangles, and Coordinate Systems frame bounds
-## Custom Drawing drawRect(_:)
+- to display a rectangle of a view, Cocoa uses
+    - uses origin (lower left corner in relation to origin of superview)
+    - size
+- frame
+    - NSRect
+        - origin: NSPoint (lower left corner as offset from superview)
+        - size: NSSize
+- NSPoint
+    - x: CGFloat
+    - y: CGFloat
+- NSSize:
+    - width: CGFloat
+    - height: CGFloat
+- all are structs for performance and to avoid bugs as value types
+- NSPoint and NSSize are measured in points (not related to NSPoint)
+- point is 1/72 of an inch (from typography) because original mac used
+  72 pixels per inch
+- points are resolution independent (facilitates supporting both standard
+  and retina displays easily)
+- NSRect, NSPoint, and NSSize are type aliases for the Core Graphics types CGRect, CGPoint, and CGSize
+- bounds
+    - same type as frame
+    - frame is used to position subviews of the view
+    - bounds are used to draw the view itself
+## Custom Drawing
+- three steps
+    - set color (using NSColor with RGB, HSV, CMYK, or grayscale)
+    - construct path (NSBezierPath, can store as property)
+    - draw path in color (NSBezierPath -> stroke(), shapes -> fill())
+- handle steps in NSView drawRect(_:)
+## drawRect(_:)
+```
+class DieView: NSView {
+    override func drawRect(dirtyRect: NSRect) {
+        let backgroundColor = NSColor.lightGrayColor()
+        backgroundColor.set()
+        NSBezierPath.fillRect(bounds)
+
+        NSColor.greenColor().set()
+        let path = NSBezierPath()
+        path.moveToPoint(NSPoint(x: 0, y: 0))
+        path.lineToPoint(NSPoint(x: bounds.width, y: bounds.height))
+        path.stroke()
+    }
+}
+```
+- notice use of bounds.width and bounds.height
 ## When is my view drawn?
+- drawRect called automatically
+- don't redraw with drawRect directly, set view's needsDisplay to true
+- sets view to dirty and system will call drawRect on all dirty views
+- do not need to mark Cocoa's standard views as dirty because they handle
+  that themselves
+- mark custom views as dirty on change
 ## Graphics contexts and states
+- Cocoa configures graphics context for a view before calling drawRect
+  (held in thread local storage)
+- tracks current color, font and transform
+- drawing commands read and write to that state
 ## Drawing a die face
+- in DieView
+```
+// for dots
+var intValue: Int? = 1 { didSet { needsDisplay = true } }
+
+func metricsForSize(size: CGSize) -> (edgeLength: CGFloat, dieFrame: CGRect) {
+    let edgeLength = min(size.width, size.height)
+    let padding = edgeLength / 10.0
+    let drawingBounds = CGRect(x: 0, y: 0, width: edgeLength, height: edgeLength)
+    let dieFrame = drawingBounds.rectByInsetting(dx: padding, dy: padding)
+    return (edgeLength, dieFrame)
+}
+
+func drawDieWithSize(size: CGSize) {
+    if let intValue = intValue {
+        let (edgeLength, dieFrame) = metricsForSize(size)
+        let cornerRadius:CGFloat = edgeLength / 5.0
+
+        // Dot positioning
+        let dotRadius = edgeLength / 12.0
+        let dotFrame = dieFrame.rectByInsetting(dx: dotRadius * 2.5, dy: dotRadius * 2.5)
+
+        // Draw the rounded shape of the die profile:
+        NSColor.whiteColor().set()
+        NSBezierPath(roundedRect: dieFrame, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+
+        // Dot drawing
+        NSColor.blackColor().set()
+        // Nested function to make drawing dots cleaner:
+        func drawDot(u: CGFloat, v: CGFloat) {
+            let dotOrigin = CGPoint(x: dotFrame.minX + dotFrame.width * u, y: dotFrame.minY + dotFrame.height * v)
+            let dotRect = CGRect( origin: dotOrigin, size: CGSizeZero).rectByInsetting( dx: -dotRadius, dy: -dotRadius)
+            NSBezierPath(ovalInRect: dotRect).fill()
+        }
+
+        // If intValue is in range...
+        if find(1...6, intValue) != nil {
+            // Draw the dots:
+            if find([ 1, 3, 5], intValue) != nil {
+                drawDot(0.5, 0.5) // Center dot
+            }
+            if find(2...6, intValue) != nil {
+                drawDot( 0, 1) // Upper left
+                drawDot( 1, 0) // Lower right
+            }
+            if find(4...6, intValue) != nil {
+                drawDot( 1, 1) // Upper right
+                drawDot( 0, 0) // Lower left
+            }
+            if intValue == 6 {
+                drawDot( 0, 0.5) // Mid left/right
+                drawDot( 1, 0.5)
+            }
+        }
+    }
+}
+
+override func drawRect(dirtyRect: NSRect) {
+    let backgroundColor = NSColor.lightGrayColor()
+    backgroundColor.set()
+    NSBezierPath.fillRect(bounds)
+    drawDieWithSize(bounds.size)
+}
+```
+
 ## Saving and Restoring the Graphics State
+- sometimes useful to treat graphics state like a stack, saving and restoring
+  at points
+- adding to drawDieWithSize causes all subsequent drawing commands to add shadow
+```
+let shadow = NSShadow()
+shadow.shadowOffset = NSSize(width: 0, height: -1)
+shadow.shadowBlurRadius = edgeLength/ 20 shadow.set()
+```
+- use NSGraphicsContext: saveGraphicsState() and restoreGraphicsState()
+```
+NSGraphicsContext.saveGraphicsState()
+let shadow = NSShadow()
+shadow.shadowOffset = NSSize(width: 0, height: -1)
+shadow.shadowBlurRadius = edgeLength/ 20 shadow.set()
+// Draw the rounded shape of the die profile:
+NSColor.whiteColor().set()
+NSBezierPath(roundedRect: dieFrame, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+NSGraphicsContext.restoreGraphicsState()
+// Shadow will not apply to subsequent drawing commands
+```
 ## Cleaning up with Auto Layout
+- view instance does not currently resize
+- select DieView in .xib
+    - four Auto Layout buttons in bottom right of canvas
+    - click pin button
+        - in popover
+            - Add New Constraints -> click all four struts
+            - set all four text fields to 20
+- if a mistake is made, click Resolve Auto Layout Issues
+- a view's intrinsic content size is the natural size of its content
+- Auto Layout will not reduce a view's size below its intrinsic content
+  size
+- in DieView
+```
+override var intrinsicContentSize: NSSize { return NSSize( width: 20, height: 20) }
+```
 ## Drawing Images
+- create ImageTiling Xcode project
+- create TiledImageView.swift and .xib
+```
+import Cocoa class TiledImageView: NSView {
+    var image: NSImage?
+    let columnCount = 5
+    let rowCount = 5
+
+    override func drawRect(dirtyRect: NSRect) {
+        super.drawRect(dirtyRect)
+        if let image = image {
+            for x in 0..<columnCount {
+                for y in 0..<rowCount {
+                    let frame = frameForImageAtLogicalX(x, y: y)
+                    image.drawInRect(frame)
+                }
+            }
+        }
+    }
+
+    func frameForImageAtLogicalX(logicalX: Int, y logicalY: Int) -> CGRect {
+        let spacing = 10
+        let width = 100
+        let height = 100
+        let x = (spacing + width) * logicalX
+        let y = (spacing + height) * logicalY
+        return CGRect( x: x, y: y, width: width, height: height)
+    }
+}
+```
+- add Custom View to .xib
+- need to set image (could add outlet to image view and set image property
+  in windowDidLoad)
 ## Inspectable properties and designable views
+- in TiledImageView class
+```
+@IBInspectable var image: NSImage?
+```
+- in .xib, select image view
+    - Attributes Inspector
+        - Image -> image name (NSComputer)
+- to see from Xcode add @IBDesignable to class
 ## Drawing images with finer control
+- use the following method
+```
+func drawInRect(
+    rect: NSRect,
+    fromRect: NSRect,
+    operation op: NSCompositingOperation,
+    fraction delta: CGFloat
+)
+```
 ## Scroll Views
+- NSScrollView is used for cases where view overflows displayable area
+- overflowing view is known as document view
+- displayed portion is visible rect
+- in TiledImageView .xib
+    - select image view
+        - menu Editor -> Embed In -> Scroll View
+- give view an intrinsic content size
+```
+override var intrinsicContentSize: NSSize {
+    let furthestFrame = frameForImageAtLogicalX(columnCount-1, y: rowCount-1)
+    return NSSize(width: furthestFrame.maxX, height: furthestFrame.maxY)
+}
+```
 ## Creating Views Programmatically
+- create a button
+```
+let superview = window.contentView
+let frame = NSRect(x: 10, y: 10, width: 200, height: 100)
+let button = NSButton(frame: frame)
+button.title = "Click me!"
+superview.addSubview( button)
+```
+- to recreate the style of an existing view, add view in IB and go through
+  properties in Attributes Inspector
+- use playground for rapid iteration
 ## For the More Curious: Core Graphics and Quartz
+- AppKit drawing APIs use Core Graphics (generally referred to as Quartz)
+- generally same concepts within a C API and uses CGContextRef
+- lower-level and sometimes finer control of drawing
 ## For the More Curious: Dirty Rects
+- for time-consuming drawing, best to only redraw dirty rects
+- setting needsDisplay to true redraws entire rectangle
+- can use
+```
+let dirtyRect = NSRect(x: 0, y: 0, width: 50, height: 50)
+myView.setNeedsDisplayInRect(dirtyRect)
+```
 ## For the More Curious: Flipped Views
+- AppKit views follow Cartesian coordinates by default
+- flipped views
+    - origin upper left
+    - y increases as coordinates go down rectangle
+- to use flipped views
+```
+override var flipped: Bool { return true }
+```
 ## Challenge: Gradients
+- pass NSBezierPath to a method on NSGradient
 ## Challenge: Stroke
+- use a stroke to add border to NSBezierPath
 ## Challenge: Make DieView Configurable from Interface Builder
+- use @IBDesignable to display DieView in IB
 
 # 18. Mouse Events
 ## NSResponder
+- all event handling methods are declared in NSResponder
+- mouse events
+```
+func mouseDown(theEvent: NSEvent)
+func rightMouseDown(theEvent: NSEvent)
+func otherMouseDown(theEvent: NSEvent)
+func mouseUp( theEvent: NSEvent)
+func rightMouseUp(theEvent: NSEvent)
+func otherMouseUp(theEvent: NSEvent)
+func mouseDragged(theEvent: NSEvent)
+func scrollWheel(theEvent: NSEvent)
+func rightMouseDragged(theEvent: NSEvent)
+func otherMouseDragged(theEvent: NSEvent)
+```
 ## NSEvent
+- interesting properties for mouse events
+```
+var locationInWindow: NSPoint { get }
+var modifierFlags: NSEventModifierFlags { get }
+var timestamp: NSTimeInterval { get }
+unowned(unsafe) var window: NSWindow! { get }
+var clickCount: Int { get }
+var pressure: Float { get }
+var deltaX: CGFloat { get }
+var deltaY: CGFloat { get }
+var deltaZ: CGFloat { get }
+```
 ## Getting Mouse Events
+- in DieView
+```
+override func mouseDown(theEvent: NSEvent) {
+    print("mouseDown")
+}
+override func mouseDragged(theEvent: NSEvent) {
+    print("mouseDragged location: \(theEvent.locationInWindow)")
+}
+override func mouseUp(theEvent: NSEvent) {
+    print("mouseUp clickCount: \(theEvent.clickCount)")
+}
+```
 ## Click to Roll
+- randomize side to show
+```
+func randomize() { intValue = Int( arc4random_uniform( 5)) + 1 }
+```
+- check for double-click
+```
+override func mouseUp(theEvent: NSEvent) {
+    print("mouseUp clickCount: \(theEvent.clickCount)")
+    if theEvent.clickCount = = 2 { randomize() }
+}
+```
+- add interaction for mouseDown and mouseUp
+```
+var pressed: Bool = false { didSet { needsDisplay = true } }
+// in mouseDown set pressed to true
+// in mouseUp set pressed to false
+
+// in metrics for size change dieFrame
+var dieFrame = drawingBounds.rectByInsetting(dx: padding, dy: padding)
+if pressed { dieFrame = dieFrame.rectByOffsetting(dx: 0, dy: -edgeLength/ 40) }
+
+// in drawDieWithSize
+shadow.shadowBlurRadius = (pressed ? edgeLength/ 100 : edgeLength/ 20)
+```
 ## Improving Hit Detection
+- can check hit detection with CGRect contains(_:) and metricsForSize(:)
+  to get rectangle
+- NSEvent provides locationInWindow
+- to convert locationInWindow, NSView has
+```
+func convertPoint(aPoint: NSPoint, fromView aView: NSView?) -> NSPoint
+func convertPoint(aPoint: NSPoint, toView aView: NSView?) -> NSPoint
+```
+- can call with nil
+- update mouseDown
+```
+let dieFrame = metricsForSize(bounds.size).dieFrame
+let pointInView = convertPoint(theEvent.locationInWindow, fromView: nil)
+pressed = dieFrame.contains(pointInView)
+```
 ## Gesture Recognizers
+- similar to UIKit's gesture recognizer on iOS
+- main gesture recognizers
+    - NSClickGestureRecognizer
+    - NSPanGestureRecognizer
+    - NSMagnificationGestureRecognizer
+    - NSPressGestureRecognizer
+    - NSRotationGestureRecognizer
+- provide much more fine grained and responsive control over gestures and
+  mouse events
+- see section for code examples
 ## Challenge: NSBezierPath-based Hit Testing
+- NSBezierPath has a containsPoint method that will make the hit testing more
+  accurate
 ## Challenge: A Drawing App
+- use init(ovalInRect: NSRect) -> NSBezierPath to allow user to draw ovals in arbitrary locations
+- add save and read
+- add undo
 
 # 19. Keyboard Events
+- typing event -> window manager -> active application -> key window -> active view
+- active view is determined by firstResponder property on a view
+- when user changes active view, views check whether they can accept firstResponder
+  status
+    - NO means it will not accept first responder status
+    - current first responder then checked to resign first responder status
 ## NSResponder
+```
+var acceptsFirstResponder: Bool { get }
+func resignFirstResponder() -> Bool
+func becomeFirstResponder() -> Bool
+func keyDown(theEvent: NSEvent)
+func keyUp(theEvent: NSEvent)
+func flagsChanged(theEvent: NSEvent)
+```
 ## NSEvent
+- common keyboard event properties
+```
+var characters: String! { get }
+var ARepeat: Bool { get }
+var keyCode: UInt16 { get }
+var modifierFlags: NSEventModifierFlags { get }
+```
 ## Adding Keyboard Input to DieView
 ## Accept first responder
+- set accepts first responder
+```
+override var acceptsFirstResponder: Bool { return true }
+override func becomeFirstResponder() -> Bool { return true }
+override func resignFirstResponder() -> Bool { return true }
+```
+- cannot receive keyboard events without accepting first responder
 ## Receive keyboard events
+- do not need to implement keyDown and interpret characters manually
+- use interpretKeyEvents which calls insertText
+```
+override func keyDown(theEvent: NSEvent) { interpretKeyEvents([theEvent]) }
+override func insertText(insertString: AnyObject) {
+    let text = insertString as! String
+    if let number = text.toInt() { intValue = number }
+}
+```
 ## Putting the dice in Dice
+- remove constraints
+    - Editor -> Resolve Auto Layout Issues -> Clear Constraints
+- resize die view to 104x104 in Size Inspector
+- duplicate die view twice
+- change title of window to Dice
 ## Focus Rings
+- focus = first responder
+- generally indicated with blue ring
+- for table views -> selection highlight may change from gray to blue
+```
+override func drawFocusRingMask() { NSBezierPath.fillRect(bounds) }
+override var focusRingMaskBounds: NSRect { return bounds }
+```
+- can draw any path with drawFocusRingMask
 ## The Key View Loop
+- sequence of first responder-accepting views in each window
+- Tab or Shift-Tab cycles them
+- can manually modify with nextKeyView and initialFirstResponder
+- to handle tab events add insertTab and inserBacktab
+```
+override func insertTab(sender: AnyObject?) { window?.selectNextKeyView(sender) }
+override func insertBacktab(sender: AnyObject?) { window?.selectPreviousKeyView(sender) }
+```
+- cmd-W should close the window
 ## For the More Curious: Rollovers
+- use mouseMoved, mouseEntered, mouseExited
+- set acceptsMouseMovedEvents to true
+- for rollovers, generally use mouseEntered and mouseExited
+- when a view is added to a view's hierarchy, viewDidMoveToWindow is called
+    - MouseEnteredAndExited -> mouseEntered(_:) and mouseExited(:) will be called on the owner of the
+      tracking area
+    - ActiveAlways -> the area will be active regardless of first-responder status
+    - InVisibleRect -> tells the tracking area to ignore the rect parameter
+      and automatically match the view’s visible rect as the tracking area
+      bounds
+- see section for code examples
 
 ## 20. Drawing Text with Attributes
 ## NSFont
