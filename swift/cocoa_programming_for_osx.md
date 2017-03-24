@@ -2724,92 +2724,1393 @@ func updateTextField() {
 ```
 
 # 21. Pasteboards and Nil-Targeted Actions
+- pasteboard server process (/usr/sbin/pboard) -> daemon that manages
+  pasteboard
+- the same data can be copied onto the pasteboard in many formats and
+  the application that reads the data can choose the format to read it as
+- UTIs are used for the various types of data on the pasteboard
+- application typically clears before writing to the pasteboard
+- there is a pasteboard writing protocol
+- pasteboard asks for an array of classes
+- pasteboard can also work with data lazily
+- there are also APIs for working with the pasteboard with a finer-grained
+  control
+- multiple pasteboards
+    - general
+    - drag-and-drop
+    - copy and paste
+    - last searched string
+    - ruler copying
+    - font copying
 ## NSPasteboard
+- NSPasteboard methods
+```
+class func generalPasteboard() -> NSPasteboard!
+init( name: String!) -> NSPasteboard
+func clearContents() -> Int
+func writeObjects(objects: [AnyObject]!) -> Bool
+func readObjectsForClasses(classArray: [AnyObject]!, options: [NSObject : AnyObject]!) -> [AnyObject]!
+```
+- UTIs are not used directly
+- NSPasteboardItem conforms to NSPasteboardReading and NSPasteboardWriting
+```
+func setDataProvider(dataProvider: NSPasteboardItemDataProvider!, forTypes types: [AnyObject]!) -> Bool
+func setData(data: NSData!, forType type: String!) -> Bool
+func setString( string: String!, forType type: String!) -> Bool
+func setPropertyList(propertyList: AnyObject!, forType type: String!) -> Bool
+var types: [AnyObject]! { get }
+func availableTypeFromArray(types: [AnyObject]!) -> String!
+func dataForType(type: String!) -> NSData!
+func stringForType(type: String!) -> String!
+func propertyListForType(type: String!) -> AnyObject!
+```
 ## Add Cut, Copy, and Paste to Dice
-## Nil-Targeted Actions
-## Looking at the XIB file
-## Menu Item Validation
-## For the More Curious: Which Object Sends the Action Message?
-## For the More Curious: UTIs and the Pasteboard Custom UTIs
-## For the More Curious: Lazy Copying
-## Challenge: Write Multiple Representations
-## Challenge: Menu Item
+- in DieView
+```
+func writeToPasteboard(pasteboard: NSPasteboard) {
+    if let intValue = intValue {
+        pasteboard.clearContents()
+        pasteboard.writeObjects(["\(intValue)"])
+    }
+}
 
-# 22. Drag-and-Drop Make DieView a Drag Source
+func readFromPasteboard(pasteboard: NSPasteboard) -> Bool {
+    let objects = pasteboard.readObjectsForClasses([NSString.self], options: [:]) as! [String]
+    if let str = objects.first {
+        intValue = str.toInt()
+        return true
+    }
+    return false
+}
+
+@IBAction func cut(sender: AnyObject?) {
+    writeToPasteboard(NSPasteboard.generalPasteboard())
+    intValue = nil
+}
+
+@IBAction func copy(sender: AnyObject?) {
+    writeToPasteboard(NSPasteboard.generalPasteboard())
+ }
+
+@IBAction func paste(sender: AnyObject?) {
+    readFromPasteboard(NSPasteboard.generalPasteboard())
+}
+```
+## Nil-Targeted Actions
+- if target of a control is nil, the application tries first responder of the key window
+- this means the active view of the active window gets the cut and paste messages
+- NSView, NSApplication, NSWindow inherit from NSResponder
+- NSResponder has nextResponder
+- if object does not respond to nil-targeted action, its nextResponder gets a chance
+  (usually superview) -> passes through responder chain
+- order of responder chain before nil-targeted action gets discarded (i.e. responder chain)
+    1. firstResponder of the keyWindow and its responder chain
+       responder chain would typically include the superviews the key window last
+    2. delegate of the key window
+    3. for document-based application, the NSWindowController and then the NSDocument
+       object for the key window.
+    4. if the main window is different from the key window
+        - 1, 2, 3 for main window
+    5. instance of NSApplication
+    6. delegate of the NSApplication
+    7. NSDocumentController
+- Document based application also gets Save, Save As..., Revert to Saved, Print...,
+  and Page Setup
+## Looking at the XIB file
+- cut, copy, and paste are connected to First Responder which represents nil (target of drag)
+## Menu Item Validation
+- Cocoa automatically disables menu items when it cannot find the item's action
+  in the responder chain
+- validation of existence is performed by validateMenuItem
+- in DieView
+```
+override func validateMenuItem(menuItem: NSMenuItem) -> Bool {
+    switch menuItem.action {
+    case Selector(" copy:"):
+        return intValue == nil
+    default:
+        return super.validateMenuItem(menuItem)
+    }
+}
+```
+- can set the state property to NSOnState or NSOffState to check or uncheck
+  the menu item
+## For the More Curious: Which Object Sends the Action Message?
+- target on Cut, Copy, Paste items is nil
+- sending message to nil does not crash application (doesn't do anything)
+- target-action messages are handled by NSApplication which knows to
+  try to send messages to objects in responder chain
+```
+func sendAction(_: Selector, to: AnyObject!, from: AnyObject!) -> Bool
+```
+## For the More Curious: UTIs and the Pasteboard Custom UTIs
+- NSString uses NSPasteboardTypeString when reading from pasteboard
+- UTIs enable broad or specific requests from pasteboard
+- for custom data, use reversed, DNS-style domain names
+    - implement NSPasteboardWriting and NSPasteboardReading
+    - or use NSPasteboardItem as an abstraction layer
+- only export custom UTIs for use with other applications
+## For the More Curious: Lazy Copying
+- for copying large data or many options for types of data can just declare
+  types it can copy as and only copy when another application requests it
+```
+let pboard = NSPasteboard.generalPasteboard()
+pboard.clearContents()
+let item = NSPasteboardItem()
+item.setDataProvider(self, forTypes:...)
+pboard.writeObjects([item])
+
+...
+func pasteboard(_ pasteboard: NSPasteboard!, item item: NSPasteboardItem!, provideDataForType type: String!) {
+    item.setData(..., forType:type)
+}
+```
+- when terminating, an application will be requested for the data
+- when lazy copying, must use a snapshot to paste state of data when copied
+- copies later will negate the need to keep this snapshot
+- the following method is called to indicate previous snapshot is no longer necessary
+```
+optional func pasteboardFinishedWithDataProvider(_ pasteboard: NSPasteboard!)
+```
+## Challenge: Write Multiple Representations
+- put both string and PDF onto pasteboard (using NSPasteboardItem)
+## Challenge: Menu Item
+- add menu item that triggers removeEmployee in Document
+
+# 22. Drag-and-Drop
+- much like copy and paste
+- what makes it more difficult is user feedback
+- NSDragOperation type
+```
+struct NSDragOperation : RawOptionSetType {
+    init(_ value: UInt)
+    static var None: NSDragOperation { get }
+    static var Copy: NSDragOperation { get }
+    static var Link: NSDragOperation { get }
+    static var Generic: NSDragOperation { get }
+    static var Private: NSDragOperation { get }
+    static var Move: NSDragOperation { get }
+    static var Delete: NSDragOperation { get }
+    static var Every: NSDragOperation { get }
+}
+```
+- both source and destination must agree on operation
+- for the exchange
+    - drag source
+    - drag destination
+## Make DieView a Drag Source
+- conform to NSDraggingSource
+```
+func draggingSession(
+    session: NSDraggingSession,
+    sourceOperationMaskForDraggingContext,
+    context: NSDraggingContext
+) -> NSDragOperation { return .Copy }
+```
+- for a drag method is called twice
+    - context = .WithinApplication (operations possible in application)
+    - context = .OutsideApplication (operations possible outside application)
 ## Starting a drag
+- to start a drag operation
+```
+func beginDraggingSessionWithItems(
+    items: [AnyObject],
+    event: NSEvent,
+    source: NSDraggingSource
+) -> NSDraggingSession
+```
+- takes array of NSDraggingItem
+- dragging item knows how to write itself to pasteboard
+- event is mouseDown event
+- source is usually view itself
+- in DieView
+```
+var mouseDownEvent: NSEvent?
+...
+override func mouseDown(theEvent: NSEvent) {
+    print("mouseDown")
+    mouseDownEvent = theEvent
+    let dieFrame = metricsForSize(bounds.size).dieFrame
+    let pointInView = convertPoint(theEvent.locationInWindow, fromView: nil)
+    pressed = dieFrame.contains(pointInView)
+}
+```
+- need to draw into image -> can use NSImage e.g.
+```
+let imageSize = ...
+let greenImage = NSImage(size: imageSize, flipped: false) {
+    (imageBounds) in NSColor.greenColor.set()
+    NSBezierPath.fillRect(imageBounds)
+}
+```
+- initiate dragging session in mouseDragged
+```
+override func mouseDragged(theEvent: NSEvent) {
+    print("mouseDragged location: \(theEvent.locationInWindow)")
+    let downPoint = mouseDownEvent!.locationInWindow
+    let dragPoint = theEvent.locationInWindow
+    let distanceDragged = hypot(downPoint.x - dragPoint.x, downPoint.y - dragPoint.y)
+    if distanceDragged < 3 { return }
+    pressed = false
+    if let intValue = intValue {
+        let imageSize = bounds.size
+        let image = NSImage(size: imageSize, flipped: false) {
+            (imageBounds) in self.drawDieWithSize(imageBounds.size)
+            return true
+        }
+        let draggingFrameOrigin = convertPoint(downPoint, fromView: nil)
+        let draggingFrame = NSRect(origin: draggingFrameOrigin, size: imageSize).rectByOffsetting(dx: -imageSize.width / 2, dy: -imageSize.height / 2)
+        let item = NSDraggingItem(pasteboardWriter: "\(intValue)")
+        item.draggingFrame = draggingFrame
+        item.imageComponentsProvider = {
+            let component = NSDraggingImageComponent(key: NSDraggingImageComponentIconKey)
+            component.contents = image
+            component.frame = NSRect(origin: NSPoint(), size: imageSize)
+            return [component]
+        }
+        beginDraggingSessionWithItems([item], event: mouseDownEvent!, source: self)
+    }
+}
+```
 ## After the drop
+- drag source will be notified on drag end by implementing draggingSession (and draggedImage)
+```
+func draggingSession( session: NSDraggingSession, endedAtPoint screenPoint: NSPoint, operation: NSDragOperation)
+
+// e.g.
+func draggingSession(session: NSDraggingSession, sourceOperationMaskForDraggingContext context: NSDraggingContext) -> NSDragOperation {
+    return .Copy | .Delete
+}
+
+func draggedImage(session: NSDraggingSession, endedAtPoint screenPoint: NSPoint, operation: NSDragOperation) {
+    if operation = = .Delete { intValue = nil }
+}
+```
 ## Make DieView a Drag Destination
+- first declare view a drag destination for certain types
+```
+func registerForDraggedTypes(newTypes: [AnyObject])
+```
+- implement 6 methods from NSDraggingInfo
+    - as the image is dragged into the destination, the destination is sent a draggingEntered(_:) message
+      (destination view may update its appearance)
+    - while the image remains within the destination, a series of draggingUpdated(_:) messages are sent
+      (implementing draggingUpdated(_:) is optional)
+    - if the image is dragged outside the destination, draggingExited(_:) is sent
+    - if the image is released on the destination, either it slides back to its source (and breaks the sequence)
+      or a prepareForDragOperation(_:) message is sent to the destination depending on the value returned by
+      the most recent invocation of draggingEntered(_:) (or draggingUpdated(_:) if the view implemented it)
+    - if the prepareForDragOperation(_:) message returns true, then a performDragOperation(_:) message is sent
+      (typically where the application reads data off the pasteboard)
+    - if performDragOperation(_:) returned true, concludeDragOperation(_:) is sent
+      (appearance may change or other UX effects)
 ## registerForDraggedTypes(_:)
+- in DieView
+```
+override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect) commonInit()
+}
+required init?(coder: NSCoder) {
+    super.init(coder: coder)
+    commonInit()
+}
+func commonInit() {
+    self.registerForDraggedTypes([NSPasteboardTypeString])
+}
+```
 ## Add highlighting
+```
+var highlightForDragging: Bool = false { didSet { needsDisplay = true } }
+
+override func drawRect(dirtyRect: NSRect) {
+    let backgroundColor = NSColor.lightGrayColor()
+    backgroundColor.set()
+    NSBezierPath.fillRect(bounds)
+    if highlightForDragging {
+        let gradient = NSGradient(
+            startingColor: NSColor.whiteColor(),
+            endingColor: backgroundColor
+        )
+        gradient.drawInRect(bounds, relativeCenterPosition: NSZeroPoint)
+    } else { drawDieWithSize( bounds.size) }
+}
+```
 ## Implement the dragging destination methods
+```
+override func draggingEntered(sender: NSDraggingInfo) -> NSDragOperation {
+    if sender.draggingSource() === self { return .None }
+    highlightForDragging = true
+    return sender.draggingSourceOperationMask()
+}
+
+override func draggingExited(sender: NSDraggingInfo?) { highlightForDragging = false }
+
+override func prepareForDragOperation(sender: NSDraggingInfo) -> Bool { return true }
+
+override func performDragOperation(sender: NSDraggingInfo) -> Bool {
+    let ok = readFromPasteboard(sender.draggingPasteboard())
+    return ok
+}
+
+override func concludeDragOperation(sender: NSDraggingInfo?) { highlightForDragging = false }
+```
+- draggingEntered(_:) -> disallows drag if dragging source is same as the destination
 ## For the More Curious: Operation Mask
+- negotiation of event on drop may be complex
+- can modify action with ctrl, opt, or cmd
+- drag info object will do most of the work by getting source's op mask
+  and filter depending on modifier keys
+- to observe use
+```
+override func draggingUpdated(sender: NSDraggingInfo) -> NSDragOperation {
+    print("operation mask = \(sender.draggingSourceOperationMask().rawValue)")
+    if sender.draggingSource() === self { return .None }
+    return .Copy | .Delete
+}
+```
 
 # 23. NSTimer
+- object with target, selector, and interval in seconds
 ## NSTimer-based Animation
+- use new method roll in mouseUp to create NSTimer based animation
+- API to create timer
+```
+class func scheduledTimerWithTimeInterval( ti: NSTimeInterval, target aTarget: AnyObject, selector aSelector: Selector, userInfo: AnyObject?, repeats yesOrNo: Bool) -> NSTimer
+```
+- in DieView
+```
+var rollsRemaining: Int = 0
+
+...
+
+func roll() {
+    rollsRemaining = 10
+    NSTimer.scheduledTimerWithTimeInterval(0.15, target: self, selector: Selector("rollTick:"), userInfo: nil, repeats: true)
+    window?.makeFirstResponder(nil)
+}
+
+func rollTick(sender: NSTimer) {
+    let lastIntValue = intValue
+    while intValue == lastIntValue { randomize() }
+    rollsRemaining--
+    if rollsRemaining == 0 {
+        sender.invalidate()
+        window?.makeFirstResponder(self)
+    }
+}
+
+override func mouseUp(theEvent: NSEvent) {
+    print("mouseUp clickCount: \(theEvent.clickCount)")
+    if theEvent.clickCount == 2 {
+        randomize()
+        roll()
+    }
+    pressed = false
+}
+```
 ## How Timers Work
+- timers use the run loop to fire
+- calculates next scheduled fire and requests that run loop to notify
+  when that time arrives
+- works for basics but not good for high resolution/high performance
+- documented to have a resolution 50-100ms
+- supports timer coalescing
+- can use tolerance property to make system massage timer fires to occur
+  at once which improves energy usage
 ## NSTimer and Strong/Weak References
+- run loop keeps strong reference to timer (i.e. owns it) so do not
+  keep strong reference in your own code
+- may not be necessary to keep any reference at all except to invalidate
+  or to check if running
+- when a ref is needed use a weak optional
+```
+weak var timer: NSTimer?
+```
+- weak references must be optional in Swift
+- like controls, but keeps a strong reference to its target
+- means that while a timer is scheduled its target will stay in memory
+- invalidate timers at appropriate times to invalidate
 ## For the More Curious: NSRunLoop
+- object that waits for events to arrive and forwards them to NSApplication
+- when timer events arrive they are forwarded to NSTimer
+- can attach a network socket to the run loop and wait for data on the socket
 
 # 24. Sheets
+- common pattern for collecting info from user and associating it with a
+  window (doc save panel, i.e. window presented from another window)
+- NSWindow methods to present sheets
+```
+func beginSheet(sheetWindow: NSWindow, completionHandler: (( NSModalResponse) -> Void)? )
+func beginCriticalSheet(sheetWindow: NSWindow, completionHandler: (( NSModalResponse) -> Void)? )
+func endSheet(sheetWindow: NSWindow, returnCode: NSModalResponse)
+```
 ## Adding a Sheet
+- subclass NSWindowController with .xib
 ## Create the Window Controller
+- ConfigurationWindowController
+```
+import Cocoa class ConfigurationWindowController: NSWindowController {
+    private dynamic var color: NSColor = NSColor.whiteColor()
+    private dynamic var rolls: Int = 10
+
+    override var windowNibName: String { return "ConfigurationWindowController" }
+
+    override func windowDidLoad() {
+        super.windowDidLoad()
+        // Implement this method to handle post-nib-load initialization.
+    }
+
+    @IBAction func okayButtonClicked(button: NSButton) { print("OK clicked") }
+
+    @IBAction func cancelButtonClicked(button: NSButton) { print("Cancel clicked") }
+}
+```
+- on presentation, need to provide color and number of rolls for sheet and
+  read values out on "OK"
+```
+struct DieConfiguration {
+    let color: NSColor
+    let rolls: Int
+
+    init(color: NSColor, rolls: Int) {
+        self.color = color
+        self.rolls = max(rolls, 1)
+    }
+}
+
+// in ConfigurationWindowController
+var configuration: DieConfiguration {
+    set {
+        color = newValue.color
+        rolls = newValue.rolls
+    }
+    get { return DieConfiguration(color: color, rolls: rolls) }
+}
+```
+- generally do not need init in struct but does more work here
 ## Set Up the Menu Item
+- in MainWindowController
+```
+@IBAction func showDieConfiguration(sender: AnyObject?) { print("Configuration menu item clicked") }
+```
+- add a menu item to .xib with title "Configure Die"
+- connect menu item to First Responder and set action to showDieConfiguration
 ## Lay Out the Interface
+- in ConfigurationWindowController.xib
+- window Attributes Inspector
+    - Resize -> `[]`
+    - Visible At Launch -> `[]`
+- add 2 labels, 2 buttons, a color well, a text field and a stepper
+- color well Bindings Inspector
+    - Value -> File's Owner color
+- text field Bindings Inspector
+    - Value -> File's Owner rolls
+- stepper Bindings Inspector
+    - Value -> File's Owner rolls
+- ctrl-drag from OK button to File's Owner
+    - action -> okayButtonClicked
+- ctrl-drag from cancel button to File's Owner
+    - action -> cancelButtonClicked
 ## Configuring the Die Views
+- add configurable properties to DieView
+```
+var color: NSColor = NSColor.whiteColor() { didSet { needsDisplay = true } }
+var numberOfTimesToRoll: Int = 10
+```
+- replace uses of color with color property in drawRect and drawDieWithSize
+```
+// drawRect
+let gradient = NSGradient(startingColor: color, endingColor: backgroundColor)
+
+// drawDieWithSize
+color.set()
+```
+- change roll to use numberOfTimesToRolle
+```
+rollsRemaining = numberOfTimesToRoll
+```
 ## Present the Sheet
+- on presentation, sheet should be configuring the currently selected DieView
+  (use first responder)
+- in DieView
+```
+var configurationWindowController: ConfigurationWindowController?
+
+@IBAction func showDieConfiguration(sender: AnyObject?) {
+    print("Configuration menu item clicked")
+    if let window = window, let dieView = window.firstResponder as? DieView {
+        // Create and configure the window controller to present as a sheet:
+        let windowController = ConfigurationWindowController()
+        windowController.configuration = DieConfiguration(color: dieView.color, rolls: dieView.numberOfTimesToRoll)
+        window.beginSheet(
+            windowController.window!,
+            completionHandler: { response in
+                // The sheet has finished. Did the user click 'OK'?
+                if response = = NSModalResponseOK {
+                    let configuration = self.configurationWindowController!.configuration
+                    dieView.color = configuration.color
+                    dieView.numberOfTimesToRoll = configuration.rolls
+                }
+                // All done with the window controller.
+                self.configurationWindowController = nil
+            }
+        )
+        configurationWindowController = windowController
+    }
+}
+```
+- sheet should end when buttons are clicked
+```
+@IBAction func okayButtonClicked(button: NSButton) {
+    print("OK clicked")
+    window?.endEditingFor(nil)
+    dismissWithModalResponse(NSModalResponseOK)
+}
+
+@IBAction func cancelButtonClicked(button: NSButton) {
+    print("Cancel clicked")
+    dismissWithModalResponse(NSModalResponseCancel)
+}
+
+func dismissWithModalResponse(response: NSModalResponse) {
+    window!.sheetParent!.endSheet(window!, returnCode: response)
+}
+```
+- okayButtonClicked calls endEditingFor
 ## Modal Windows
+- similar to sheets but presented independently from other windows
+  and block user input for the rest of the application
+- use runModalForWindow and stopModalWithCode on NSApplication
+```
+func showModalWindow() {
+    let windowController = CriticalWindowController()
+    let app = NSApplication.sharedApplication()
+    let returnCode = app.runModalForWindow(windowController.window!)
+    if returnCode == CriticalWindowController.returnAccept { ... }
+}
+```
 ## Encapsulating Presentation APIs
+- sheet and modal APIs allow for use of custom Int as error code
+```
+class CriticalWindowController: NSWindowController {
+    enum ModalResult: Int {
+        case Accept
+        case Cancel
+    }
+
+    func runModal() -> ModalResult {
+        let app = NSApplication.sharedApplication()
+        let returnCode = app.runModalForWindow(window!)
+        if let result = ModalResult(rawValue: returnCode) { return result }
+        else { fatalError("Failed to map \(returnCode) to ModalResult") }
+    }
+
+    @IBAction func dismiss(sender: NSButton) {
+        let app = NSApplication.sharedApplication()
+        app.stopModalWithCode(ModalResult.Accept.rawValue)
+    }
+}
+
+...
+func showModalWindow() {
+    let windowController = CriticalWindowController()
+    switch windowController.runModal() {
+    case .Accept:
+        ...
+    case .Cancel:
+        break
+    }
+}
+```
+- clarifies API usage through use of enum with clear cases
 ## Challenge: Encapsulate Sheet Presentation
+- add a method to ConfigurationWindowController: presentAsSheetOnWindow(_: completionHandler:).
+- completion handler is type (DieConfiguration?)->(Void)
 ## Challenge: Add Menu Item Validation
+- disable Configure Die menu item if no DieView is presently first responder
+- the is operator returns true if the left operand is the same type as the
+  right operand
 
 # 25. Auto Layout
+- views are positioned by their frame (views position within superview)
+- by default, a view created in IB is static
+- can observe resizing programmatically but prefer Auto Layout
 ## What is Auto Layout?
+- uses constraints to determine where views within a window should be
+  positioned (just equations)
 ## Adding Constraints to RaiseMan
 ## Constraints from subview to superview
+- select scroll view
+    - click the Add New Constraints Button
+        - bottom, left and top position constraint -> Use Standard Value
+        - click "Add 3 Constraints" button
+- blue I-beam = good, orange = ambiguous
+- select vertical I-beam below the scroll view -> Attributes Inspector
+    - Constant -> Standard
+- Attributes Inspector for a constraint
+    - type of constraint
+    - info about constraint relationships
+    - priority (priority of 10000 = required)
+    - Remove at build time (allows for runtime constraints)
+    - Constant -> can be modified
+    - can drag constraint and observe changes
+- Add Employee button -> Add New Constraints
+    - top and right position constraint -> Use Standard Value
+    - click "Add 2 Constraints"
+- text fields in Name and Raise column -> Add New Constraints
+    - select all four I-beams
+    - top, bottom -> 0
+    - left, right -> 2
+    - click "Add 4 Constraints"
+- remaining components not working as expected
+    - scroll view width does not change
+    - Add Employee slides beneath the scroll view when the width
+      is too narrow
+    - Remove button does ot move
 ## Constraints between siblings
+- Remove button -> Add New Constraints
+    - top, left -> Use Standard Value
+    - click "Add 2 Constraints"
+- can add constraints by ctrl-dragging between views
+- can set views to have equal width or height by ctrl-dragging
+- ctrl-drag Remove button -> Add Employee button
+    - Equal Widths in constraint type panel
+- can also select two views and select Add New Constraints to set equal widths
+- Add Employee button -> Add New Constraints
+    - left -> Use Standard Value
+    - click "Add 1 Constraint"
+- this should have made a warning indicator disappear (IB has a bug with
+  Auto Layout)
 ## Size constraints
+- scroll view -> Add New Constraints
+    - Width -> X (> 200)
+    - Height -> X (> 100)
+- select Width constraint in document outline -> Attributes Inspector
+    - Relation -> Greater Than or Equal
+- select Width constraint in document outline -> Attributes Inspector
+    - Relation -> Greater Than or Equal
 ## Intrinsic Content Size
+- certain views have intrinsic content size (often determined by contained
+  text)
+- Auto Layout handles resizing based on intrinsic content sizes
 ## Creating Layout Constraints Programmatically
+- can use NSLayoutConstraint
+```
+let scrollView: NSScrollView = ...
+let superview = scrollView.superview!
+let constraint = NSLayoutConstraint(
+    item: scrollView,
+    attribute: .Leading,
+    relatedBy: .Equal,
+    toItem: superview,
+    attribute: .Leading,
+    multiplier: 1.0,
+    constant: 20.0
+)
+superview.addConstraint( constraint)
+```
+- leading and trailing edges will use left as the leading edge for languages
+  that read left-to-right and right for right-to-left languages
+- can add and remove constraints at runtime
+- can animate layout changes to smooth transitions
+- see Auto Layout Guide
 ## Visual Format Language
+- new Cocoa project AutoLabelOut
+- in AppDelegate
+```
+func applicationDidFinishLaunching(aNotification: NSNotification) {
+    // Insert code here to initialize your application
+    // Create the controls for the window:
+    // Create a label:
+    let label = NSTextField(frame: NSRect.zeroRect)
+    label.translatesAutoresizingMaskIntoConstraints = false
+    label.stringValue = "Label"
+    // Give this NSTextField the styling of a label:
+    label.backgroundColor = NSColor.clearColor()
+    label.editable = false
+    label.selectable = false
+    label.bezeled = false
+    // Create a text field:
+    let textField = NSTextField(frame: NSRect.zeroRect)
+    textField.translatesAutoresizingMaskIntoConstraints = false
+    // Make the text field update the label's text
+    // when the text field's text changes:
+    textField.action = Selector("takeStringValueFrom:")
+    textField.target = label
+    let superview = window.contentView as! NSView
+    superview.addSubview(label)
+    superview.addSubview(textField)
+    // Create the constraints between the controls:
+    let horizontalConstraints = NSLayoutConstraint.constraintsWithVisualFormat(
+        "|-[label]-[textField(>= 100)]-|",
+        options:. AlignAllBaseline,
+        metrics:nil,
+        views: ["label" : label, "textField" : textField]
+    )
+    NSLayoutConstraint.activateConstraints(horizontalConstraints)
+    let verticalConstraints = NSLayoutConstraint.constraintsWithVisualFormat(
+        "V: |-[textField]-|",
+        options:. allZeros,
+        metrics: nil,
+        views: ["textField" : textField]
+    )
+    NSLayoutConstraint.activateConstraints(verticalConstraints)
+}
+```
+- allows you to specify constraints using an ASCII art style language
+- pipes - edges of superview
+- `[view name]`
+- value in points
 ## Does Not Compute, Part 1: Unsatisfiable Constraints
+- conflicts occur generally when there are too many or too few constraints
+- aka unsatisfiable (too many constraints)
+- Auto Layout will show conflicting constraints in debug window and auto
+  adjusts at runtime
 ## Does Not Compute, Part 2: Ambiguous Layout
+- ambiguous when too few constraints to determine the position of all of the
+  views
+- can use NSWindow's visualizeConstraints method
+- this will display an Exercise Ambiguity button that can be used to
+  demonstrate the constraint ambiguity
+- applicationDidFinishLaunching
+```
+window.visualizeConstraints( superview.constraints)
+
+// or
+superview.updateConstraintsForSubtreeIfNeeded()
+if superview.hasAmbiguousLayout { superview.exerciseAmbiguityInLayout() }
+```
 ## For the More Curious: Autoresizing Masks
+- used to specify how a subview resizes in response to its superview resizing
+- no means to specify layout in relation to sibling views
+- spring -> resize in vertical or horizontal direction
+- strut -> preserve distance between sides of view and superview
+- for legacy code use translatesAutoresizingMaskIntoConstraints = false
+- to use autoresizing masks in IB, must turn off Auto Layout on a per .xib
+  file basis
+- prefer Auto Layout
 ## Challenge: Add Vertical Constraints
+- add a constraint to make sure that the bottom of the Remove button is always at
+  least the standard distance from the bottom of the window
 ## Challenge: Add Constraints Programmatically
+- add same constraints to RaiseMan two different ways
+    - init( item:attribute:relatedBy:toItem:attribute:multiplier:constant:)
+    - constraintsWithVisualFormat(_: options:metrics:views:)
+- keep all existing constraints but select Remove at build time in Attributes
+  Inspector Placeholder section
 
 # 26. Localization and Bundles
+- main languages to plan on supporting
+    - English
+    - French
+    - Spanish
+    - German
+    - Dutch
+    - Italian
+    - Mandarin
+    - Japanese
+- create strings files with additional .lproj files for locales
 ## Different Mechanisms for Localization
+- User-facing string literals
+    - labels, alerts, etc
+    - always localized with strings files
+- General resources
+    - all application resource files (except XIBs) exposed to user
+    - need to generate a version with translated text for each locale
+- XIB files
+    - localized XIB (need a copy for each locale)
+    - strings file (Xcode generate strings file for locale but programmer needs
+      to edit)
+- XIB files allow for greater customization but is more resource intensive and
+  difficult to maintain
+- strings files are easier to maintain but less customizable
+- can mix and match approaches for locales
 ## Localizing a XIB File
+- project navigator -> RaiseMan project
+    - Info tab -> Localizations section
+        - + button -> French
+        - select Document.xib
+        - in File Types pop-up ->
+          keep Localizable Strings (rather than Interface Builder Cocoa XIB)
+        - click Finish
+- creates file with pre-populated info from an existing file (from Reference Language)
+- provides details of French strings translations
+- uses object IDs and strings
+- to test change System Preferences preferred language
 ## Localizing String Literals
+- uses a file Localizable.strings
+- change uses of string literals to NSLocalizedString
+```
+func NSLocalizedString(key: String, #comment: String) -> String
+```
+- details string literal usage in app here
+- RaiseMan group -> Project Navigator
+    - utility area -> file inspector
+        - Identity and Type -> Full Path -> copy to clipboard
+        - cd to path in terminal
+        - `genstrings Document.swift -o Base.lproj`
+        - drag Localizable.strings file into Xcode under Document/xib hierarchy
+            - utility area -> file inspector
+                - check English and French
+- details updating English and French Localizable.strings files here
 ## Demystifying NSLocalizedString and genstrings
+- strings file is just sets of key-value pairs
+- can programmatically use NSBundle to get the localized strings when your app
+  is running
+```
+let mainBundle: NSBundle = NSBundle.mainBundle()
+let string: String = mainBundle.localizedStringForKey("NO_RESULTS", value: "No results found", table: "Find")
+```
+- searches in Find.strings and returns "No results found" on failure
+- most simple applications just use Localizable.strings
+- NSLocalizedString just calls the method on NSBundle.mainBundle()
 ## Explicit Ordering of Tokens in Format Strings
+- may need to reconsider ordering of tokens for format strings
 ## NSBundle
+- bundle -> directory of resources that may be used by an application
+    - any kind of file
+        - images
+        - sounds
+        - NIB files
+        - compiled code
+- application is a bundle, and app image is a directory that is called the main bundle
+```
+let bundle = NSBundle.mainBundle()
+
+// to access resources in another bundle
+let bundleURL: NSURL = ...
+if let bundle = NSBundle( URL: bundleURL) { ... }
+
+// ask for general resources
+let url: NSURL? = bundle.URLForResource(" Chapter", withExtension: "xml")
+
+// ask for images
+if let appIconImage = NSImage(named: NSImageNameApplicationIcon), let badgeImage = NSImage(named: "GreenBadge") { ... }
+```
 ## NSBundle’s role in localization
+- NSBundle manages localization at runtime
+- resources can be any file (not source code) and will be packaged with app
+  if it has the resource checked
+- does more work for strings file
+    - global resource
+        - not localized
+        - top-level by default
+    - region-specific localized resource
+        - user can specify their region in Language & Region preference pane
+        - if a localization is found in current language and user specified
+          region, localization if preferred over generic localization
+    - language-specific localized resource
+    - development language resource
+    - base localization resource
+- returns first resource found
 ## Loading code from bundles
+- load principal class from the bundle
+```
+if let principalClass = pluginBundle.principalClass as? NSObject.Type {
+    if let rover = principalClass() as? Rover { rover.fetch() }
+}
+```
+- configured in Info.plist
+- see Code Loading Programming Topics
 ## For the More Curious: Localization and Plurality
+- for correct plurality across all locales use stringdict
+- create file named Localizable.stringdict along Localizable.stringsdict
+- creates a full dictionary
+- two fields
+    - a localized format string
+    - a dictionary showing how to expand the string
+- each local for a stringsdict will have the proper number of plural forms
+  for that language
+- see Internationalization and Localization guide
 ## Challenge: Localizing the Default Name for a Newly Added Employee
+- localize New Employee string
 ## Challenge: Localizing the Undo Action Names
+- localize the Edit menu strings
 
 # 27. Printing
+- difficult due to
+    - pagination
+    - margins
+    - page orientation
+- for Document based app and a view that knows how to draw itself implement
+  printOperationWithSettings(_: error:)
+```
+override func printOperationWithSettings(
+    printSettings: [NSObject : AnyObject],
+    error outError: NSErrorPointer
+) -> NSPrintOperation? {
+    let printableView: NSView = ...
+    // View that draws document's data for printing.
+    let printInfo: NSPrintInfo = self.printInfo
+    let printOperation = NSPrintOperation(view: printableView, printInfo: printInfo)
+    return printOperation
+}
+```
+- this is all that is needed if document can be drawn on a single page
 ## Dealing with Pagination
+- two methods
+```
+// How many pages?
+func knowsPageRange(aRange: NSRangePointer) -> Bool
+// Where is each page?
+func rectForPage( pageNumber: Int) -> NSRect
+```
+- use page number in rect for page and drawRect for page number
 ## Adding Printing to RaiseMan
+- create class/file EmployeesPrintingView
+```
+import Cocoa
+
+private let font: NSFont = NSFont.userFixedPitchFont(ofSize: 12.0)!
+private let textAttributes: [String: AnyObject] = [NSFontAttributeName : font]
+private let lineHeight: CGFloat = font.capHeight * 2.0
+
+class EmployeesPrintingView: NSView {
+
+    let employees: [Employee]
+
+    var pageRect = NSRect()
+    var linesPerPage: Int = 0
+    var currentPage: Int = 0
+
+    // MARK: - Lifecycle
+
+    init(employees: [Employee]) {
+        self.employees = employees
+        super.init(frame: NSRect())
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("unimplemented: instantiate programmatically instead")
+    }
+
+    // MARK: - Pagination
+
+    override func knowsPageRange(_ range: NSRangePointer) -> Bool {
+        let printOperation = NSPrintOperation.current()!
+        let printInfo: NSPrintInfo = printOperation.printInfo
+
+        // Where can I draw?
+        pageRect = printInfo.imageablePageBounds
+        let newFrame = NSRect(origin: CGPoint(), size: printInfo.paperSize)
+        frame = newFrame
+
+        // How many lines per page?
+        linesPerPage = Int(pageRect.height / lineHeight)
+
+        // Construct the range to return
+        var rangeOut = NSRange(location: 0, length: 0)
+
+        // Pages are 1-based. That is, the first page is 1.
+        rangeOut.location = 1
+
+        // How many pages will it take?
+        rangeOut.length = employees.count / linesPerPage
+        if employees.count % linesPerPage > 0 {
+            rangeOut.length += 1
+        }
+
+        // Return the newly constructed range, rangeOut, via the range pointer
+        range.pointee = rangeOut
+
+        return true
+    }
+
+    override func rectForPage(_ page: Int) -> NSRect {
+        // Note the current page
+        // Although Cocoa uses 1=based indexing for the page number
+        //  it's easier not to do that here.
+        currentPage = page - 1
+
+        // Return the same page every time
+        return pageRect
+    }
+
+    // MARK: - Drawing
+
+    // The origin of the view is at the upper left corner
+    override var isFlipped: Bool {
+        return true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        var nameRect = NSRect(x: pageRect.minX,
+                              y: 0,
+                          width: 200.0,
+                         height: lineHeight)
+        var raiseRect = NSRect(x: nameRect.maxX,
+                               y: 0,
+                           width: 100.0,
+                          height: lineHeight)
+
+        for indexOnPage in 0..<linesPerPage {
+            let indexInEmployees = currentPage * linesPerPage + indexOnPage
+            if indexInEmployees >= employees.count {
+                break
+            }
+
+            let employee = employees[indexInEmployees]
+
+            // Draw index and name
+            nameRect.origin.y = pageRect.minY + CGFloat(indexOnPage) * lineHeight
+            let employeeName = (employee.name ?? "")
+            let indexAndName = "\(indexInEmployees) \(employeeName)"
+            indexAndName.draw(in: nameRect, withAttributes: textAttributes)
+            // Draw raise
+            raiseRect.origin.y = nameRect.minY
+            let raise = String(format: "%4.1f%%", employee.raise * 100)
+            let raiseString = raise
+            raiseString.draw(in: raiseRect, withAttributes: textAttributes)
+        }
+    }
+}
+```
+- in Document.swift
+```
+override func printOperation(withSettings printSettings: [String : Any]) throws -> NSPrintOperation {
+    let employeesPrintingView = EmployeesPrintingView(employees: employees)
+    let printInfo: NSPrintInfo = self.printInfo
+    let printOperation = NSPrintOperation(view: employeesPrintingView, printInfo: printInfo)
+    return printOperation
+}
+```
+- MainMenu.xib -> Print... menu item is nil-targeted (action -> printDocument: -> printOperationWithSettings(_: error:))
 ## For the More Curious: Are You Drawing to the Screen?
+- difference between drawing on screen and drawing in printing
+- can query in drawRect(_:)
+```
+if NSGraphicsContext.currentContextDrawingToScreen() { // ... draw the grid ... }
+```
 ## Challenge: Add Page Numbers
 ## Challenge: Persist Page Setup
+- NSPrintInfo stored in document's printInfo property conforms to NSCoding
+- modify Document to achive and unarchive printInfo and employees
+- change rsmn file to use dictionary as top-level object
+- when unarchiving, set printInfo but disable undo registration while setting property
+```
+override func readFromData(
+    data: NSData,
+    ofType typeName: String,
+    error outError: NSErrorPointer
+) -> Bool {
+    ...
+        ...
+            if let unarchivedPrintInfo = dictionary["printInfo"] as? NSPrintInfo {
+                undoManager.disableUndoRegistration()
+                printInfo = unarchivedPrintInfo
+                undoManager.enableUndoRegistration()
+            }
+
+```
 
 # 28. Web Services
-## Web Services
-## APIs
+- requires HTTP or HTTPS generally
+- general pattern
+    - format a request as required by the web service
+    - send the request over HTTP/HTTPS
+    - receive the response
+    - parse the response and use that data in your application
+## Web Services APIs
+- many involved classes
+    - NSURL
+    - NSURLRequest
+    - NSURLSession
+    - NSURLSessionTask
+    - NSURLSessionConfiguration
+- NSURL used for files and web services
+- wrap in NSURLRequest (for modification use NSMutableURLRequest)
+- use NSURLSession to manage a number of related connections
+- NSURLRequest -> NSURLSession -> NSURLSessionTask
+- task completes on server response
+- Cocoa has classes for working with XML and JSON
 ## RanchForecast Project
+- new Xcode project RanchForecast
+    - uncheck Create Document-Based Application, Use Core Data, and Use Storyboards
+    - single window app
+    - AppDelegate and MainWindowController changes
+```
+View                    NSTableView
+                             ^
+                             |
+                             V
+Controller              NSArrayController
+                             ^
+                             |
+                             V
+                        MainWindowController
+                             ^
+                             |
+                             V
+Model       ScheduleFetcher <-> Course (s)
+```
+- Course
+```
+class Course: NSObject {
+    let title: String
+    let url: NSURL
+    let nextStartDate: NSDate
+
+    init(title: String, url: NSURL, nextStartDate: NSDate) {
+        self.title = title
+        self.url = url
+        self.nextStartDate = nextStartDate super.init()
+    }
+}
+```
 ## NSURLSession and asynchronous API design
+- NSURLSessionTask
+    - download to a file on disk
+    - upload from a file on disk
+    - download to memory
+```
+func dataTaskWithRequest(request: NSURLRequest, completionHandler: (( NSData!, NSURLResponse!, NSError!) -> Void)?) -> NSURLSessionDataTask
+```
+- use the returned task to manage connection and get progress info
+- calls completion handler when response is received (async)
+- do not want to use blocking APIs here
+- should put querying class in model layer
+- ScheduleFetcher
+```
+import Foundation
+
+class ScheduleFetcher {
+    let session: NSURLSession init() {
+        let config = NSURLSessionConfiguration.defaultSessionConfiguration()
+        session = NSURLSession(configuration: config)
+    }
+}
+```
+- have a number of options to start fetch
+    - delegate (ScheduleFetcherDelegate)
+    - NSNotificationCenter
+        - best for broadcasting notifications to many observers over time
+        - no type safety
+    - completion handler
+        - good for one shot callbacks
+- use completion handler
+- takes 3 params -> NSData, NSURLResponse, NSError
+```
+func fetchCoursesUsingCompletionHandler(completionHandler: (FetchCoursesResult) -> (Void)) {
+    let url = NSURL(string: "http://bookapi.bignerdranch.com/courses.json")!
+    let request = NSURLRequest(URL: url)
+    let task = session.dataTaskWithRequest(
+        request,
+        completionHandler: { (data, response, error) -> Void in
+            var result: FetchCoursesResult
+            if data == nil { result = .Failure( error) }
+            else {
+                print("Received \(data.length) bytes.")
+                result = .Success([])
+                // Empty array until parsing is added
+            }
+        NSOperationQueue.mainQueue().addOperationWithBlock({ completionHandler(result) })
+        }
+    )
+    task.resume()
+}
+```
+- in MainWindowController
+```
+import Cocoa
+
+class MainWindowController: NSWindowController {
+
+    @IBOutlet var tableView: NSTableView!
+    @IBOutlet var arrayController: NSArrayController!
+
+    let fetcher = ScheduleFetcher()
+    dynamic var courses: [Course] = []
+
+
+    override var windowNibName: String! {
+        return "MainWindowController"
+    }
+
+
+    override func windowDidLoad() {
+        super.windowDidLoad()
+
+        tableView.target = self
+        tableView.doubleAction = #selector(MainWindowController.openClass(_:))
+
+        fetcher.fetchCoursesUsingCompletionHandler { result in
+            switch result {
+            case .success(let courses):
+                print("Got courses: \(courses)")
+                self.courses = courses
+            case .failure(let error):
+                print("Got error: \(error)")
+                NSAlert(error: error).runModal()
+                self.courses = []
+            }
+        }
+    }
+}
+```
 ## NSURLSession, HTTP status codes, and errors
+- HTTP response code is 100 - 599
+- NSURLSession only reports errors at the network layer for failed requests
+- provides completion handler with reference to NSURLResponse (NSHTTPURLResponse)
+- in ScheduleFetcher
+```
+func errorWithCode(code: Int, localizedDescription: String) -> NSError {
+    return NSError(
+        domain: "ScheduleFetcher",
+        code: code,
+        userInfo: [NSLocalizedDescriptionKey: localizedDescription]
+    )
+}
+
+func fetchCoursesUsingCompletionHandler(completionHandler: (FetchCoursesResult) -> (Void)) {
+    let url = NSURL(string: "http:// bookapi.bignerdranch.com/ courses.json")!
+    let req = NSURLRequest(URL: url)
+    let task = session.dataTaskWithRequest(
+        req,
+        completionHandler: { (data, response, error) -> Void in
+            var result: FetchCoursesResult
+            if data == nil {
+                result = .Failure(error)
+            } else if let response = response as? NSHTTPURLResponse {
+                print("\(data.length) bytes, HTTP \(response.statusCode).")
+                if response.statusCode == 200 {
+                    result = .Success([])
+                    // Empty array until parsing is added
+                } else {
+                    let error = self.errorWithCode(1, localizedDescription: "Bad status code \(response.statusCode)")
+                    result = .Failure(error)
+                }
+            } else {
+                let error = self.errorWithCode(1, localizedDescription: "Unexpected response object.")
+                result = .Failure(error)
+            }
+            NSOperationQueue.mainQueue().addOperationWithBlock({completionHandler(result)})
+        }
+    )
+    task.resume()
+}
+```
 ## Add JSON parsing to ScheduleFetcher
-## Lay out the interface Opening URLs
+- uses NSJSONSerialization class
+- produces property list tree of NSDictionary, NSArray, NSString, NSNumber
+- can also serialize to an NSData object
+- ScheduleFetcher
+```
+func courseFromDictionary(_ courseDict: NSDictionary) -> Course? {
+    let title = courseDict["title"] as! String
+    let urlString = courseDict["url"] as! String
+    let upcomingArray = courseDict["upcoming"] as! [NSDictionary]
+    let nextUpcomingDict = upcomingArray.first!
+    let nextStartDateString = nextUpcomingDict["start_date"] as! String
+
+    let url = URL(string: urlString)!
+
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+    let nextStartDate = dateFormatter.date(from: nextStartDateString)!
+
+    return Course(title: title, url: url, nextStartDate: nextStartDate)
+}
+```
+- does not check for errors in individual fields
+```
+func resultFromData(data: NSData) -> FetchCoursesResult {
+    var error: NSError?
+    let topLevelDict = NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions.allZeros, error: &error) as! NSDictionary?
+    if let topLevelDict = topLevelDict {
+        let courseDicts = topLevelDict["courses"] as! [NSDictionary]
+        var courses: [Course] = []
+        for courseDict in courseDicts {
+            if let course = courseFromDictionary(courseDict) {
+                courses.append(course)
+            }
+        }
+        return .Success(courses)
+    }
+    else { return .Failure( error!) }
+}
+
+// in fetchCoursesUsingCompletionHandler(_:)
+if response.statusCode == 200 {
+    result = self.resultFromData(data)
+}
+```
+## Lay out the interface
+- change window title to RanchForecast
+- add table view
+    - 2 columns -> Next Start Date, Title
+    - Date Formatter on date column
+        - Date Style -> Medium
+- add array controller
+    - Bindings Inspector
+        - Content Array -> File's Owner
+        - Model Key Path -> courses
+- table view Bindings Inspector
+    - Content -> Array Controller
+    - Controller Key -> arrangedObjects
+    - Selection Indexes -> Array Controller
+    - Controller Key -> selectionIndexes
+- text field of each table view cell's Bindings Inspector
+    - Value -> Table Cell View
+    - Model Key Path -> objectValue.nextStartDate and objectValue.title
+## Opening URLs
+- set URL double-click to open app with URL
+- tableView doubleAction is set programmatically
+- in MainWindowController
+```
+@IBOutlet var tableView: NSTableView!
+@IBOutlet var arrayController: NSArrayController!
+```
+- ctrl-click File's Owner in .xib
+    - tableView -> table view
+    - arrayController -> array controller
+- in windowDidLoad()
+```
+tableView.target = self
+tableView.doubleAction = Selector("openClass:")
+```
+- NSWorkspace represents Finder (can open URLs in default web browser)
+```
+func openClass(sender: AnyObject!) {
+    if let course = arrayController.selectedObjects.first as? Course {
+        NSWorkspace.sharedWorkspace().openURL(course.url)
+    }
+}
+```
+- advantage of array controller is that it can provide objects in a different sort
+  order from the model (prefer selectedObjects over NSTableView's selectedRow)
 ## Safely Working with Untyped Data Structures
+- app code assumes structure of parsed data
+    - courseDict has a key named upcoming whose value is an array
+    - that array has at least one object in it, a dictionary
+    - that dictionary has a key named start_date which is a string
+- can use if let optionals to improve code safety
+```
+if let title = courseDict["title"] as? String,
+   let urlString = courseDict["url"] as? String,
+   let upcomingArray = courseDict["upcoming"] as? [NSDictionary],
+   let nextUpcomingDict = upcomingArray.first,
+   let nextStartDateString = nextUpcomingDict["start_date"] as? String {
+        ...
+        return Course(title: title, url: url, nextStartDate: nextStartDate)
+    }
+    return nil
+```
+- error checking often results in ugly code but is necessary
 ## For the More Curious: Parsing XML
+- high-level
+    - NSXMLDocument and NSXMLNode
+    - takes NSData -> XML tree
+- can traverse tree manually or use XPath queries
+- NSXMLParser is less heavy weight
+    - makes calls to delegate as it parses and encounters structures
+- only NSXMLParser is available on iOS
 ## Challenge: Improve Error Handling
+- add error handling to courseFromDictionary to return nil if format is not
+  as expected and test
 ## Challenge: Add a Spinner
+- add indeterminate progress indicator and animate while fetching
 ## Challenge: Parse the XML Courses Feed
+- update RanchForecast to fetch XML from http:// bookapi.bignerdranch.com/ courses.xml
 
 # 29. Unit Testing
 ## Testing in Xcode
