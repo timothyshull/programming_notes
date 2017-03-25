@@ -3548,7 +3548,7 @@ func NSLocalizedString(key: String, #comment: String) -> String
     - utility area -> file inspector
         - Identity and Type -> Full Path -> copy to clipboard
         - cd to path in terminal
-        - `genstrings Document.swift -o Base.lproj`
+        - `genstrings Document.swift_and_mac -o Base.lproj`
         - drag Localizable.strings file into Xcode under Document/xib hierarchy
             - utility area -> file inspector
                 - check English and French
@@ -4113,81 +4113,1343 @@ if let title = courseDict["title"] as? String,
 - update RanchForecast to fetch XML from http:// bookapi.bignerdranch.com/ courses.xml
 
 # 29. Unit Testing
+- can divide into functions, methods, or classes
 ## Testing in Xcode
+- each Xcode project has main dir, tests dir, and Products dir
+- subclasses XCTestCase
+- automatically runs methods prefixed with test
+- commonly used assert functions
+```
+XCTAssertTrue(expression)
+XCTAssertEqual(testResultValue, expectedValue)
+XCTAssertNotNil(expression)
+XCTFail()
+```
+- can supply custom failure messages
+- see Assertions Listed by Category in Testing with Xcode guide
 ## Your First Test
+- create CourseTests.swift
+- to run, open Product menu and select Test (Command + u)
+```
+import XCTest
+import RanchForecast
+
+class CourseTests: XCTestCase {
+
+    func testCourseInitialization() {
+        let course = Course(
+            title: Constants.title,
+            url: Constants.url,
+            nextStartDate: Constants.date
+        )
+        XCTAssertEqual(course.title, Constants.title)
+        XCTAssertEqual(course.url, Constants.url)
+        XCTAssertEqual(course.nextStartDate, Constants.date)
+    }
+}
+```
+- add Constants.swift
+```
+class Constants {
+    static let urlString = "http://training.bignerdranch.com/classes/test-course"
+    static let url = NSURL(string: urlString)!
+    static let title = "Test Course"
+    static let date = NSDate()
+}
+```
+- note: need to explicitly import RanchForecast and make all tested components
+  public to access them from tests
 ## A Note on Literals in Testing
+- prefer constants over literals to avoid errors
 ## Creating a Consistent Testing Environment
+- create ScheduleFetcherTests.swift
+```
+import XCTest
+import RanchForecast
+
+class ScheduleFetcherTests: XCTestCase {
+
+    var fetcher: ScheduleFetcher!
+
+
+    override func setUp() {
+        super.setUp()
+        fetcher = ScheduleFetcher()
+    }
+
+
+    override func tearDown() {
+        fetcher = nil
+        super.tearDown()
+    }
+
+
+    func testCreateCourseFromValidDictionary() {
+            let course: Course! = fetcher.courseFromDictionary(Constants.validCourseDict)
+            XCTAssertNotNil(course)
+            XCTAssertEqual(course.title, Constants.title)
+            XCTAssertEqual(course.url, Constants.url)
+            XCTAssertEqual(course.nextStartDate, Constants.date)
+    }
+
+
+    func testResultFromValidHTTPResponseAndValidData() {
+        let result = fetcher.resultFromData(Constants.jsonData,
+        response: Constants.okResponse,
+        error: nil)
+
+        switch result {
+        case .success(let courses):
+            XCTAssert(courses.count == 1)
+            let theCourse = courses[0]
+            XCTAssertEqual(theCourse.title, Constants.title)
+            XCTAssertEqual(theCourse.url, Constants.url)
+            XCTAssertEqual(theCourse.nextStartDate, Constants.date)
+        default:
+            XCTFail("Result contains Failure, but Success was expected.")
+        }
+    }
+}
+```
+- make ScheduleFetcher components public
+- use setUp and tearDown for fixtures
+- modify Constants.swift
+```
+class Constants {
+    static let urlString = "http://training.bignerdranch.com/classes/test-course"
+    static let url = URL(string: urlString)!
+    static let title = "Test Course"
+
+    static let dateString = "2014-06-02"
+    static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    static let date = dateFormatter.date(from: dateString)!
+
+    static let validCourseDict = [
+        "title" : title,
+        "url": urlString,
+        "upcoming" : [["start_date": dateString]]
+    ] as [String : Any]
+
+    static let coursesDictionary = ["courses" : [validCourseDict]]
+
+    static let okResponse = HTTPURLResponse(
+        url: url,
+        statusCode: 200,
+        httpVersion: nil,
+        headerFields: nil
+    )
+
+    static let jsonData = try! JSONSerialization.data(
+        withJSONObject: coursesDictionary,
+        options: []
+    )
+}
+```
 ## Sharing Constants
+- common to use same constants in multiple tests
+- fetcher property is also a fixture
+- ensure set up and tear down of fixtures always happens to avoid dependencies
+  between tests (mainly for shared fixtures)
 ## Refactoring for Testing
+- common to need to refactor to facilitate testing
+- for long methods and related functionality within callbacks, move the
+  code to a method to allow for testing (e.g. completion handler in fetcher)
+```
+func testResultFromValidHTTPResponseAndValidData() {
+    let result = fetcher.resultFromData(
+        Constants.jsonData,
+        response: Constants.okResponse,
+        error: nil
+    )
+    switch result {
+    case .Success(let courses):
+        XCTAssert(courses.count == 1)
+        let theCourse = courses[0]
+        XCTAssertEqual(theCourse.title, Constants.title)
+        XCTAssertEqual(theCourse.url, Constants.url)
+        XCTAssertEqual(theCourse.nextStartDate, Constants.date)
+    default:
+        XCTFail(" Result contains Failure, but Success was expected.")
+    }
+}
+```
 ## For the More Curious: Access Modifiers
+- internal
+    - default
+    - visible from all files within same module but not from files in a separate
+      module
+    - mainly used to be explicit (since default)
+- public
+    - visible from any file in a module that imports the public entity
+- private
+    - only visible within same file
+- there are interrelated constraints that occur based off of entity interactions
+  and access
+- testing and API design are in conflict due to need for public access
 ## For the More Curious: Asynchronous Testing
+- use XCTestExpectation
+```
+func testDoWork() {
+    let expectation = self.expectationWithDescription("doWork completes")
+    worker.doWorkInBackgroundWithCompletion { (success, error) in
+        XCTAssertTrue(success)
+        XCTAssertNil(error)
+        expectation.fulfill()
+    }
+    self.waitForExpectationsWithTimeout(1, nil)
+}
+```
+- XCTest also provides
+    - expectationForNotification(_: object:handler:)
+    - keyValueObservingExpectationForObject(_: keyPath:expectedValue:) for KVO
 ## Challenge: Make Course Implement Equatable
+- add extension
+```
+public func = =( lhs: Course, rhs: Course) -> Bool
+```
 ## Challenge: Improve Test Coverage of Web Service Responses
+- two more tests for resultFromData(_: response:error:)
+    1. call the method with a 404 response and no data
+    2. call the method with a 200 response and invalid JSON data
 ## Challenge: Test Invalid JSON Dictionary
+- create test to check that courseFromDictionary(_:) returns nil
 
 # 30. View Controllers
+- UIs went from many windows to more commonly one window
+- use NSViewController to manage many nested hierarchical views
 ## NSViewController
+- view hierarchy is lazily loaded
+- when view property is accessed, the view controller calls loadView
+- can override loadView to create the view programmatically (ch 31)
+```
+class NSViewController : NSResponder {
+    var nibName: String? { get }
+    var representedObject: AnyObject?
+    var title: String?
+    var view: NSView func loadView()
+
+    // Added in OS X 10.10:
+    func viewDidLoad()
+    func viewWillAppear()
+    func viewDidAppear()
+    func viewWillDisappear()
+    func viewDidDisappear()
+    ...
+}
+```
 ## Starting the ViewControl Application
+- create ViewControl Xcode project
+    - uncheck Use Storyboards, Create Document-Based Application, and Use Core Data
+    - delete MainWindow window
+- create ImageViewController (subclass of NSViewController and with Create XIB file)
+```
+var image: NSImage? override
+var nibName: String? { return "ImageViewController" }
+```
+- always need to override in Swift even though the filename is defaulted
+- in .xib ctrl-click File's Owner
+    - connections panel
+        - view -> view in XIB (already connected)
+- add Image View and size to full screen (use Auto Layout to pin edges)
+    - Scaling -> Proportionally Up or Down
+    - Bindings Inspector
+        - Value -> File's Owner
+        - Controller Key -> image
+- similar to window controllers so far but view controller provide more flexibility
 ## Windows, Controllers, and Memory Management
+- weak window outlet was changed to strong to avoid deallocation and closing
+- view controllers and views maintain strong reference (window -> contentViewController)
+- top-level objects loaded from NIBs have a +1 retain count
+    - managed when window and view controller load their windows and views
 ## Container View Controllers
+- master/detail -> items and view of item (left and right)
+- common in navigators
+- container view controllers provide this (NSSplitViewController)
+- also provides NSTabViewController and NSTabView
+- using view controllers provides modularity and reuse like this
+- iOS makes heavy use of container view controllers (added to OSX in 10.10)
 ## Add a Tab View Controller
+- in AppDelegate
+```
+func applicationDidFinishLaunching(aNotification: NSNotification) {
+    let flowViewController = ImageViewController()
+    flowViewController.title = "Flow"
+    flowViewController.image = NSImage(named: NSImageNameFlowViewTemplate)
+    let columnViewController = ImageViewController()
+    columnViewController.title = "Column"
+    columnViewController.image = NSImage(named: NSImageNameColumnViewTemplate)
+    let tabViewController = NSTabViewController()
+    tabViewController.addChildViewController(flowViewController)
+    tabViewController.addChildViewController(columnViewController)
+    let window = NSWindow(contentViewController: tabViewController)
+    let window = NSWindow(contentViewController: flowViewController)
+    window.makeKeyAndOrderFront(self)
+    self.window = window
+}
+```
+- when a tab is selected the view controller asks the corresponding child view for its
+  view and displays that
 ## View Controllers vs. Window Controllers
+- window controllers work well for simple, relatively static views
+- for more complex applications use window controllers and view controllers together
+    - window controller is thin and focused on window display and global actions
+    - view controllers are responsible for their own area of UI
+- there is a cost to view controllers -> specifically inter-view communication
 ## Considerations for OSX 10.9 and Earlier
+- prior to 10.10
+    - view controllers were not part of the responder chain
+    - view life cycle methods such as viewDidLoad(), viewWillAppear(), viewWillDisappear(), were not available
+    - Cocoa did not provide any container view controllers
+    - NSWindow’s contentViewController was not available.
+- workarounds
+```
+extension NSViewController {
+    func patchResponderChain() {
+        if view.nextResponder != self {
+            let resp = view.nextResponder
+            view.nextResponder = self
+            nextResponder = resp
+        }
+    }
+}
+
+// usage
+override func viewDidLoad() {
+    super.viewDidLoad()
+    box.contentView = someViewController.view
+    someViewController.patchResponderChain()
+}
+```
 ## Challenge: SpeakLineViewController
+- change SpeakLine to use a view controller
 ## Challenge: Programmatic View Controller
+- create ImageViewController purely programmatically
+    - override loadView() to build the view(s)
+    - assign the root of that hierarchy to the view property
+    - do not call super.loadView(), as it will attempt to load the
+      view hierarchy from a NIB file
+    - loadView() is called to lazily load the view hierarchy the first time the view
+      property is accessed
 ## Challenge: Add a Window Controller
+- create an NSWindowController subclass called MainWindowController
+    - move the code for instantiating the view controller within it
+    - NSWindowController also has a contentViewController property
+      (mirrors the window’s contentViewController)
 
 # 31. View Swapping and Custom Container View Controllers
-## View Swapping NerdTabViewController
+## View Swapping
+- tab view view changing is called view swapping
+    - addSubview
+    - removeFromSuperview
+```
+class NerdBox: NSView {
+    var contentView: NSView?
+
+    func showContentView(view: NSView) {
+        contentView?.removeFromSuperview()
+        addSubview(view)
+        contentView = view
+    }
+}
+```
+- can use NSBox to handle constraints and auto resizing
+## NerdTabViewController
+- displays a child view for each child view controller
+    - insertChildViewController(_: atIndex:)
+    - removeChildViewControllerAtIndex(_:).
+```
+import Cocoa class NerdTabViewController : NSViewController {
+    var box = NSBox()
+    var buttons: [NSButton] = []
+
+    func selectTabAtIndex(index: Int) {
+        assert(contains( 0..<childViewControllers.count, index), "index out of range")
+        for (i, button) in enumerate(buttons) {
+            button.state = (index == i) ? NSOnState : NSOffState
+        }
+        let viewController = childViewControllers[index] as! NSViewController
+        box.contentView = viewController.view
+    }
+
+    func selectTab(sender: NSButton) { let index = sender.tag selectTabAtIndex(index) }
+
+    override func loadView() {
+        view = NSView()
+        reset()
+    }
+
+    func reset() { }
+
+    override func insertChildViewController(
+        childViewController: NSViewController,
+        atIndex index: Int
+    ) {
+        super.insertChildViewController(childViewController, atIndex: index)
+        if viewLoaded { reset() }
+    }
+
+    override func removeChildViewControllerAtIndex(index: Int) {
+        super.removeChildViewControllerAtIndex(index)
+        if viewLoaded { reset() }
+    }
+}
+```
+- NSBox (box) holds contents of the chosen tab
+- buttons used for changing between tabs (triggers selectTab(_:)) from tag property
+```
+func reset() {
+    view.subviews = []
+    let buttonWidth: CGFloat = 28
+    let buttonHeight: CGFloat = 28
+    let viewControllers = childViewControllers as! [NSViewController]
+    buttons = map(enumerate(viewControllers)) { (index, viewController) -> NSButton in
+        let button = NSButton()
+        button.setButtonType(.ToggleButton)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.bordered = false
+        button.target = self
+        button.action = Selector("selectTab:")
+        button.tag = index
+        button.image = NSImage(named: NSImageNameFlowViewTemplate)
+        button.addConstraints([
+            NSLayoutConstraint(
+                item: button,
+                attribute: .Width,
+                relatedBy: .Equal,
+                toItem: nil,
+                attribute: .NotAnAttribute,
+                multiplier: 1.0,
+                constant: buttonWidth
+            ),
+            NSLayoutConstraint(
+                item: button,
+                attribute: .Height,
+                relatedBy: .Equal,
+                toItem: nil,
+                attribute: .NotAnAttribute,
+                multiplier: 1.0,
+                constant: buttonHeight
+            )]
+        )
+        return button
+    }
+    let stackView = NSStackView()
+    stackView.translatesAutoresizingMaskIntoConstraints = false
+    stackView.orientation = .Horizontal
+    stackView.spacing = 4
+    for button in buttons { stackView.addView(button, inGravity: .Center) }
+    box.translatesAutoresizingMaskIntoConstraints = false
+    box.borderType = .NoBorder
+    box.boxType = .Custom
+    let separator = NSBox()
+    separator.boxType = .Separator
+    separator.translatesAutoresizingMaskIntoConstraints = false
+    view.subviews = [stackView, separator, box]
+    let views = ["stack": stackView, "separator": separator, "box": box]
+    let metrics = ["buttonHeight": buttonHeight]
+    func addVisualFormatConstraints(visualFormat:String) {
+        view.addConstraints(
+            NSLayoutConstraint.constraintsWithVisualFormat(
+                visualFormat,
+                options: .allZeros,
+                metrics: metrics,
+                views: views
+            )
+        )
+    }
+    addVisualFormatConstraints("H: |[ stack] |")
+    addVisualFormatConstraints("H: |[ separator] |")
+    addVisualFormatConstraints("H: |[ box( > = 100)] |")
+    addVisualFormatConstraints("V: |[ stack(buttonHeight)][separator(== 1)][box(>= 100)] |")
+    if childViewControllers.count > 0 { selectTabAtIndex(0) }
+}
+```
+- NSStackView arranges one ore more views in order horizontally or vertically
+  with a gravity to indicate where they should be positioned
+- in AppDelegate
+```
+let tabViewController = NerdTabViewController()
+```
 ## Adding Tab Images
+- one option to set the view for each tab view
+```
+func addChildViewController(childViewController: NSViewController, tabImage: NSImage)
+```
+- not a great option -> need to manage the the closed view and does not work with
+  existing NSViewControllers
+- could use representedObject but this causes issues
+    - better to create a strongly-typed property to specific to model object
+      than to use AnyObject?
+- in NerdTabViewController
+```
+@objc protocol ImageRepresentable { var image: NSImage? { get } }
+
+// in reset()
+X button.image = NSImage(named: NSImageNameFlowViewTemplate) X
+if let viewController = viewController as? ImageRepresentable { button.image = viewController.image }
+else { button.title = viewController.title! }
+
+// ImageViewController
+class ImageViewController: NSViewController, ImageRepresentable {
+    ...
+```
 ## Challenge: Boxless NerdTabViewController
+- replace the NSBox in NerdTabViewController with a plain NSView
+    - rather than setting the box's contentView -> add selected child view
+      controller's view as a subview
+    - use Auto Layout to ensure that the view resizes with the container view
+    - be sure to remove the previously selected view controller's view
 ## Challenge: NerdSplitViewController
+- use an ordinary NSView and not NSSplitView to create a custom split view controller
+- only use two child view controllers and split horizontally or vertically
+- create a pane for each child view controller
 ## Challenge: Draggable Divider
+- need a way to receive child view events on the draggable divider and then
+  update constraints in response
+- NSViewControllers are in the responder chain
+    - implement mouseDragged(_:) in the NerdSplitViewController
+    - or use an NSPanGestureRecognizer added to a view representing the divider
 
 # 32. Storyboards
+- organized by scenes (windows and views)
+- connected by segues (relationships between scenes)
+- can be used for simple connected views (only two views)
+- can also be used to manage a complex graph of views and view controllers
+  (previously done programmatically)
 ## A New UI for RanchForecast
+- add a web view to navigate to URL
+- create RanchForecastSplit
+    - check Use Storyboards
+- existing relationship shows "Relationship \"window content\" to View Controller"
+    - contents of the view controller's view will be shown as window's content
+- delete the existing ViewController in the storyboard and delete the ViewController.swift
+  file
+- drag a Vertical Split View Controller onto the canvas (below the Window Controller)
+- ctrl-drag from the blue Window Controller icon -> split view controller
+    - Relationship Segue window
+        - window content
+- some editing is not possible when the storyboard editor is zoomed out
+- copy in ScheduleFetcher and Course files (with Copy items if needed)
 ## Adding the course list
+- create CourseListViewController
+```
+import Cocoa
+
+class CourseListViewController: NSViewController {
+    dynamic var courses: [Course] = []
+    let fetcher = ScheduleFetcher()
+
+    @IBOutlet var arrayController: NSArrayController!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        fetcher.fetchCoursesUsingCompletionHandler { (result) in
+            switch result {
+            case .Success(let courses):
+                print("Got courses: \(courses)")
+                self.courses = courses
+            case .Failure(let error):
+                print("Got error: \(error)")
+                NSAlert(error: error).runModal()
+                self.courses = []
+            }
+        }
+    }
+}
+```
+- in storyboard select narrow view controller
+    - Identity Inspector
+        - Class -> CourseListViewController
+- add array controller to Course List View Controller
+    - arrayController outlet on Course List View Controller -> array controller
+    - NOTE: important to add to correct scene within storyboard
+- array controller Bindings Inspector
+    - Content Array -> Course List View Controller's self.courses
+- add a table to Course List View Controller Scene
+    - table view is View Based and has two columns
+- Configure Auto Layout constraints for the table view
+    - stretch the table view to take up space of parent view
+    - pin on all four sides
+    - set minimum width for scroll view
+        - click Pin
+        - check Width
+        - click "Add 1 Constraint"
+    - select created constraint
+        - Constraints
+            - Width - (174) - Bordered Scroll View - Table View -> Attributes Inspector
+                - Relation -> Greater Than or Equal
+- table view Bindings Inspector
+    - Content -> Array Controller's arrangedObjects controller key
+    - Selection Indexes -> Array Controller's selectionIndexes
+- Double-click header of first column -> "Date"
+- date text field Bindings Inspector
+    - Value -> Table Cell View
+    - Model Key Path -> objectValue.nextStartDate
+- drop a Date Formatter on the text field
+- Double-click header of first column -> "Title"
+- title text field Bindings Inspector
+    - Value -> Table Cell View
+    - Model Key Path -> objectValue.title
 ## Adding the web view
+- create WebViewController.swift
+```
+import Cocoa
+import WebKit
+
+class WebViewController: NSViewController {
+    var webView: WKWebView { return view as! WKWebView }
+
+    override func loadView() {
+        let webView = WKWebView()
+        view = webView
+    }
+
+    func loadURL(url: NSURL) {
+        let request = NSURLRequest(URL: url)
+        webView.loadRequest(request)
+    }
+}
+```
+- by overriding loadView, the view from the storyboard isn't used
+- in storyboard
+    - right, wider view controller Identity Inspecotr
+        - Class -> WebViewController
 ## Connecting the Course List Selection with the Web View
+- need to call loadURL on web view when the table view selection changes
+    - directly couple the two view controllers by adding a reference from CourseListViewController to WebViewController
+        - simplest method but causes tight coupling which is bad
+    - post a notification from the CourseListViewController when the selection changes and
+      observe that notification in the WebViewController
+        - reduces coupling
+        - one-way instead of bidirectional
+        - allows update of multiple parties
+    - create a CourseListViewControllerDelegate protocol and conform WebViewController to it
+        - direct but could couple sibling views
+    - add a closure property to the CourseListViewController to be called when the
+      selection changes
+        - good -> requires avoiding a strong reference cycle
+    - use KVO to observe the array’s selectedObjects property
+        - avoid relying on KVO for simple tasks
+        - often not apparent the KVO is used in code
+        - compile does not check it
+- choice to use
+    - create a third view controller which will contain the master and detail view controllers
+        - parent view manages communication between the two views
 ## Creating the CourseListViewControllerDelegate
+- in CourseListViewController.swift
+```
+protocol CourseListViewControllerDelegate: class {
+    func courseListViewController(viewController: CourseListViewController, selectedCourse: Course?) -> Void
+}
+
+// in CourseListViewController class
+weak var delegate: CourseListViewControllerDelegate? = nil
+
+@IBAction func selectCourse(sender: AnyObject) {
+    let selectedCourse = arrayController.selectedObjects.first as! Course?
+    delegate?.courseListViewController(self, selectedCourse: selectedCourse)
+}
+```
+- in storyboard
+    - ctrl-drag table view -> Course List View Controller -> selectCourse:
 ## Creating the parent view controller
+- create MainSplitViewCOntroller.swift
+```
+import Cocoa
+
+class MainSplitViewController: NSSplitViewController, CourseListViewControllerDelegate {
+    var masterViewController: CourseListViewController {
+        let masterItem = splitViewItems[0] as! NSSplitViewItem
+        return masterItem.viewController as! CourseListViewController
+    }
+
+    var detailViewController: WebViewController {
+        let masterItem = splitViewItems[1] as! NSSplitViewItem
+        return masterItem.viewController as! WebViewController
+    }
+
+    let defaultURL = NSURL(string: "http://www.bignerdranch.com/")!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        masterViewController.delegate = self
+        detailViewController.loadURL(defaultURL)
+    }
+
+    // MARK: CourseListViewControllerDelegate
+    func courseListViewController(
+        viewController: CourseListViewController,
+        selectedCourse: Course?
+    ) {
+        if let course = selectedCourse { detailViewController.loadURL(course.url) }
+        else { detailViewController.loadURL( defaultURL) }
+    }
+}
+```
+- in storyboard
+- select Split View Controller within Split View Controller Scene
+    - Identity Inspector
+        - Class -> MainSplitViewController
 ## For the More Curious: How is the Storyboard Loaded?
+- managed by Info.plist
+    - NSMainStoryboardFile -> Main
+- scenes can be loaded programmatically using NSStoryboard
+- one scene can be loaded programmatically using the identifier
+```
+if let storyboard = NSStoryboard(name: "Main", bundle: nil) {
+    if let vc = storyboard.instantiateControllerWithIdentifier("Palette") as? NSViewController {
+        paletteWindow = NSWindow(contentViewController: vc)
+        paletteWindow.makeKeyAndOrderFront(nil)
+    }
+}
+```
 
 # 33. Core Animation
+- animation in Ch. 17 works for relatively simple, static animations
+- Core Animation relies on composing a view by creating layers rather than
+  drawing
+    - images
+    - Bezier paths
+    - modify size, opacity, etc
+- relies on OpenGL and can be useful when not animating
 ## CALayer
-## Scattered Implicit Animation and Actions
+- base class for all kinds of layers
+- arranged in a hierarchy
+- set layer in view (layer-hosting view)
+- can draw into a CALayer
+- more common to set properties on the layer
+- not typically subclassed
+- not part of the responder chain
+- all event handling has to be custom code
+```
+class CALayer: NSObject {
+    var bounds: CGRect
+    var position: CGPoint
+    var zPosition: CGFloat
+    var frame: CGRect
+    var opacity: CGFloat
+    var hidden: Bool
+    var mask: CALayer!
+    var borderWidth: CGFloat
+    var borderColor: CGColor!
+    var cornerRadius: CGFloat
+    var shadowOpacity: CGFloat
+    var shadowRadius: CGFloat
+    var shadowOffset: CGSize
+    var shadowColor: CGColor!
+    var actions: [NSObject : AnyObject]!
+    // Defaults to nil!
+    var delegate: AnyObject!
+    // NSObject (CALayerDelegate)
+    // ...
+}
+```
+- CATransaction can be used to group and synchronize multiple animations, as well as to disable animations temporarily
+## Scattered
+- create an application called Scattered
+    - Use Storyboards
+- in ViewController.swift
+```
+class ViewController: NSViewController {
+    var textLayer: CATextLayer!
+    var text: String?
+
+    func addImagesFromFolderURL(folderURL: NSURL) { }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Set view to be layer-hosting:
+        view.layer = CALayer()
+        view.wantsLayer = true
+        let textContainer = CALayer()
+        textContainer.anchorPoint = CGPoint.zeroPoint
+        textContainer.position = CGPointMake(10, 10)
+        textContainer.zPosition = 100
+        textContainer.backgroundColor = NSColor.blackColor().CGColor
+        textContainer.borderColor = NSColor.whiteColor().CGColor
+        textContainer.borderWidth = 2
+        textContainer.cornerRadius = 15
+        textContainer.shadowOpacity = 0.5
+        view.layer!.addSublayer(textContainer)
+        let textLayer = CATextLayer()
+        textLayer.anchorPoint = CGPoint.zeroPoint
+        textLayer.position = CGPointMake(10, 6)
+        textLayer.zPosition = 100
+        textLayer.fontSize = 24
+        textLayer.foregroundColor = NSColor.whiteColor().CGColor
+        self.textLayer = textLayer
+        textContainer.addSublayer(textLayer)
+        // Rely on text's didSet to update textLayer's bounds:
+        text = "Loading..."
+        let url = NSURL(fileURLWithPath: "/Library/Desktop Pictures")!
+        addImagesFromFolderURL(url)
+    }
+
+    // remove override var represenedObject
+```
+- when app launches
+    - configure view to be layer-hosting (ordering is important)
+        - assign layer property
+        - wantsLayer = true
+    - configure two layers
+        - textContainer -> CALayer
+        - textLayer -> CATextLayer
+- uses anchorPoint of (0, 0) for lower left corner (defaults to 0.5, 0.5)
+- layers have a frame property, but more common to set position and bounds
+  independently
+- set text property's didSet
+```
+var text: String? {
+    didSet {
+        let font = NSFont.systemFontOfSize(textLayer.fontSize)
+        let attributes = [NSFontAttributeName : font]
+        var size = text?.sizeWithAttributes(attributes) ?? CGSize.zeroSize
+        // Ensure that the size is in whole numbers:
+        size.width = ceil(size.width)
+        size.height = ceil(size.height)
+        textLayer.bounds = CGRect(origin: CGPoint.zeroPoint, size: size)
+        textLayer.superlayer.bounds = CGRect(x: 0, y: 0, width: size.width + 16, height: size.height + 20)
+        textLayer.string = text
+    }
+}
+
+func thumbImageFromImage(image: NSImage) -> NSImage {
+    let targetHeight: CGFloat = 200.0
+    let imageSize = image.size
+    let smallerSize = NSSize(width: targetHeight * imageSize.width / imageSize.height, height: targetHeight)
+    let smallerImage = NSImage(size: smallerSize, flipped: false) { (rect) -> Bool in
+        image.drawInRect(rect)
+        return true
+    }
+    return smallerImage
+}
+
+func addImagesFromFolderURL(folderURL: NSURL) {
+    let t0 = NSDate.timeIntervalSinceReferenceDate()
+    let fileManager = NSFileManager()
+    let directoryEnumerator = fileManager.enumeratorAtURL(
+        folderURL,
+        includingPropertiesForKeys: nil,
+        options: nil,
+        errorHandler: nil
+    )!
+    var allowedFiles = 10
+    while let url = directoryEnumerator.nextObject() as? NSURL {
+        // Skip directories:
+        var isDirectoryValue: AnyObject?
+        var error: NSError?
+        url.getResourceValue(& isDirectoryValue, forKey: NSURLIsDirectoryKey, error: &error)
+        if let isDirectory = isDirectoryValue as? NSNumber where isDirectory.boolValue == false {
+            let image = NSImage(contentsOfURL: url)
+            if let image = image {
+                allowedFiles--
+                if allowedFiles < 0 { break }
+                let thumbImage = thumbImageFromImage(image)
+                presentImage(thumbImage)
+                let t1 = NSDate.timeIntervalSinceReferenceDate()
+                let interval = t1 - t0
+                text = String(format: "% 0.1fs", interval)
+            }
+        }
+    }
+}
+
+func presentImage(image: NSImage) {
+    let superlayerBounds = view.layer!.bounds
+    let center = CGPoint(x: superlayerBounds.midX, y: superlayerBounds.midY)
+    let imageBounds = CGRect(origin: CGPoint.zeroPoint, size: image.size)
+    let randomPoint = CGPoint(x: CGFloat(arc4random_uniform(UInt32(superlayerBounds.maxX))), y: CGFloat(arc4random_uniform(UInt32( superlayerBounds.maxY))))
+    let timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+    let positionAnimation = CABasicAnimation()
+    positionAnimation.fromValue = NSValue(point: center)
+    positionAnimation.duration = 1.5
+    positionAnimation.timingFunction = timingFunction
+    let boundsAnimation = CABasicAnimation()
+    boundsAnimation.fromValue = NSValue(rect: CGRect.zeroRect)
+    boundsAnimation.duration = 1.5
+    boundsAnimation.timingFunction = timingFunction
+    let layer = CALayer()
+    layer.contents = image
+    layer.actions = ["position" : positionAnimation, "bounds" : boundsAnimation]
+    CATransaction.begin()
+    view.layer!.addSublayer(layer)
+    layer.position = randomPoint
+    layer.bounds = imageBounds
+    CATransaction.commit()
+}
+```
+## Implicit Animation and Actions
+- many properties, when modified, have implicit animation
+- many ways to customize implicit animations
+- can modify actions property (CALayer, dictionary)
+    - determines what to do when a property is assigned
+- CABasicAnimation
+    - fromValue
+    - toValue
+    - also position and bounds
+    - to display image assign to contents
+    - contentsGravity -> how contents are scaled
+- CATransaction -> group several changes to be executed at once
+    - surround with CATransaction.begin() and CATransaction.commit()
+- use CATransaction.setDisableActions(true) to disable
 ## More on CALayer
+- use drawLayer(_: inContext:) for custom drawing using Core Graphics/Quartz
+- useful subclasses
+    - CATextLayer -> text
+    - CAShapeLayer -> stroked or filled path
+    - CAGradientLayer -> configurable gradient
+    - CAOpenGLLayer -> OpenGL
+- base layer is private _NSViewBackingLayer (knows to draw contents of view upon
+  itself)
 ## Challenge: Show Filenames
+- add a text layer to each image layer to show the filename of that image
+- supply an additional parameter to presentImage(_:)
+- add shadows and borders to the layers
 ## Challenge: Reposition Image Layers
 
 # 34. Concurrency
 ## Multithreading
+- threads enable single application to do many things at once
+- each has its own stack
+- heap is shared
+- in Cocoa -> main thread manages display and handles events from window manager
+- threads are good for tasks like
+    - long-running computations
+    - hardware I/O
+    - synchronous network communication
+- NSOperationQueue and Grand Central Dispatch
 ## A Deep Chasm Opens Before You
+- race conditions are difficult to solve
+- cannot make assumptions about when a thread will be scheduled, how long
+  it will execute before being interrupted, other threads running,
+  exclusivity for data access
+- make effort to minimize shared access to mutable data structures
 ## Improving Scattered: Time Profiling in Instruments
+- remove all traces of allowedFiles in ViewController
 ## Introducing Instruments
+- open Product and select Profile
+- click record and then stop to profile
+- Time Profiler is the default
+    - takes snapshot of stack repeatedly
+- many details to Instruments
 ## Analyzing output from Instruments
+- two categories of blocking problems
+    - CPU-bound
+        - CPU is bottleneck due to computation
+    - I/O-bound
+- issue in Scattered is a combo of both
+    - loading images and generating thumbnails in viewDidLoad blocks
+      main thread
 ## NSOperationQueue
+- NSOperationQueue is good for processing chunks of information in the background
+- collection of NSOperation
+- access main queue that represents main thread NSOperationQueue.mainQueue()
+- NSOperationQueue has system dictated default number of operations
+    - can override with maxConcurrentOperationCount
 ## Multithreaded Scattered
+- in ViewController
+```
+let processingQueue: OperationQueue = {
+    let result = OperationQueue()
+    //result.maxConcurrentOperationCount = 4
+    return result
+}()
+
+func addImagesFromFolderURL(_ folderURL: URL) {
+    processingQueue.addOperation {
+        let t0 = Date.timeIntervalSinceReferenceDate
+
+        let fileManager = FileManager()
+        let directoryEnumerator = fileManager.enumerator(
+            at: folderURL,
+            includingPropertiesForKeys: nil,
+            options: [],
+            errorHandler: nil
+        )!
+
+        while let url = directoryEnumerator.nextObject() as? URL {
+            // Skip directories:
+
+            var isDirectoryValue: AnyObject?
+            do {
+                try (url as NSURL).getResourceValue(&isDirectoryValue,
+                    forKey: URLResourceKey.isDirectoryKey)
+            } catch {
+                print("error checking whether URL is directory: \(error)")
+                continue
+            }
+
+            self.processingQueue.addOperation {
+                guard let isDirectory = isDirectoryValue as? Bool,
+                    isDirectory == false else {
+                        return
+                }
+
+                guard let image = NSImage(contentsOf: url) else {
+                    return
+                }
+
+                let thumbImage = self.thumbImageFromImage(image)
+
+                OperationQueue.main.addOperation {
+                    self.presentImage(thumbImage)
+                    let t1 = Date.timeIntervalSinceReferenceDate
+                    let interval = t1 - t0
+                    self.text = String(format: "%0.1fs", interval)
+                }
+            }
+        }
+    }
+}
+```
+- instead of creating NSOperation objects use NSOperationQueue’s addOperationWithBlock(_:)
 ## Thread synchronization
+- Scattered already only had shared mutable global data access in main thread to
+  the Core Animation layers
+- for basic mutex use NSRecursiveLock
+```
+let lock = NSRecursiveLock()
+
+func addImage(image: NSImage) {
+    lock.lock()
+    images.append(image)
+    lock.unlock()
+}
+```
+- prevents multiple threads from running the code between lock and unlock at once
+- recursive -> the same thread that has the lock can run same code recursively
+  locking and unlocking
+- Cocoa provides other tools
+    - NSLock
+    - NSCondition
+- see Advanced Mac OS X Programming
 ## For the More Curious: Faster Scattered
+- GCD maintains thread pool based on cores and system load
+- faster to use two queues
+    - one to load images
+    - one to generate thumbnails
+- avoids duplicate I/O and CPU concurrent operations
 ## Challenge: An Even Better Scattered
+- adapt Scattered to use two queues
+    - use NSData to read images to speed disk I/O and pass to NSImage
 
 # 35. NSTask
+- each app (as a bundle) has an executable which causes a fork when the process
+  is started
+- NSTask wraps fork and exec
 ## ZIPspector
+- zipinfo shows contents of a zip file
+- create ZIPspector Xcode project
+    - Document based
+    - no storyboard or core data
+- Target
+    - Info
+        - Identifier -> com.pkware.zip-archive
+        - Role -> com.pkware.zip-archive
+- conform Document to NSTableViewDataSource
+```
+@IBOutlet weak var tableView: NSTableView!
+var filenames: [String] = []
+```
+- add table view with one column named Filenames
+    - Attributes Inspector
+        - Editable -> `[]`
+- in text field in column
+    - constraints
+        - left and right -> 2 points
+    - Bindings Inspector
+        - Bind to -> Table Cell View
+        - Model Key Path -> objectValue
+-
+```
+// MARK: - NSTableViewDataSource
+func numberOfRows(in tableView: NSTableView) -> Int {
+    return filenames.count
+}
+
+func tableView(_ tableView: NSTableView, objectValueFor tableColumn: NSTableColumn?, row: Int) -> Any? {
+    return filenames[row]
+}
+```
+- to read
+```
+override func read(from url: URL, ofType typeName: String) throws {
+    // Which file are we getting the zipinfo for?
+    let filename = url.path
+
+    // Prepare a task object
+    let task = Process()
+    task.launchPath = "/usr/bin/zipinfo"
+    task.arguments = ["-1", filename]
+
+    // Create the pipe to read from
+    let outPipe = Pipe()
+    task.standardOutput = outPipe
+
+    // Start the process
+    task.launch()
+
+    // Read the output
+    let fileHandle = outPipe.fileHandleForReading
+    let data = fileHandle.readDataToEndOfFile()
+
+    // Make sure the task terminates normally
+    task.waitUntilExit()
+    let status = task.terminationStatus
+
+    // Check status
+    guard status == 0 else {
+        let errorDomain = "com.bignerdranch.ProcessReturnCodeErrorDomain"
+        let errorInfo = [ NSLocalizedFailureReasonErrorKey : "zipinfo returned \(status)"]
+        let error = NSError(
+            domain: errorDomain,
+            code: 0,
+            userInfo: errorInfo
+        )
+        throw error
+    }
+
+    // Convert to a string
+    let string = String(data: data, encoding: String.Encoding.utf8)!
+
+    // Break the string into lines
+    filenames = string.components(separatedBy: "\n")
+    print("filenames = \(filenames)")
+
+    // In case of revert
+    tableView?.reloadData()
+}
+```
+- NSPipe to standardOutput is a buffer and can supply a file handle (fileHandleForReading)
 ## Asynchronous Reads
-## iPing Challenge: .tar and .tgz Files
+- will read in background from a process that occasionally returns data (using /sbin/ping)
+## iPing
+- create Xcode iPing
+    - not document-based
+    - check Use Storyboards
+- ViewController.swift
+```
+import Cocoa
+
+class ViewController: NSViewController {
+
+    @IBOutlet var outputView: NSTextView!
+    @IBOutlet weak var hostField: NSTextField!
+    @IBOutlet weak var startButton: NSButton!
+    var task: Process?
+    var pipe: Pipe?
+    var fileHandle: FileHandle?
+
+    @IBAction func togglePinging(_ sender: NSButton) {
+        // Is there a running task?
+        if let task = task {
+            // If there is, stop it!
+            task.interrupt()
+        } else {
+            // If there isn't, start one.
+
+            // Create a new task
+            let task = Process()
+            task.launchPath = "/sbin/ping"
+            task.arguments = ["-c10", hostField.stringValue]
+
+            // Create a new pipe for standardOutput
+            let pipe = Pipe()
+            task.standardOutput = pipe
+
+            // Grab the file handle
+            let fileHandle = pipe.fileHandleForReading
+
+            self.task = task
+            self.pipe = pipe
+            self.fileHandle = fileHandle
+
+            let notificationCenter = NotificationCenter.default
+            notificationCenter.removeObserver(self)
+            notificationCenter.addObserver(self,
+                                 selector: #selector(ViewController.receiveDataReadyNotification(_:)),
+                                     name: FileHandle.readCompletionNotification,
+                                   object: fileHandle)
+            notificationCenter.addObserver(self,
+                                 selector: #selector(ViewController.receiveTaskTerminatedNotification(_:)),
+                                     name: Process.didTerminateNotification,
+                                   object: task)
+
+            task.launch()
+
+            outputView.string = ""
+
+            fileHandle.readInBackgroundAndNotify()
+        }
+
+    }
+
+
+    func appendData(_ data: Data) {
+        let string = String(data: data, encoding: String.Encoding.utf8)! as String
+        let textStorage = outputView.textStorage!
+        let endRange = NSRange(location: textStorage.length, length: 0)
+        textStorage.replaceCharacters(in: endRange, with: string)
+    }
+
+
+    func receiveDataReadyNotification(_ notification: Notification) {
+        let data = notification.userInfo![NSFileHandleNotificationDataItem] as! Data
+        let length = data.count
+
+        print("received data: \(length) bytes")
+        if length > 0 {
+            self.appendData(data)
+        }
+
+        // If the task is running, start reading again
+        if let fileHandle = fileHandle {
+            fileHandle.readInBackgroundAndNotify()
+        }
+    }
+
+
+    func receiveTaskTerminatedNotification(_ notification: Notification) {
+        print("task terminated")
+
+        task = nil
+        pipe = nil
+        fileHandle = nil
+
+        startButton.state = 0
+    }
+}
+```
+- open storyboard
+    - Window Controller Scene -> Window
+        - Title -> iPing
+    - View Controller Scene
+        - add text field, button, and text view
+        - text view Attributes Inspector
+            - Editable -> `[]`
+            - Type -> Toggle
+            - Title -> Start Pinging
+            - Alternate Title -> Stop Pinging
+        - button
+            - target -> ViewController
+            - action -> togglePinging
+        - connect outlets to corresponding views
+## Challenge: .tar and .tgz Files
+- extend ZIPspector to read .tar and .tgz files
 
 # 36. Distributing Your App
 ## Build Configurations
+- builds so far are debug builds and contain debug symbols
+- use release build for customers
+- can add build configurations
+- project editor -> Info
+- run, test, profile, analyze, archive -> each has a build configuration
+- Scheme Editor
+    - Product -> Scheme -> Edit Scheme...
 ## Preprocessor Directives: Using Build Configurations to Change Behavior
+- can hardcode modified behavior into build configurations using preprocessor
+  directives
+- project editor -> Build Settings
+    - Swift Compiler -> Custom Flags
+        - Other Swift Flags
+            - Debug -> -DDEBUG
+- makes the compile-time value DEBUG only available for the Debug builds configuration
+- can check in code
+```
+#if DEBUG
+    printAlot()
+#else
+    print()
+#endif
+```
+- other code is completely omitted from the build app
 ## Creating a Release Build
+- want to archive target
+- Scheme Editor
+    - Archive
+        - Build Configuration -> Release
+- when archived, appears in Organizer in Archives tab
+- can extract the app bundle from the archive using export button in Archives
+  tab (Export as a Mac Application)
 ## A Few Words on Installers
+- can store bundles in zip archive or create installer as DMG
+- Mac App Store apps cannot use an installer
+- advice is to avoid installers in general
 ## App Sandbox
+- sandboxing -> security method that constrains an application's interactions with the system (filesystem, network)
+- Apple has required sandboxing of all apps on iOS since iOS 2.0
+- sandboxing introduced to the Mac in OS X 10.7
+- all applications on the Mac App Store must be sandboxed.
 ## Entitlements
+- with sandboxing permitted to access bundle files and files within container
+- entitlements are opt in permissions to access more
+    - network
+    - contacts
+    - etc
+- enable App Sandbox
+- add entitlements to App Sandbox
 ## Containers
+- sandboxed apps are provided a container in ~/Library/Containers
+- use NSFileManager’s URLsForDirectory(_: inDomains:)
 ## Mediated file access and Powerbox
-## The Mac App Store Receipt Validation
+- includes access to temp files
+- access to file-open/save dialog (NSOpenPanel, NSSavePanel)
+- Powerbox is a system daemon that manages this and displays sheets when
+  NSOpenPanel and NSSavePanel are called
+- AppKit Open Recent menu provides similar capabilities
+- see App Sandbox Design Guide
+## The Mac App Store
+- App Store handles
+    - purchasing
+    - installation
+    - packaging
+    - distribution
+- for apps not sandboxed or meeting guidelines, other distribution
+  methods are required
+- for distribution use Xcode
+    - sign binary
+    - provide description
+    - submission via Organizer
+## Receipt Validation
+- no OS support for license validation (unlike iOS)
+- means no copy protection without special effort (using receipt validation)
+- receipt contains the application’s bundle identifier, its version string, and a hash of the computer’s GUID
+- receipts are cryptographically signed by Apple
 ## Local receipt verification
+- follow these steps
+    - verify that the receipt is present
+    - verify that the receipt is properly signed by Apple
+    - verify that the bundle identifier in the receipt matches
+    - verify that the version identifier matches
+    - verify that the hash contained in the receipt matches the computer’s GUID hash
+- duplicate bundle and version IDs as constants in app code to avoid easy duplication
+- if validation fails, exit with 173
+- code for verification is low-level C
+- see Receipt Validation Programming Guide
 ## Server-based verification
+- connect server to App Store server (benefits including prevention of man in the middle attack)
+- follow following steps
+    - read the receipt file at the location given by NSBundle.appStoreReceiptURL()
+    - send the data from that file to your server
+    - on server, send an HTTP POST request with a JSON body containing
+      the receipt data to https://buy.itunes.apple.com/verifyReceipt
+    - on server, interpret the response from the Mac App Store and send an
+      appropriate response to your app
+    - in app, handle the response from your server, calling exit(173) if necessary
+- see Receipt Validation Programming Guide
+
+
+
+
+
+# Additional Notes
+## Issues with computed properties
+- not stored (reduces space overhead)
+- evaluated on each access
 
 
