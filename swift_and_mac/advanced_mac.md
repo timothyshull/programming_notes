@@ -1,3 +1,188 @@
+# 10. Performance Tuning
+## The End of Free Performance
+- Moore's law
+- multicore chips and hyperthreaded architectures (with own logic units)
+- hyperthread - two or more threads operating in parallel in a single CPU
+- parallel programming is generally for experts but it will gradually
+  become more in demand
+- hardware design affects software developers due to these issues
+- writing efficient code is very important
+## Approaches to Performance
+- use profiling tools (Instruments, Shark, others) early and often
+- be aware of changes across architectures and os versions and profile on
+  each
+- do not optimize too early though
+- be aware of differences in development build and release build and do
+  not waste time optimizing a development build when the release build
+  may have different machine code and code paths, etc
+## Major Causes of Performance Problems
+- generally come from one or more of:
+    - algorithms
+    - memory
+    - CPU
+    - disk
+    - graphics
+- can use performance tools to look at each aspect separately
+### Memory
+- even with lots of memory, RAM is still a scarce resource
+- mac starts swapping memory pages to disk which will drastically effect
+  performance
+- iOS may kill a program that is a memory hog
+- optimizing memory usage often increases execution performance (tough discipline)
+### Locality of Reference
+- memory accesses that happen near each other
+- processor retrieves a cache line or sequence of bytes around the requested
+  memory
+- program to operate on sequential memory as much as possible
+- see locality.m here (shows examples for managing page related memory access)
+### Caches
+- can often boost performance with caching but can cause issues when interacting
+  with system paging because hand programmed custom caches that are not used
+  for a long time will be swapped to disk
+- iOS does not page data to disk
+- prefer splitting cache data and metadata describing cache data to take
+  advantage of locality of reference
+### Memory is the New I/O
+- I/O from disk is extremely expensive
+- RAM has become like I/O in that it is more expensive than programming
+  patterns that take advantage of memory caches, vectorization, and other
+  techniques
+- manual programmed caching can be slower in some cases than these other
+  techniques, even if they require jumping through hoops
+- level-1 cache is only 32-64 kb per core
+- certain optimizations like loop unrolling and 64-bit code in general
+  can blow out the level-1 cache and cause slowdown from RAM accesses
+- C semantics can also cause issues from this perspective
+- when accessing a global data structure (especially in a local loop)
+  an optimization is to use a local variable to reference the global
+  data structure to facilitate compiler optimizations
+## CPU
+- easy to discover and monitor high CPU usage in a program
+## Disk
+- disk access is slow
+- caching too much data can increase disk I/O
+- bad locality of reference causes access of many different pages
+- can avoid some disk I/O by not doing the work (only load what is needed
+  including separating windows into different .nib files)
+- accessing data from a database piecemeal can yield speedups
+- using memory-mapped files can avoid disk activity
+## Graphics
+- Quartz is system resource heavy
+    - uses large graphic buffers for each window visible on the screen
+    - compositing operations to render user's desktop
+- some operations cannot be done by GPU so must be done by CPU
+- to optimize avoid drawing when possible
+- use Quartz Debug utility
+    - Drawing Information
+    - Autoflush drawing
+    - displays identical screen updates and highlights drawing areas
+- NSView
+    - getRectsBeingDrawn
+    - needsToDrawRect
+- Quartz quark to note
+    - overlapping lines in a single path is expensive
+        - antialiasing
+        - managing transparent color paints
+- draw small paths instead
+### Before using any of the profiling tools
+- programmers are notoriously bad about predicting where performance issues
+  are actually occurring
+- maintain notes of optimizations and discoveries to learn from for later
+- always test optimization issues with large data sets because poorly
+  performing algorithms will really stand out then
+- when to optimize
+    - choose the middle ground (not too early and not too late)
+    - do not obfuscate code early in the development process
+## Command-Line Tools
+- time
+    - times command execution
+    - C shell version gives more info
+- dtruss
+    - shows all system calls a program makes (truss, strace, ktrace, etc)
+- fs_usage
+    - shows filesystem related system calls
+    - set the environment variable DYLD_IMAGE_SUFFIX to _debug to show Carbon calls
+    - good for tracking I/O performance problems
+- sc_usage
+    - shows system call information
+    - good for tracking I/O performance problems
+- top
+    - monitor all programs on the system
+    - good to discover performance issues that have manifested as
+      system-wide slowdowns and may not manifest in an easily observable
+      program-specific manner
+    - -e shows VM, network, disk activity and messaging stats
+    - -d shows in delta mode (vs. cumulative mode) in 1 second intervals
+    - -s set update interval
+## Stochastic profiling
+- run program in debugger and interrupt occasionally to inspect the call stack
+- look for excessive repetition
+- sample
+    - samples a process at 10 ms intervals and builds a snapshot of the program's
+      activity
+## Precise Timing with mach_absolute_time()
+- time command sometimes doesn't give enough granularity
+- mach_absolute_time() reads the CPU time base register and reports the value
+- this time base register serves as the basis for other time measurements in the OS
+```
+uint64_t mach_absolute_time (void);
+```
+- get the scaling of the returned values
+```
+kern_return_t mach_timebase_info (mach_timebase_info_t info);
+// mach_timebase_info_t = pointer to
+struct mach_timebase_info {     
+    uint32_t numer;     
+    uint32_t denom;
+};
+```
+- see machtime.m here
+- remember -> timing runs can be perturbed by too many variables to consider
+## GUI Tools
+- Activity Monitor
+- Instruments
+    - in Finder or Xcode (or `instruments` command line tool)
+    - Leaks
+    - Allocations
+    - Target
+    - Inspection Range
+## More Memory: Heapshots
+- Allocations instrument
+    - Mark Heap -> snapshot current heap
+## Time Profiler
+- measures CPU usage by program and optionally across entire system
+## Other Instruments
+- Memory
+    - peek inside the garbage collector, see the virtual memory consumption
+      of a process, track shared memory creation and destruction, and detect
+      zombies, which are over-released objects that are subsequently messaged
+- Automation
+    - can write test scripts against an application on a device
+- Power
+    - Energy Diagnostics
+    - Energy Usage
+    - CPU Usage
+    - Display Brightness
+- Graphics
+    - Core Animation
+    - Sampler
+- OpenGLES Analyzer
+- File System
+    - File Activity
+    - Reads/Writes
+    - File Attributes
+    - Directory I/O
+    - Disk Montior
+- System Details
+    - Activity Monitor
+    - Scheduling
+    - System Calls
+    - VM Operations
+    - Dispatch
+    - Network Activity
+- Symbol Trace and DTrace
+    - Symbol Trace (shortcut for building a DTrace instrument)
+
 # 18. Multiprocessing
 - OS time-slices among runnable programs (i.e. programs not blocked waiting
   for an event like I/O completion)

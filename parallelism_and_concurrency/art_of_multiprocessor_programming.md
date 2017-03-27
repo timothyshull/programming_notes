@@ -155,3 +155,233 @@
   because parallelizing computations incurs the cost of IPC and coordination
 - Amdahl's Law - any potential possible speed increase of a complex task is
   limited by the required sequential execution of the job's component tasks
+
+
+# Ch. 2 Mutual Exclusion
+- covers classical algorithms that work by reading and writing shared memory
+
+## Time
+- concurrency requires reasoning about time and how intervals overlap
+- threads share a common time (not necessarily a common clock)
+- thread is a state machine
+- events - state transitions
+- events are instantaneous - they occur at a single instant in time
+- convenient to require that events are never simultaneous and events
+  that occur close in time can be assumed to be in any order
+- a thread A has a set of events in running time a sub 0 ... a sub i
+  and loops are thought of as a single event denoted by a sub i sup j
+- a -> b means a precedence relation
+- interval is duration between events and concurrent intervals have overlap
+  between that duration
+
+### Critical Sections
+- a block of code that can be executed by only one thread at a time (aka
+  mutual exclusion)
+- standard way to achieve mutual exclusion is through a Lock object
+```
+class Lock {
+public:
+    void lock();
+    void unlock();
+};
+```
+- acquires/locks, releases/unlocks
+- thread is well formed if
+    1. each critical section is associated with a unique Lock object
+    2. thread acquires the critical section at the start of each
+       critical section
+    3. the thread releases the lock when it leaves the critical section
+- in Java use a try...finally block to ensure the lock is always unlocked
+```
+mutex.lock();
+try {
+    // do work with shared data
+} finally {
+    mutex.unlock();
+}
+```
+- properties for a lock algorithm
+    - mutual exclusion - running of critical sections within different
+      threads does not overlap (i.e. interval/duration between lock event
+      and unlock event)
+    - freedom from deadlock - some thread will always succeed in acquiring
+      the lock when one or more threads are attempting to acquire the lock
+      (if a thread attempts to acquire the lock and never does it means
+      other threads are completing infinitely many critical sections)
+    - freedom from starvation (aka lockout freedom) - every thread that
+      attempts to acquire the lock eventually succeeds (i.e. every call
+      to lock eventually returns
+
+## Thread Solutions
+### The LockOne Class
+- 2-thread lock
+- code here
+- generally use the volatile keyword to ensure the compiler does not reorder
+  or optimize out instructions
+- use write sub A(x = v) to denote a write event and read sub A(x == v) to
+  denote a read event
+- Lemma 2.3.1 -> LockOne class satisfies mutual exclusion
+- provides proof here
+- deadlocks if thread executions are interleaved
+- if one thread runs before the other then no deadlock occurs
+
+### The LockTwo Class
+- 2-thread lock
+- code here
+- Lemma 2.3.2 -> LockTwo satisfies mutual exclusion
+- provides proof here
+- deadlocks if one thread runs completely ahead of the other
+- if the threads run concurrently, lcok() succeeds
+- LockOne and LockTwo complement each other, one succeeds under condition
+  that another fails
+
+## The Peterson Lock
+- combining LockOne and LockTwo creates a starvation-free Lock algorithm
+- very elegant and succinct two-thread mutual exclusion algorithm
+- code here
+- Lemma 2.3.3 -> Peterson lock satisfies mutual exclusion
+- provides proof here
+- Lemma 2.3.4 -> Peterson lock is starvation-free
+- provides proof here
+- Corollary 2.3.1 -> Peterson lock is deadlock-free
+
+## The Filter Lock
+- two solutions that work for n > 2 threads
+- Filter lock uses n - 1 waiting levels that a thread must traverse
+  before acquiring a lock
+- levels satisfy the following properties
+    - at least one thread attempting to satisfy level l succeeds
+    - if more than one thread is trying to enter level l then at least
+      one is blocked (i.e. will wait at level)
+- Peterson lock uses a two-element boolean flag array to indicate whether
+  a thread is trying to enter the critical section
+- Filter lock generalizes this idea with an n-element integer level array
+- `level[A]` indicates the highest level that thread A is currently trying
+  to enter
+- levels = levels of exclusion
+- each level has a distinct `victim[l]` field to filter out a thread excluding
+  it from the next level
+- Lemma 2.4.1 -> for j between 0 and n - 1, there are at most n - j threads
+  at level j
+- proof here
+- Corollary 2.4.1 -> the Filter lock satisfies mutual exclusion
+- Lemma 2.4.2 -> the Filter lock is starvation-free
+- proof here
+- Corollary 2.4.2 -> the Filter lock is deadlock-free
+
+## Fairness
+- starvation-freedom guarantees every thread that calls lock() eventually
+  enters the critical section but does not guarantee duration in critical
+  section
+- informally, if A calls lock() before B it should enter the critical
+  section before B
+- cannot determine which thread called lock() first with current implementation
+- to facilitate this, split lock into two sections
+    1. doorway -> execution interval D sub A consists of a bounded number
+       of steps
+    2. waiting -> execution interval W sub A can consist of an unbounded
+       number of steps
+- bounded wait-free progress property -> requirement that doorway will always
+  finish in a bounded number of steps
+
+#### Fairness
+- Definition 2.5.2 -> a lock is first-come-first-served if, when thread A
+  finishes its doorway before thread B finishes its doorway, then A cannot
+  be overtaken by B
+
+## Lamport's Bakery Algorithm
+- maintains the first-come-first-served property by using a distributed version
+  of the number-dispensing machines (i.e. machines that distribute an order
+  to elements in a queue)
+- each thread takes receives a number when it enters the doorway and then
+  waits until no thread with an earlier number is trying to enter the doorway
+- code here
+- `flag[A]` is a boolean flag indicating whether A wants to enter the critical
+  section, and `label[A]` is an integer that indicates the thread’s relative
+  order when entering the doorway of the critical section, for each thread A
+- generates a new label by
+    1. reads all other threads' labels in any order
+    2. reads all other threads' labels in some arbitrary order and generates
+       a label that is one greater than the maximal label
+- uses lexicographic ordering on pairs of labels and thread ids
+- labels are strictly increasing
+- labels are read asynchronously so the set of labels read by a thread in a
+  section may not have existed in memory at the same time but the algorithm
+  still works
+- Lemma 2.6.1 -> Bakery lock algorithm is deadlock-free
+- proof here
+- Lemma 2.6.2 -> Bakery lock algorithm is first-come-first-served
+- any algorithm that is both deadlock-free and first-come-first-served
+  is also starvation free
+- Lemma 2.6.3 -> Bakery algorithm satisfies mutual exclusion
+- proof here
+
+## Bounded Timestamps
+- labels of Bakery grow without bound which will eventually result in overflow
+- overflow will negate the first-come-first-served property
+- labels in the Bakery lock act as timestamps
+- threads need two capabilities
+    - read the other threads' timestamps (i.e. scan)
+    - assign itself a later timestamp (i.e. label)
+- code for Timestamp system here
+- must be wait-free (see references for how to construct wait-free concurrent
+  timestamp system)
+- simpler problem:
+    - construct a sequential timestamping system
+    - threads perform scan-and-label sequentially (as if with mutual exclusion)
+- underlying principles of sequential vs. concurrent timestamping are similar
+  but differ in detail
+- think of timestamps as nodes in a directed graph (called a precedence graph)
+- edge from a -> b means b occurs after a
+- irreflexive -> no edge from any node a to itself
+- antisymmetric -> if edge a -> b, no edge b -> a
+- no requirement of transitivity -> edges a -> b and b -> c do not imply
+  an edge a -> c exists
+- assigning a timestamp to a thread = placing the thread's token on the
+  timestamp's node
+- see this section for a more detailed description of the n-thread labeling
+  system
+- note -> two threads can never form a cycle
+
+## Lower Bounds on the Number of Locations
+- Bakery algorithm is not practical because need to read and write
+  n locations, where n is the maximum number of concurrent threads
+  (which may be very large)
+- no lock algorithm avoids this overhead
+- any deadlock-free Lock algorithm requires allocating and then reading
+  or writing at least n distinct locations in the worst case
+- limitation of memory accessed solely by reads/writes (aka loads/stores):
+    - any information written by a thread to a given location can
+      be overwritten without any other thread observing it
+- requires definitions of state for memory
+    - object's state -> state of object's fields
+    - thread's local state -> state of program counters and local variables
+    - global/system state -> state of all global objects + local state of
+      threads
+- Definition 2.8.1
+    - inconsistent state -> a lock object's state, s, is inconsistent in any
+      global state where some thread is in the critical section,
+      but the lock state is compatible with a global state in which no
+      thread is in the critical section or is trying to enter the critical
+      section
+- Lemma 2.8.1 -> no deadlock-free lock algorithm can enter an inconsistent
+  state
+- proof here
+- Definition 2.8.2
+    - covering state -> a covering state for a lock object is one in which
+      there is at least one thread about to write to each shared location,
+      but the Lock object's locations present the appearance that the
+      critical section is empty (i.e. the locations' states appear as if
+      there is no thread either in the critical section or trying to enter
+      the critical section)
+- Theorem 2.8.1 -> any lock algorithm that, by reading and writing memory,
+  solves deadlock-free mutual exclusion for three threads must use at least
+  three distinct memory locations
+- proof here
+- it follows that n-thread deadlock-free mutual exclusion requires
+  n distinct memory locations
+- the Peterson and Bakery locks are optimal within a constant factor
+- limitation of read and write operations:
+    - information written by a thread may be overwritten without any
+      other thread reading it
+- modern architectures provide instructions that overcome this limitation
