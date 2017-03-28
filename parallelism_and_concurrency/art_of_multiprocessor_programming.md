@@ -155,7 +155,7 @@
   because parallelizing computations incurs the cost of IPC and coordination
 - Amdahl's Law - any potential possible speed increase of a complex task is
   limited by the required sequential execution of the job's component tasks
-
+- TODO: more here
 
 # Ch. 2 Mutual Exclusion
 - covers classical algorithms that work by reading and writing shared memory
@@ -384,4 +384,332 @@ try {
 - limitation of read and write operations:
     - information written by a thread may be overwritten without any
       other thread reading it
-- modern architectures provide instructions that overcome this limitation
+- modern architectures provides instructions that overcome this limitation
+
+# Ch. 3 Concurrent Objects
+- safety and liveness properties aka correctness and progress
+
+## Concurrency and Correctness
+- shows lock-based concurrent FIFO queue that stores a lock and locks
+  in both the enqueue and dequeue methods
+- implementation allows multiple enqueuers/dequeuers
+- shows lock-free/wait-free concurrent queue
+- implementation presents a single enqueuer/single dequeuer queue
+  which means the queue can be accessed from two separate threads,
+  one thread which performs enqueueing and one thread that performs
+  dequeueing
+- a result of Amdahl's law is that concurrent objects that use exclusive
+  locks within their methods are worse than ones that use finer-grained
+  locking and those are worse than ones that do not use locks at all
+- easier to reason about concurrent objects if their execution can
+  be mapped to a sequential model
+- this principal is key to correctness properties
+
+## Sequential Objects
+- precondition -> some required state that an object (including global state
+  when also accounting for arguments) must be in before executing a method
+- postcondition -> the state of an object (and global state) after a method's
+  execution, including return value
+- side effect -> change to an object's state (or the global state)
+- note: references to global state above includes expanding containing scopes
+  but this is not mentioned in the book
+- sequential specification -> documentation of the full set of preconditions
+  and postconditions possible for a method (can ignore intermediate states)
+- cannot assume so much when considering method interactions etc. when there
+  is concurrent access to an object (mainly due to the potential for method
+  overlap, which means intermediate states must also be considered)
+
+## Quiescent Consistency
+- method calls take time an start with an invocation event and a response
+  event (which should appear to take effect instantaneously)
+- sequential method calls will never overlap but concurrent method calls
+  may overlap
+- pending -> a method call whose invocation event has occurred but whose
+  response event has yet to occur
+- register -> object version of a read-write memory location (i.e. a data
+  member or property) NOTE: this name persists due to historical reasons
+  despite confusing relationship
+- Principle 3.3.1 ->
+    - method calls should appear to happen in a one-at-a-time sequential order
+- quiescent -> an object is quiescent if it has no pending method calls
+- Principle 3.3.2 ->
+    - method calls separated by a period of quiescence should appear to take
+      effect in their real-time order
+- quiescent consistency -> any time an object becomes quiescent then the
+  execution so far is equivalent to some sequential execution of the completed
+  calls
+- a quiescently consistent counter is an index distribution mechanism
+  that can be used as a loop counter but the clients of the loop counter
+  must not be concerned about the order in which the indexes are used
+
+### Remarks
+- quiescent consistency never requires one method call to block waiting for
+  another to complete
+- total method -> defined for every object state
+- partial method -> not defined for every object state
+- in any concurrent execution, for any pending invocation of a total method,
+  there exists a quiescently consistent response
+- quiescent consistency is a nonblocking correctness condition
+- compositional -> a correctness property, P, is compositional if, whenever
+  each object in the system satisfies P, the system as a whole satisfies P
+- compositionality is important for large systems and closely related to
+  modularity (using hidden implementations and exposed interfaces)
+- the consistency guarantees are exposed through the interface as well
+- quiescent consistency is compositional
+
+## Sequential Consistency
+- program order -> the order in which a single thread issues method calls
+- method calls by different thread are unrelated by program order
+- Principle 3.4.1 ->
+    - method calls should appear to take effect in program order
+- sequential consistency -> a correctness property that combines principles
+  3.3.1 and 3.4.1, e.g.
+    - sequential consistency requires that method calls act as if they occurred
+      in a sequential order consistent with program order
+- in any concurrent execution, there is a way to order methods call sequentially
+  so that they
+    1. are consistent with program order
+    2. meet the object's sequential specification
+
+### Remarks
+- sequential consistency and quiescent consistency are incomparable
+    - there exist sequentially consistent executions that are not
+      quiescently consistent, and vice versa
+- in most modern multiprocessor architectures, memory reads are not sequentially
+  consistent
+    - the can be typically reordered (without notification)
+- memory barriers or fences -> special instructions provided by multiprocessor
+  architectures that instruct the processor to propagate updates to and from
+  memory to ensure that reads and writes interact correctly
+- sequential consistency
+    - nonblocking
+    - not compositional
+
+## Linearizability
+- the result of composing sequentially consistent components is not itself
+  necessarily sequentially consistent
+- Principle 3.5.1 ->
+    - each method call should appear to take effect instantaneously at some
+      moment between its invocation and response
+- real time behavior of method calls must be preserved
+- linearizability -> Principle 3.5.1
+- every linearizable execution is sequentially consistent but not vice versa
+
+### Linearization Points
+- to show that a concurrent object is linearizable is to identify, for each
+  method, a linearization point
+- for lock based implementations, each method's critical section can serve
+  as its linearization
+- for implementations that do not use locking, the linearization point is
+  typically a single step where the method call becomes visible to other
+  method calls
+
+### Remarks
+- sequential consistency is useful for describing standalone systems
+- linearizability is useful for describing components of large systems where
+  components must be implemented and verified independently
+- linearizabilty is compositional and nonblocking (and as a result does not
+  limit concurrency)
+
+## Formal Definitions
+- informally, linearizability means each method call appears to take effect
+  instantaneously at some moment between that method's invocation and return
+  events
+- history -> a finite sequence of method invocation and response events
+- subhistory -> a subsequence of events within a history
+- invocation -> <x.m(a*)A>
+    - x is an object
+    - m a method name
+    - a* a sequence of arguments
+    - A is a thread
+- response -> <x:t(r*)A>
+    - t is OK or an exception
+    - r* is a sequence of result values
+- step of A -> an event labeled with thread A
+- response matches an invocation if they have the same object and thread
+- method call (formally) -> in a history H, a method call is a pair consisting
+  of an invocation and the next matching response in H
+- pending -> an invocation is pending in H if no matching response follows
+  the invocation
+- extension -> an extension of a history H is a history constructed by
+  appending responses to zero or more pending invocations of H
+- complete(H) -> the subsequence of H consisting of all matching invocations
+  and responses, i.e. ignore all pending invocations
+- a history H is sequential if the first event of H is an invocation, and
+  each invocation, except possibly the last, is immediately followed by a
+  matching response (i.e. method calls do not overlap)
+- thread subhistory -> a history of H is the subsequence of all events in H
+  whose thread names are equivalent
+- object subhistory -> a history of H is the subsequence of all events in H
+  whose object is equivalent
+- equivalent (for histories) -> two histories (H and H') are equivalent if
+  for every thread, A, in H, H|A = H'|A
+- well formed (history) -> if each thread subhistory is sequential
+- sequential specification (for an object) -> a set of sequential histories
+  for the object
+- legal (subhistory) -> a sequential history, H, is legal if each object subhistory
+  is legal for that history
+- partial order
+    - irreflexive and transitive
+    - never true that x -> x
+    - when x -> y and y -> z then z -> z
+- total order (on X)
+    - a partial order such that for all distinct x and y in X either x < y or y < x
+- any partial order can be extended to a total order
+- Fact 6.3.1 ->
+    - if -> is a partial order on X, then there exists a total order "<"
+      on X such that if x -> y, then x < y
+- a method call m0 precedes method call m1 in history H if m0 finished
+  before m1 (i.e. m0's response event occurs before m1's invocation event)
+
+### Linearizability
+- basic idea -> event concurrent history is equivalent, according to
+  the following sense, to some sequential history
+    - if one method call precedes another, then the earlier call must have taken effect
+      before the later call
+    - by contrast, if two method calls overlap, then their order is ambiguous,
+      and they can be ordered in any convenient way
+- Definition 6.3.1 ->
+    - a history is linearizable if it has an extension H' and there is a
+      legal sequential history S such that
+        - complete(H') is equivalent to S
+        - if method call m0 precedes method call m1 in H, then the same is
+          true in S
+- S is a one (of potentially many) linearizations in S
+
+### Compositional Linearizability
+- Theorem 3.6.1 ->
+    - H is linearizable if and only if for each object x, H|x is linearizable
+- proof here
+- compositionality is important for composing modular concurrent systems
+- basing a concurrent system on a noncompositional correctness property means
+  it must rely on a centralized scheduler for all objects or it must satisfy
+  additional constraints placed on objects to ensure that they follow compatible
+  scheduling protocols
+
+### The Nonblocking Property
+- a pending invocation of a total method is never required to wait for another
+  pending invocation to complete
+- Theorem 3.6.2 ->
+    - let inv(m) be an invocation of a total method
+    - if <x inv P> is a pending invocation in a linearizable history H, then
+      there exists a response <x res P> such that H * <x res P> is linearizable
+- proof here
+- linearizability by itself never forces a thread with a pending invocation
+  of a total method to block
+- the nonblocking property does not rule out blocking in situations where it
+  is explicitly intended
+
+## Progress Conditions
+- blocking -> a delay (possibly unexpected) can prevent others from making
+  progress
+- delays can be caused by
+    - cache misses
+    - page faults
+    - preemption
+- wait-free -> a call finishes its execution in a finite number of steps
+- bounded wait-free -> a bound exists on the number of steps a method call
+  can take
+- population-oblivious -> a wait-free method whose performance does not depend
+  on the number of active threads
+- nonblocking (progress condition) -> being wait-free
+    - an arbitrary and unexpected delay by one thread (possibly one holding
+      a lock) does not necessarily prevent the others from making progress
+- wait-free property is a good one because it guarantees that every thread
+  that takes steps makes progress
+    - can be inefficient
+- lock-free (method) -> a method that guarantees that infinitely often some
+  method call finishes in a finite number of steps
+- wait-free is lock-free but lock-free does not mean wait-free
+- lock-free algorithms can lead to starvation
+    - a fast lock-free algorithm may be more attractive than a slower wait-free
+      algorithm
+
+### Dependent Progress Conditions
+- wait-free and lock-free nonblocking progress conditions guarantee that the
+  computation as a whole makes progress, independently of how the system
+  schedules threads
+- dependent progress conditions -> progress occurs only if the underlying
+  platform (i.e. OS) guarantees
+    - every thread eventually leaves every critical section
+    - (useful when the OS guarantees that every thread eventually leaves
+      every critical section in a timely manner)
+- the deadlock-free and starvation-free properties are dependent progress
+  conditions
+- lock-based synchronization can guarantee, at best, dependent progress
+  conditions
+- isolated execution -> a method call executes in isolation if no other threads
+  take steps
+- Definition 3.7.1 ->
+    - obstruction-free -> a method is obstruction-free if, from any point after
+      which it executes in isolation, it finishes in a finite number of steps
+- the obstruction-free property
+    - is a dependent nonblocking progress condition
+    - rules out the use of locks
+    - only requires pausing threads that conflict, i.e. they call the same
+      shared object's methods
+- back-off mechanism -> a thread that detects a conflict pauses to give an
+  earlier thread time to finish
+- the simplest way to exploit an obstruction-free algorithm is to introduce
+  a back-off mechanism
+
+## The Java Memory Model
+- does not guarantee linearizability or sequential consistency when reading
+  or writing fields of shared objects
+    - caused by compiler optimizations that reorder reads/writes
+        - register allocation
+        - common subexpression elimination
+        - redundant read elimination
+- satisfies the Fundamental Property of relaxed memory models
+    - for a sequentially consistent execution, if certain rules are followed,
+      then every execution of that program in the relaxed memory model will
+      still be sequentially consistent
+- all rules are not covered
+- double-checked locking -> a once-common idiom in Java that checks for a null
+  instance, enters a synchronized block, and checks for a null instance again
+  before performing the action
+- see 3.10 for double-checked locking with a Singleton
+- it does not work as expected due to the lack of sequential consistency
+  in Java's memory model because of instruction reordering
+- objects reside in a shared memory and each thread has a private working
+  memory that contains cached copies of fields it has read or written
+- each JVM can keep cached fields in threads consistent but it is not
+  required to
+- synchronization events -> statements that in other contexts imply atomicity
+  or mutual exclusion but within the JVM implies reconciling a thread's
+  working memory with the shared memory
+    - update shared memory with cached memory changes
+    - invalidate cached values and reread from shared memory
+- synchronization events are linearizable
+    - they are totally ordered, and all threads agree on that ordering
+
+### Locks and Synchronized Blocks
+- a thread achieves mutual exclusion
+    - by entering a synchronized block or method (which acquires an implicit lock)
+    - or by acquiring an explicit lock (e.g. ReentrantLock, FileLock, StampedLock,
+      ReadWriteLock)
+- if all accesses to a particular field are protected by the same lock
+  then reads-writes to that field are linearizable
+
+### Volatile Fields
+- linearizable
+- reading is like acquiring a lock
+    - working memory is invalidated and volatile field's current value
+      is reread from memory
+- writing is like releasing a lock
+    - the volatile field is immediately written back to memory
+- multiple reads/writes are not atomic
+- may still need locks
+
+### Final Fields
+- final is const and cannot be modified once it has been initialized
+- initialized in ctor
+- reads/writes to fields are linearizable if either the field is volatile,
+  or the field is protected by a unique lock which is acquired by all
+  readers and writers
+
+## Remarks
+- different methods for a concurrent object can have different progress
+  conditions
+- frequently called time-critical, read method should be wait-free
+- infrequent writes can use mutual exclusion
