@@ -1,14 +1,32 @@
 # Ch. 1 Introduction
-- parallelism - using multiple processors to work on a single task
-- shared-memory multiprocessors -
-- multicores -
-- aysnchronous -
-- threads
-- concurrent program
-- concurrent algorithm
-- program correctness
-- safety property
-- transactional memory
+- parallelism -> using multiple processors to work on a single task
+- shared-memory multiprocessor -> multiple processors that work in parallel and
+  have access to the same memory
+    - often produces many problems
+        - cache coherence
+        - synchronization
+        - memory consistency
+- multi-core processor -> a single computing component with two or more independent
+  processing units that read and execute program instructions simultaneously
+- aysnchronous -> program tasks do not necessarily have to execute sequentially, i.e.
+  the results of one task are not necessary as inputs to the next task
+- threads -> the smallest sequence of programmed instructions that can be managed
+  independently by a scheduler
+    - a component of a process
+    - multiple threads can exist within one process, executing concurrently and
+      sharing resources such as memory
+    - the threads of a process share its executable code and the values of its
+      global variables at any given time
+- concurrent program -> a program in which several tasks or computations are executed
+  within overlapping time periods
+- concurrent algorithm -> an algorithm in which several tasks or computations are executed
+  within overlapping time periods
+- program correctness -> the state of a program where it is possible to provably show
+  that a program adheres to some formal specification or property
+- safety property -> the definitive assurance that for a every possible execution,
+  nothing bad happens for a component of computation (e.g. program, task, method, etc)
+- transactional memory -> a concurrency control mechanism that ensures load and store
+  operations will occur in an atomic way (think atomics in C++)
 
 ## Shared Objects and Synchronization
 - race conditions are caused by indeterminate interleaved reads and writes
@@ -23,7 +41,7 @@
 
 ## A Fable
 - coordination protocol - agreed method for sharing access to a resource
-- basic idea
+- basic idea (mutual exclusion protocol)
     - actor 1
         1. set flag
         2. if actor 2's flag is unset, perform action
@@ -65,6 +83,7 @@
 - waiting - property that dictates that an actor will wait indefinitely
   according to the coordination protocol
 - waiting is related to fault tolerance
+    - https://users.ece.cmu.edu/~koopman/des_s99/sw_fault_tolerance/
 - all mutual exclusion protocols require waiting
 - other coordination protocols do not require waiting
 
@@ -83,7 +102,7 @@
 - the consumer is consuming the data one piece at a time concurrently
 - need to ensure the producer won't add data when it isn't possible and
   that the consumer won't try to remove data when it isn't possible
-- basic idea
+- basic idea (producer-consumer protocol)
     - producer uses a flag and sets it when data is available
     - consumer
         1. waits for set flag
@@ -155,7 +174,30 @@
   because parallelizing computations incurs the cost of IPC and coordination
 - Amdahl's Law - any potential possible speed increase of a complex task is
   limited by the required sequential execution of the job's component tasks
-- TODO: more here
+- speedup -> the speedup, S, of a job is the ratio between the time it takes
+  one processor to complete the job vs the time it takes n concurrent processors
+  to complete the same job
+- Amdahl's law formally
+    - characterizes the max speedup, S, that can be achieved by n processors
+      collaborating on an application (computation, task, algorithm, etc)
+    - p - the fraction of the job that can be executed in parallel
+    - assume takes normalized time of 1 for a single processor to complete the
+      job
+    - parallel part takes time p/n
+    - sequential part takes time 1 - p
+    - parallelized computation takes 1 - p + p/n
+    - result
+        - S = 1 / (1 - p + p / n)
+- extrapolated result
+    - if only able to parallelize 90% of a computation, the resulting speedup
+      is only 5x (as opposed to 10x)
+- goal of this book is to help programmers understand the tools and techniques
+  for creating communication and synchronization in order to facilitate the
+  ability to parallelize as much of their code as possible (e.g. the remaining
+  10%)
+
+## Parallel Programming
+- no cookbook recipe for identifying components of an algorithm that can be parallelized
 
 # Ch. 2 Mutual Exclusion
 - covers classical algorithms that work by reading and writing shared memory
@@ -713,3 +755,551 @@ try {
   conditions
 - frequently called time-critical, read method should be wait-free
 - infrequent writes can use mutual exclusion
+
+
+# Ch. 4 Foundations of Shared Memory
+- foundations of sequential computing in Church-Turing Thesis
+    - anything that can be computed can be computed by a Turing Machine
+      or equivalently by Church's Lambda Calculus
+    - anything that is unsolvable by a Turing Machine is universally
+      considered unsolvable
+- remember -> it is a thesis, not a theorem
+- progress of classical theory of sequential computing
+    - finite-state automata
+    - pushdown automata
+    - Turing Machines
+- move through shared memory concurrency in the same manner
+- no effort to make models efficient
+
+## The Space of Registers
+- threads communicate by reading/writing shared memory
+- good to abstract away and think about communication as happening
+  through shared concurrent objects
+- keep in mind
+    - safety
+        - consistency conditions
+    - liveness
+        - defined by liveness conditions
+- read-write register (or just register) -> an object that encapsulates
+  a value that be observed by a read() method and modified by a write()
+  method (load and store)
+- boolean register
+- M-valued register -> register for range of of M integer values
+- for non-overlapped calls, read and write should work as expected
+- for overlapped calls
+    - could use a mutex but does not make sense to use another entity
+      to provide the progress property
+    - better to use wait-free approach
+        - rules out mutual exclusion
+        - guarantees independent progress (without OS scheduler)
+- require register implementations to be wait-free
+- atomic register -> linearizable implementation of the expected sequential
+  register implementation
+- important to specify how many readers and writers are expected
+- SRSW - single-reader, single-writer
+- MRSW - multi-reader, single-writer
+- MRMW - multi-reader, multi-writer
+- fundamental question ->
+    - can any data structure implemented from strongest registers also be
+      implemented from weakest
+- useful inter-thread communications must be persistent (i.e. outlives active
+  participation of sender)
+- register guarantees have more or less power
+    - range of values representable by register
+    - number of readers and writers supported
+    - degree of consistency they provide
+- safe register ->
+    - SWMR
+    - a read that does not overlap a write returns the value of the most
+      recent write
+    - a read that overlaps a write can return any value within the register's
+      allowed ranges of values
+- safe is a misleading term because safe registers are unsafe
+- regular register
+    - MRSW
+    - writes are not atomic, e.g.
+    - safe, so provides safety as above
+    - if a read call overlaps one or more write calls
+        - let v0 be the value written by the latest preceding write() call
+        - let v1 ... vk be the sequence of values written by overlapping write() calls
+        - the read() call may return any of the vi, for any i in the range 0 ... k
+- simply stated, the value read may flicker between allowed values
+- regular registers are quiescently consistent but not vice versa
+- a regular register is a quiescently consistent single-writer sequential register
+- useful to rephrase definitions directly in terms of object histories to
+  help reason about algorithms for implementing regular and atomic registers
+- write order -> any register implementation (safe, regular, or atomic)
+  defines a total order on the write calls
+- for safe and regular registers write order is trivial because only allow
+  one writer at a time
+- for atomic registers method calls have a linearization order
+- for SRSW or MRSW safe or regular registers the write order is exactly the
+  same as the precedence order
+- write call indices -> W0, W1, ... Wi
+- read call indices -> R0, R1, ... Ri
+- returned value indices -> v0, v1, ... vi
+- regular register:
+    - 4.1.1 -> it is never the case that Ri -> Wi
+    - 4.1.2 -> it is never the case that for some j, Wi -> Wj -> Ri
+- atomic register:
+    - 4.1.1
+    - 4.1.2
+    - 4.1.3 -> if Ri -> Rj then i <= j
+
+## Register Constructions
+
+### MRSW Safe Registers
+- code for SafeBooleanMRSWRegister
+- Lemma 4.2.1 ->
+    - code for SafeBooleanMRSWRegister is a safe MRSW register
+- proof presented
+
+### A Regular Boolean MRSW Register
+- uses safe boolean MRSW register
+- only difference arises when newly written value is the same as the old
+    - regular returns x
+    - safe may return either
+- only writes on change
+- code for RegBooleanMRSWRegister
+- Lemma 4.2.2 ->
+    - code for RegBooleanMRSWRegister is a regular boolean MRSW register
+- proof here
+
+### A Regular M-Valued MRSW Register
+- implemented as an array of M boolean registers
+- initially set to 0, indicated by setting the 0th bit to true
+- write sets xth index to true and then sets all lower indexes to false
+- reading method reads locations in ascending order until it encounters
+  a true
+- Lemma 4.2.3 ->
+    - the read call in the RegMRSWRegister code always returns a value
+      corresponding to a bit 0...M-1 set by some write call
+- proof here
+- Lemma 4.2.4 ->
+    - the RegMRSWRegister code is a regular M-valued MRSW register
+- proof here
+
+### An Atomic SRSW Register
+- uses unbounded timestamps and a regular SRSW register
+- must satisfy the conditions 4.1.1, 4.1.2, and 4.1.3
+- only way 4.1.3 can be violated is if two reads that overlap the same write
+  read values out-of-order, the first returning vi and that latter returning
+  vj, where j < i
+- each read remembers the most recent timestamp/value pair ever read, so that
+  it is available to future reads
+    - if a later read then reads an earlier value it ignores that value and uses
+      the remembered latest value
+- the writer remembers the latest timestamp it wrote, and tags each newly
+  written value with a later timestamp
+- code for StampedValue and AtomicSRSWRegister
+- the algorithm requires the ability to read/write a value and a timestamp as a
+  single unit
+    - in a language such as C
+        - treat both the value and the timestamp as uninterpreted raw bits and
+          use bit-shifting and masks to pack and unpack values
+    - easier to use timestamp/value pair
+- Lemma 4.2.5 ->
+    - the code AtomicSRSWRegister is an atomic SRSW register
+- proof here
+
+### An Atomic MRSW Register
+- uses atomic SRSW registers to construct an MRSW register
+- presents intermediate construction that is not multi-reader
+- code for AtomicMRSWRegister
+- Lemma 4.2.6 ->
+    - the code for AtomicMRSWRegister is a MRSW atomic register
+- proof here
+
+### An Atomic MRMW Register
+- uses one atomic MRSW register per thread to construct atomic MRMW register
+- to write to the register
+    - thread A reads all the array elements, chooses a timestamp higher than any it
+      has observed
+    - writes a stamped value to array element A
+- to read the register
+    - a thread reads all the array elements
+    - returns the one with the highest timestamp
+- timestamp algorithm is the one used by the Bakery algorithm
+- code for AtomicMRMWRegister
+- Lemma 4.2.7 ->
+    - the code AtomicMRMWRegister is an atomic MRMW register
+- shows proof here
+
+- these algorithms are generally not practical in use but showing the
+  construction of one from the other shows how to implement algorithms with
+  strong synchronization properties from ones with weak synchronization
+  properties
+
+## Atomic Snapshots
+- constructs an instantaneous view of an array of of atomic registers
+- array of atomic MRSW registers, one per thread
+- methods
+    - `void update(T v)`
+    - `T[] scan()`
+
+- goal: goal is to construct a wait-free implementation that is equivalent
+  (linearizable) to the sequential specification outlined in code for SeqSnapshot class
+
+### An Obstruction-Free Snapshot
+- update - wait-free, scan - obstruction-free
+- use StampedValue as in the atomic MRSW register
+- collect -> non-atomic act of copying the register values one-by-one into an array
+- clean double collect -> performing two collects (one after the other) and reads
+  return equivalent values
+- result of second collect is a snapshot of the system state immediately after the
+  end of the first collect (know there was an interval between first and second in
+  which no update was made)
+- see SimpleSnapshot code
+
+### A Wait-Free Snapshot
+- to allow for wait-free scan, each update call helps a scan it may interfere with
+  by snapshotting before modifying so that a failing scan can use the snapshot
+  from an interfering update as its own
+    - must make sure the snapshot from the update can be linearized within the
+      scan's own execution
+- moves (thread moves) -> call to update completes within thread
+- if a scanning thread A sees a thread B move twice while it is performing repeated
+  collects, then B executed a complete update() call within the interval of A ’s
+  scan(), so it is correct for A to use B ’s snapshot
+- code for StampedSnap and WFSnapshot here
+
+### Correctness Arguments
+- Lemma 4.3.1 ->
+    - if a scanning thread makes a clean double collect, then the values it returns
+      were the values that existed in the registers in some state of the execution
+- proof here
+- Lemma 4.3.2 ->
+    - if a scanning thread A observes changes in another thread B ’s label during
+      two different double collects, then the value of B ’s register read during
+      the last collect was written by an update() call that began after the first
+      of the four collects started
+- proof here
+- Lemma 4.3.3 ->
+    - the values returned by a scan() were in the registers at some state between
+      the call’s invocation and response
+- proof here
+- Lemma 4.3.4 ->
+    - every scan() or update() returns after at most O(n2) reads or writes
+- Theorem 4.5.1 ->
+    - if c = c1 ... cm is always written from right to left, then a read from
+      left to right obtains a sequence of values c1 sup k1,l1 ... cm sup km,lm
+      with k1 <= l1 <= k2 <= km <= lm
+- Theorem 4.5.2 ->
+    - let c = c1 ... cm and assume that c0 <= c1 <= ...
+    - if i1 <= ... <= im <= i then c1 sup i1 ... cm sup im <= ci
+    - if i1 >= ... >= im >= i then c1 sup i1 ... cm sup im >= ci
+- Theorem 4.5.3 ->
+    - let c = c1 ... cm and assume that c0 <= c1 <= ... and the digits
+      ci are atomic
+        1. if c is always written from right to left, then a read from left
+           to right obtains a value c sup k,l <= c sup l
+        2. if c is always written from left to right, then a read from right
+           to left obtains a value c sup k,l >= cl
+
+
+
+# Ch. 5 The Relative Power of Primitive Synchronization Operations
+- outlines core set of primitive atomic instructions that should
+  be seen as those necessary to solve important synchronization problems
+- synchronization primitives -> object whose exported methods are
+  primitive synchronization instructions
+- consensus problem -> a problem that requires agreement among a number of
+  processes (or agents) for a single data value
+    - some of the processes (agents) may fail or be unreliable in other ways,
+      so consensus protocols must be fault tolerant or resilient
+    - processes must somehow put forth their candidate values, communicate
+      with one another, and agree on a single consensus value
+- consensus number -> maximum number of threads for which objects of the
+  class can solve the consensus problem
+## Consensus Numbers
+- consensus object has one method decide where each thread calls decide
+  with an input v at most once
+```
+public interface Consensus<T> {
+    T decide(T value);
+}
+```
+- a concurrent consensus object is linearizable to a sequential consensus
+  object in which the thread whose value was chosen completes decide first
+- binary consensus -> consensus problems where all inputs are either 0 or 1
+- focused on wait-free concurrent solutions to consensus == consensus protocol
+- Definition 5.1.1 ->
+    - a class, C, solves n-thread consensus if there exists a consensus protocol
+      using any number of objects of class C and any number of atomic registers
+- Definition 5.1.2 ->
+    - the consensus number of a class C is the largest n for which that class
+      colves n-thread consensus
+    - if no largest n exists, the consensus number of the class is infinite
+- Corollary 5.1.1 ->
+    - supposition: an object of class C can be implemented from one or more
+      objects of class D together with some number of atomic registers
+    - if class C solves n-consensus, then so does class D
+
+### States and Valence
+- simplest case
+    - inputs: 0 or 1
+    - 2 threads
+    - move -> method call to shared object
+    - protocol state -> combined state of threads and shared objects
+    - initial state -> a protocol state before any thread has moved
+    - final state -> a protocol state after all threads have finished
+    - decision value -> the value decided by all threads in a specific
+      final state
+    - each thread makes moves until it decides on a value
+- wait-free protocol's set of possible states forms a tree
+    - each node represents a protocol state
+    - each edge represents a move by some thread
+
+We refer to s′ as a successor state to s.
+- successor state ->
+    - an edge for A from node s to node s' means that if A moves in protocol
+      state s, then the new protocol state is s' (s' is a successor state to s)
+- bivalent (protocol state) -> the decision value is not yet fixed
+    - there is some execution stating from that state in which threads
+      decide 0 and one where threads decide 1
+- univalent (protocol state) -> outcome is fixed
+    - every execution starting from that state decides the same value
+- 1-valent (0-valent, protocol state) -> univalent and decision value is
+  1 (or 0)
+- Lemma 5.1.1 ->
+    - every 2-thread consensus protocol has a bivalent initial state
+- proof here
+- Lemma 5.1.2 ->
+    - every n-thread consensus protocol has a bivalent initial state
+- proof here
+- critical (protocol state) ->
+    - bivalent
+    - if any thread moves, the protocol state becomes univalent
+- proof here
+
+## Atomic Registers
+- cannot solve consensus using atomic registers
+- Theorem 5.2.1 ->
+    - atomic registers have consensus number 1
+- proof here
+- Corollary 5.2.1 ->
+    - it is impossible to construct a wait-free implementation of any
+      object with consensus number greater than 1 using atomic registers
+- this corollary explains why hardware must provide primitive synchronization
+  operations other loads/stores (reads/writes) to be able to implement lock
+  free concurrent data structures on modern multiprocessors
+
+## Consensus Protocols
+- synchronization objects that uses array of atomic registers in relation
+  to a decide method which proposes an input value and executes a sequence
+  of steps to decide on one of the proposed values
+
+## FIFO Queues
+- is a wait-free implementation of a FIFO queue that supports multiple enqueuers
+  and dequeuers possible?
+- is a wait-free implementation of a two-dequeuer FIFO queue using
+  atomic registers possible?
+- Theorem 5.4.1 ->
+    - the two-dequeuer FIFO queue class has consensus number at least 2
+- proof here
+- code for QueueConsensus that is wait-free
+- can be used for
+    - stack
+    - priority queue
+    - list
+    - set
+- Corollary 5.4.1 ->
+    - it is impossible to construct a wait-free implementation of a queue,
+      stack, priority queue, set, or list from a set of atomic registers
+- Theorem 5.4.1 ->
+    - FIFO queues have consensus number 2
+- proof here
+    - can be applied to show sets, stacks, double-ended queues, and priority
+      queues have consensus number 2
+
+## Multiple Assignment Objects
+- multiple assignment or m, n-assignment -> for n >= m > 1, given an object with n
+  fields (sometimes an n-element array)
+    - atomically assigns m values (vi, i contained in 0, ..., m - 1) and m index
+      values (ij, j contained in 0, ..., m - 1, ij contained in 0, ..., n - 1)
+      via the assign method (atomically assigns vj to array index ij)
+    - read takes an index and returns the ith array element
+- code for lock-based implementation of (2,3) assignment
+- Theorem 5.5.1 ->
+    - there is no wait-free implementation of an (m, n)-assignment object by
+      atomic registers for any n > m > 1
+- proof here
+- code for MultiConsensus here
+- Theorem 5.5.2 ->
+    - atomic (n, n*(n + 1)/2)-register assignment for n > 1 has a consensus number of
+      at least n
+- proof here
+- multiple assignment solves consensus for any m > n > 1 threads while its dual structures
+  and atomic snapshots have consensus number at mose one
+- shows that writing atomically to multiple memory locations requires more computational
+  power than reading atomically
+
+## Read-Modify-Write Operations
+- many, if not all, of the classical synchronization operations provided by multiprocessors
+  in hardware can be expressed as read–modify–write (RMW) operations, or, as they are called in
+  their object form, read–modify–write registers
+- Theorem 5.6.1 ->
+    - any nontrivial RMW register has a consensus number of at least 2
+- proof here
+- code for RMWConsensus here
+- Corollary 5.6.1 ->
+    - it is impossible to construct a wait-free implementation of any nontrivial
+      RMW method from atomic registers for two or more threads
+
+## Common2 RMW Operations
+- RMW registers that correspond to many of the common synchronization primitives
+  provided by processors in the late 20th century
+- Common2 registers have consensus number exactly 2 (limited synchronization power)
+- not common any more
+- Definition 5.7.1 ->
+    - a set of functions, F, belongs to Common2 if for all values v and all fi and
+      fj in F, either
+        - fi and fj are commutative -> fi(fj(v)) == fj(fi(v))
+        - one function overwrites the other -> fi(fj(v)) == fi(v) or fj(fi(v)) == fj(v)
+- Definition 5.7.2 ->
+    - an RMW register belongs to Common2 if its set of functions, F, belongs to Common2
+- Theorem 5.7.1 ->
+    - any RMW register in Common2 has consensus number (exactly) 2
+- proof here
+
+## The compareAndSet() Operation
+- related to instruction provided by many modern architectures (CMPXCHG on Intel)
+- aka compare-and-swap
+- expected and update args
+- if current == expected then current = update, returns bool indicated whether value
+  changed
+- Theorem 5.8.1 ->
+    - a register providing compareAndSet() and get() methods has an infinite consensus
+      number
+- code for CASConsensus here
+- Corollary 5.8.1 ->
+    - a register providing only compareAndSet() has an infinite consensus number
+
+# Ch. 6 Universality of Consensus
+## Introduction
+- used proofs of form "no wait-free implementation of X by Y"
+- derived hierarchies in which no object at one level can implement one at a higher level
+- consensus number -> max number of threads for which an object can solve the consensus
+  problem
+- impossible to construct a wait-free implementation of an object with consensus
+  number < n in a system of n or more threads
+```
+consensus number    |   object
+----------------------------------------------------------------------------------------------
+1                   |   atomic registers
+2                   |   getAndSet(), getAndAdd(), Queue, Stack
+...                 |   ...
+m                   |   (m, m(m + 1)/2)-register assignment
+...                 |   ...
+inf                 |   memory-to-memory move, compareAndSet(), load-linked/store conditional
+----------------------------------------------------------------------------------------------
+```
+- chapter shows that there exist classes of objects that are universal
+    - given sufficiently many of them, one can construct a wait-free linearizable
+      implementation of any concurrent object
+- programming language or architecture is powerful enough to support arbitrary wait-free
+  synchronization if and only if it provides objects of a universal class as primitives
+- universal construction -> use of consensus objects used to implement any concurrent
+  object
+
+## Universality
+- universal (class) -> class C is universal if can construct a wait-free implementation
+  of any object from some number of objects of C and some number of read-write registers
+- use an unlimited number of of read-write registers and consensus objects (without
+  describing how to recycle memory)
+- start with lock-free and move to wait-free
+
+## A Lock-Free Universal Construction
+```
+public interface SeqObject {
+    public abstract Response apply(Invocation invoc);
+}
+```
+- generic definition for a sequential object based on invocation-response of ch/ 3
+- code in 6.3 and 6.4 (Node class and LFUniversal class) shows a construction that
+  transforms any sequential object into a lock-free linearizable concurrent object
+- assumes sequential objects are deterministic
+    - application of a method to an object in a particular start state always only
+      returns one response and results in one particular object state
+- can represent any object as a combination of a sequential object in its initial
+  state and a log
+    - log is a linked list of nodes representing the sequence of method calls applied
+      to an object (i.e. the sequence of state transitions)
+    - thread applies method call by appending to head of list
+    - traverses from tail to head applying transitions to a private copy of the object
+    - thread returns the result of applying its own operation to the private object
+    - note: only final call is mutable, all previous operations and start state are
+      immutable
+    - make concurrent by allowing a thread to construct a node containing its call
+    - then run an n-thread consensus protocol to determine the node to append operation
+      to log next
+    - consensus objects can only be used once
+    - to locate head of the log, use a construction similar to Bakery algorithm
+        - n-entry array, `head[]`, where `head[i]` is the last node in the list that
+          thread i has observed
+        - initially all entries refer to tail sentinel node
+        - head is node with max sequence number (i.e. timestamp) within the array
+        - completes appending in finite number of steps but a thread can fail to add
+          its node if other threads succeed in appending theirs so starvation is
+          possible so the construction is only lock-free
+
+## A Wait-Free Universal Construction
+- must guarantee that apply() call always completes in finite number of steps
+  so no thread starves
+- to guarantee this, progressing threads must help non-progressing threads to complete
+- code for Universal class here
+- for apply
+    - thread announces its new node (by adding to announce array)
+    - ensure that other thread will append node on its behalf if current thread
+      does not succeed
+    - proceeds as in lock-free universal construction and retries main loop until
+      its node is appended
+    - difference:
+        - a thread first checks to see if there is a node that needs help
+          ahead of it in the announce array
+        - attempts to help threads ahead of it in increasing order by using
+          timestamp modulo width (size) n of the announce array
+    - removing the helping step would mean each thread could be overtaken an arbitrary
+      number of times
+    - must make sure no node is appended twice
+        - avoided by order of read max in head array and read sequence (timestamp)
+          in announce array
+- linearizable because no node is added twice
+- proof of wait-free requires showing that any announced node will eventually be
+  appended to head and that that allows the announcing thread to complete
+- auxiliary variable (ghost variable) -> one that does not appear explicitly in
+  code, does not alter the program’s behavior in any way, but aids in reasoning
+  about the behavior of the algorithm
+- use the following aux vars:
+    - concur(A) is the set of nodes that have been stored in the `head[]` array since
+      thread A’s last announcement
+    - start(A) is the sequence number of `max(head[])` when thread A last announced
+- shows wait-free Universal code with aux vars for clarity
+- Lemma 6.4.1 ->
+    - for all threads A, the following claim is always true
+        - `|concur(A)| > n => announce[A] contained in head[]`
+- proof here
+- Lemma 6.4.2 ->
+    - the following property always holds
+        - `max(head[]) >= start(A)`
+- proof here
+- Lemma 6.4.3 ->
+    - the following is a loop invariant for loop in wait-free universal construction
+      (i.e. holds for each iteration)
+        - `max(head[A], head[j] ,..., head[n] - 1) >= start(A)`
+        - j is loop index
+- proof here
+- Lemma 6.4.4 ->
+    - the following assertion holds before line 10 in code
+        - `head[A].seq >= start(A)`
+- proof here
+- Lemma 6.4.5 ->
+    - the following property always holds
+        - `|concur(A)| >= head[A}.seq - start(A) >= 0`
+- proof here
+- Theorem 6.4.1 ->
+    - the wait-free universal construction algorithm is correct and wait-free
+- proof here
+
+# Additional Notes
+## C++ Memory Model

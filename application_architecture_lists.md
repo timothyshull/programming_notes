@@ -152,12 +152,25 @@
 - Raft
 - Chandra-Toueg
 - Lockstep protocol
-- proof-of-work
 - MSR-type algorithms
 - hashgraph
 - see also:
     - gossip
-
+- bitcoin-related consensus
+    - general goals
+        - ensures next value (blockchain) is the single source of truth
+        - keeps competing agents from modifying the set value in the context
+    - proof of work*
+        - proven by solving a cryptographic problem
+    - proof of stake
+        - proven by investing in unit of system
+    - proof of activity
+        - combines proof of work and proof of stake
+    - proof of burn
+        - commit units of system to an unusable state
+    - proof of capacity
+        - given priority by agent's memory space
+    - proof of elapsed time
 
 
 
