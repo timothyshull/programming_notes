@@ -1301,5 +1301,223 @@ public interface SeqObject {
     - the wait-free universal construction algorithm is correct and wait-free
 - proof here
 
+# Ch. 7 Spin Locks and Contention
+- multiprocessor programming necessitates an understanding of the underlying
+  architecture
+- mutual exclusion protocols always require determining what to do if the lock cannot
+  be acquired
+- spin lock -> a lock that is repeatedly retried if locking is not possible until
+  it is possible (spinning or busy waiting)
+    - only possible on multiprocessors
+    - best to use for shorter waitrs
+- blocking -> suspending the thread attempting to acquire the lock and signaling the
+  OS scheduler to schedule another thread on the suspended thread's processor
+    - only good for longer delays
+
+## Welcome to the Real World
+- use Java java.util.concurrent.locks package and implement a lock object called mutex
+- details issues with locks, memory buffers, and instruction reordering and the weak
+  memory consistency guarantees caused by these
+- memory barrier (memory fence) -> used to force outstanding operations (for things
+  like outstanding write buffering) to take effect
+- barriers are expensive and up to programmer to know where to add them
+
+## Test-And-Set Locks
+- shows code for TASLock here
+- shows code for TTASLock here
+- both guarantee deadlock free mutual exclusion
+- TTASLock shows better performance
+- bottlenecks and variance from ideal lock performance is generally due to the
+  delays caused by memory access and the relationship to cache accesses
+- when a processor reads from an address in memory
+    - first checks whether that address and its contents are present in its cache
+    - if so
+        - the processor has a cache hit, and can load the value immediately
+    - if not,
+        - the processor has a cache miss, and must find the data either in the memory, or in
+          another processor’s cache
+        - processor then broadcasts the address on the bus
+        - other processors snoop on the bus
+        - if one processor has that address in its cache, then it responds by broadcasting the
+          address and value
+        - if no processor has that address, then the memory itself responds with the value at
+          that address
+
+## TAS-Based Spin Locks Revisited
+- on a shared-bus architecture, each getAndSet() call is broadcast on the bus, delaying
+  all threads, and resulting in a cache miss almost every time
+- when the lock is released, it may be delayed due to spinning threads
+- TTASLock re-reads are cache hits so does not slow down other threads and lock release
+  is not delayed by spinning locks
+- local spinning -> threads repeatedly reread cached values instead of repeatedly using
+  the bus
+
+## Exponential Backoff
+- contention -> when multiple threads try to acquire a lock at the same time
+- high contention -> when many threads try to acquire a lock at the same time
+- low contention -> when only a few threads try to acquire a lock at the same time
+- key observation ->
+    - in the TTASLock algorithm, if some other thread acquires the lock between the
+      first and second check then there is high contention for the check
+- good rule of thumb ->
+    - larger number of retries for a lock, the higher the contention, longer the
+      thread should back off
+    - when thread sees lock is free but fails to acquire, back off before retrying
+    - each time thread tries and fails, double back off time
+- code for Backoff here
+- code for BackoffLock here
+
+## Queue Locks
+- more complicated scalable spin locks than backoff locks but more portable
+- problems with BackoffLock
+    - cache-coherence traffic
+        - all threads spin on the same shared location causing cache-coherence traffic
+          on every successful lock access
+        - critical section underutilization
+            - threads delay longer than necessary, causing critical section to be
+              underutilized
+- with threads in a queue, each thread can check for its turn if predecessor has
+  returned
+- provides first-come-first-served fairness (similar to Bakery)
+
+### Array-Based Locks
+- uses atomic int tail field
+- to acquire lock, each thread increments tail field
+- maintains boolean `flag[]` and if `flag[j]` is true, then thread with slot
+  j has permission to acquire the lock
+- threads spin until flag at their slot is true and releases by setting it to false
+- code for ALock here
+- each thread's slotIndex is thread-local
+    - not stored in shared memory
+    - no need for synchronization
+    - do not generate cache coherence traffic
+- contention may still occur because of false sharing
+- false sharing -> occurs when adjacent data items (such as array elements) share a
+  single cache line
+- in languages like C and C++ can avoid false sharing by padding adjacent elements
+  to the size of a cache line
+
+### The CLH Queue Lock
+- impovements
+    - reduces invalidations to a minimum
+    - minimizes interval between when a lock is freed by one thread and when it is
+      acquired by another
+    - guarantees no starvation
+    - provides first-come-first-serve fairness
+- ALock is not space efficient
+- CLHLock uses nodes with a boolean locked field
+- lock is represented by a virtual linked list because list is implicit (threads
+  refer to link through pred field)
+- code for CLHLock here
+- TODO: more details of algorithm
+- advantages:
+    - releasing lock only invalidates successor's cache
+    - requires less space
+    - does not require knowledge of the number of threads that might access the lock
+    - provides first-come-first-served fairness
+- disavantages:
+    - performs poorly on cache-less NUMA architectures
+
+### The MCS Queue Lock
+- uses explicit linked list
+- code for MCSLock here
+- advantages:
+    - shared with CLHLock
+    - better suited to cache-less NUMA architectures
+- disadvantages:
+    - releasing a lock requires spinning
+    - requires more reads, writes, and compareAndSet() calls than CLHLock
+
+## A Queue Lock with Timeouts
+- tryLock allows specifying a timeout or max duration to wait to acquire lock
+  and returns bool specifying success of acquiring lock
+- uses virtual linked list of nodes and each thread spins on predecessor's node
+- when a thread times out it marks its node as abandoned
+- its successor in queue (if it exists) observes the node on which it has been spinning
+  has been abandoned and spins instead on abandoned node's predecessor
+- code for TOLock here
+- advantages:
+    - shares many of CLHLock's advantages
+        - local spinning on a cached location
+        - quick detection that the lock is free
+    - wait-free timeout of BackoffLock
+- disadvantages:
+    - need to allocate a new node per lock access
+    - a thread spinning on the lock may have to move through a chain of timed-out
+      nodes before accessing the critical section
+
+## A Composite Lock
+- spin-lock algorithms impose trade-offs
+    - queue locks provide
+        - first-come-first-served fairness
+        - fast lock release
+        - low contention
+    - queue locks require
+        - nontrivial protocols for recycling abandoned nodes
+    - backoff locks
+        - support trivial timeout protocols
+    - however, backoff locks
+        - are inherently not scalable
+        - may have slow lock release if timeout parameters are not well-tuned
+- in queue lock only threads at front need to perform lock handoffs
+- can keep small number of threads in queue and have rest use exponential backoff
+- code for CompositeLock here
+- TODO: more description of code
+- advantages:
+    - reduce contention because when they back off, access different locations
+    - hand-off is fast
+    - abandoning a lock request is trivial for threads in backoff stage
+    - abandoning a lock request is straightforward for threads that have acquired
+      queue nodes
+    - requires only O(L) space in worst case for L locks and n threads
+
+### A Fast-Path Composite Lock
+- the previously described composite lock does not perform well in the absence of
+  concurrency
+- fast path -> shortcut through a complex algorithm used for a single thread in the
+  absence of concurrency
+- add a an extra state to distinguish between a lock held by an ordinary thread and
+  a lock held by a fast-path thread
+- when lock is free, thread attempts fast-path and if it fails, follows previous
+  algorithm by enqueueing
+- code for CompositeFastPathLock here
+- uses FAST_PATH flag, fastPathLock private method, and calls to super's method
+  (inherits from CompositeLock)
+
+## Hierarchical Locks
+- many cache-coherent architectures organize processors in clusters
+- communication within a cluster is significantly faster
+- want to design locks to be aware to these difference
+- hierarchical (locks) -> take into account the architecture's memory hierarchy and
+  access costs
+- can have many hierarchical levels but keep it to 2 for simplicity
+
+### A Hierarchical Backoff Lock
+- TTASLock can be easily adapted to exploit clustering
+- reduce backoff time for locks that are in the same cluster
+- code for HBOLock here
+- disadvantage:
+    - may be too successful in exploiting locality causing threads in same cluster
+      to exchange lock causing threads in other clusters to starve
+
+### A Hierarchical CLH Queue Lock
+- need to favor threads in same cluster and still ensure some degree of fairness
+- uses set of local queues, one per cluster, and a single global queue
+- code for HCLHLock here
+- TODO: more code description here
+- advantages:
+    - favors sequences of local threads
+    - use of implicit references minimizes cache misses and threads spin on locally
+      cached copies of their successor's node state
+
+## One Lock To Rule Them All
+- no single algorithm is ideal for all applications
+
+# Ch. 8 Monitors and Blocking Synchronization
+
+## Introduction
+
+
+
 # Additional Notes
 ## C++ Memory Model

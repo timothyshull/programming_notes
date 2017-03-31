@@ -147,3 +147,14 @@ status: active
     - GLUT
     - GlKit
 
+
+# Essential Tests for a System
+- rebooting host (bare minimum)
+- max out CPU
+- take up memory and force garbage collection
+- consume bandwidth to disk and cause wait for I/O
+- network
+    - dependency slow down
+    - dependency disappears
+    - packet loss
+    - corruption
