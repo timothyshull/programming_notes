@@ -1516,7 +1516,188 @@ public interface SeqObject {
 # Ch. 8 Monitors and Blocking Synchronization
 
 ## Introduction
+- monitor -> structured method for combining synchronization and data (within an
+  abstraction)
+- allow queues to manage own synchronization for threads
 
+## Monitor Locks and Conditions
+- hold, acquire, release
+- if a thread cannot immediately acquire a lock, it can either spin, repeatedly testing
+  whether the desired event has happened, or it can block, giving up the processor for \
+  a while to allow another thread to run
+- often makes sense to combine spinning and blocking
+- spinning only works on multiprocessors, while blocking works on uniprocessors also
+- general Lock API
+    - lock -> blocks caller until it acquires the lock
+    - lockInterruptibly -> throws an exception if the thread is interrupted while
+      lock call is waiting
+    - unlock -> releases lock
+    - newCondition -> factory that creates a Condition object
+    - tryLock -> acquires the lock if free and returns boolean indicating whether lock
+      was acquired (can be configured with timeout)
+
+## Conditions
+- associated with a lock and, when created, if the await method is called, causes the
+  calling thread to release the lock and suspend
+- when calling thread awakens, it can reacquire the lock (by competing if necessary)
+- with interruptible threads, if thread is interrupted during an await call, an
+  exception is thrown
+- work with Conditions has a protocol that should be followed
+- code for Condition interface here
+- reentrant -> thread holding a lock can acquire it again without blocking
+- code for LockedQueue using locks and conditions
+- two condition objects
+    - notEmpty -> notifies waiting dequeuers when the queue goes from empty to
+      nonempty
+    - notFull -> notifies waiting enqueuers when the queue goes from full to not full
+- using two conditions is more efficient
+- monitor -> object demonstrated in LockedQueue that combines methods, mutual exclusion
+  locks, and condition objects to facilitate concurrent access
+
+### The Lost-Wakeup Problem
+- lost wakeups -> one or more threads wait forever without realizing that the condition
+  for which they are waiting has become true
+- Condition objects are vulnerable to lost-wakeups
+- no solution for finding all cases that can cause lost-wakeups
+- methods to minimize vulnerability to lost-wakeups
+    - always signal all processes waiting on a condition, not just one
+    - specify a timeout when waiting
+- each imposes a small performance penalty which can be viewed as negligible when
+  considering the possibility of a lost-wakeups
+- synchronized methods and the wait, notify, and notifyAll methods provide the functionality
+  of monitors
+
+## Readers-Writers Locks
+- readers -> shared object method calls that return information about the object’s state
+  without modifying the object
+- writers -> shared object method calls that modify the object
+- most shared object methods are readers while only a few are writers
+- readers do not need to synchronize whereas writers must lock readers and writers
+- readers-writers lock -> allows multiple readers or a single writer to enter the
+  critical section concurrently
+- interface
+    - Lock readLock
+        - no thread can acquire the read lock while any thread holds the write lock
+        - multiple threads may hold the read lock at the same time
+    - Lock writeLock
+        - no thread can acquire the write lock while any thread holds either the write
+          lock or the read lock
+
+### Simple Readers-Writers Lock
+- code for SimpleReadWriteLock
+- keeps count of readers that have acquired the lock and bool indicating if a writer
+  has acquired the lock
+- code for ReadLock
+- code for WriteLock
+
+### Fair Readers-Writers Lock
+- many readers can cause writer to be locked out for an excessively long time
+- when writer calls writeLock method, block readers from calling readLock which
+  causes readers to eventually drop to 0 and allows writer to acquire lock
+- code for FifoReadWriteLock (and ReadLock/WriteLock)
+- to notify writer
+    - when a writer tries to acquire the write lock, acquires the lock object
+    - a releasing reader also acquires lock object and calls lock's signal method
+      if all readers have released
+
+## Our Own Reentrant Lock
+- using locks described in ch2/7, a thread that attempts to reacquire a lock
+  it already holds will deadlock with itself (arises in nesting/recursion)
+- reentrant lock -> a lock that can acquired many times by the same thread
+- code for SimpleReentrantLock class
+- stores thread ID of the last thread to acquire the lock and keeps track of
+  holdCount to indicate when a lock is free
+
+## Semaphores
+- semaphore -> generalization of a mutual exclusion lock that has a capacity
+  property that indicates the number of threads that can enter a Semaphore's
+  critical section at any given time
+- methods
+    - acquire -> suspends until capacity is available
+    - release
+- code for Semaphore here
+
+# Ch. 9 Linked Lists
+- coarse-grained synchronization -> give each data structure a scalable lock and ensure
+  each method call acquires and releases the lock
+- works well for low levels of concurrency but does not scale
+- fine-grained synchronization -> split an object into independently synchronized
+  components and acquire and release locks based on component access
+- optimistic synchronization -> in trees, lists, etc, scan for desired object without
+  locking and then check for modification in the interim between scan start and scan
+  success after locking (only worthwhile if scan succeeds more often than not)
+- lazy synchronization -> can split all modifying tasks into logical steps and delay
+  the more work intensive component (i.e. by logically performing action by tagging
+  or flagging and then physically performing action, like add, remove, etc, later)
+- nonblocking synchronization -> can sometimes remove locks entirely by relying on
+  built-in atomic operations for synchronization
+- use set interface for linked list
+    - add
+    - remove
+    - contains
+
+## List-Based Sets
+- Node class as expected
+- Set class uses two sentinel nodes, head and tail, as dummy nodes with
+  min and max integer as values
+
+## Concurrent Reasoning
+- skill that can be learned
+- understand invariants
+    - conditions that hold on creation
+    - conditions that must be maintained on each operation
+- freedom from interference -> assurance that only modifications are centralized to
+  known locations (i.e. no unexpected side effects)
+- for set, even requires freedom from interference for nodes that have been removed
+  because a node can be unlinked by a thread while others are traversing it
+- abstract value -> the higher level organization/representation achieved by using an
+  abstraction such as a class
+- concrete representation -> the means by which the higher level abstraction is achieved
+- understanding abstract value vs. concrete representation is essential for reasoning
+- representation invariant -> the characterization of which representations make sense
+  as abstract values
+- set invariants
+    - sentinels are neither added nor removed
+    - nodes are sorted by keys
+    - keys are unique
+- abstraction map ->
+- safety property to use -> linearizability
+    - identify linearization point -> point where method call takes effect (single
+      atomic step)
+- different list algorithms with different guarantees
+- summary
+    - wait-free -> call finishes in finite number of steps
+    - lock-free -> some call always finishes in finite number of steps (not free
+      from starvation)
+
+## Coarse-Grained Synchronization
+- simpler and more obviously correct
+- code for CoarseList here
+- satisfies same progress condition as the lock used
+    - if starvation-free, list is starvation-free
+- list implementation works well for low contention
+- does not work well for high contention even if the lock performs well under
+  contention this list implementation will not perform well
+
+## Fine-Grained Synchronization
+- as a thread traverses the list, locks each node as it visits and releases some time
+  later
+- permits pipelined concurrent traversal
+- lock coupling -> uses a hand-over-hand order for acquiring locks (i.e. acquire lock
+  for a node only while holding the lock for the predecessor)
+- no obvious way to implement lock coupling using Java's synchronized blocks
+- code for FineList add and remove here
+- important that all methods acquire locks in the same order to guarantee progress
+- the linearization point for an add(a) call depends on whether the call was successful
+    - a successful call (a absent) is linearized when the node with the next
+      higher key is locked (either Line 7 or 13)
+- for remove, an unsuccessful call (a present) is linearized when the predecessor
+  node is locked (Lines 36 or 42)
+- for remove, An unsuccessful call (a absent) is linearized when the node containing
+  the next higher key is locked (Lines 36 or 42)
+- FineList is starvation-free
+
+## Optimistic Synchronization
 
 
 # Additional Notes
