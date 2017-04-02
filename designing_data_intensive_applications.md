@@ -486,106 +486,153 @@ db_get () {
     - B-trees
     - treats disk as fixed-size pages which can be overwritten
     - most relational DBs and many non-relational DBs
- - data warehouse architecture
- - column oriented storage
+- data warehouse architecture
+- column oriented storage
 
- # Ch. 4 Encoding and Evolution
+# Ch. 4 Encoding and Evolution
 
- # Ch. 5 Replication
- - keeping multiple copies of same data
-    - geographic location (reduce latency)
-    - fault tolerance and availability
-    - increase throughput by increasing number of machines that can serve
-      queries (scale out)
- - assumes each dataset can be stored on a single machine (and discuss partitioning
-   later)
- - replication is easy for immutable data sets
- - difficulty lies in handling changes
- - three popular algorithms
-    - single-leader
-    - multi-leader
-    - leaderless
- - considerations
-    - synchronous vs. asynchronous replication
-    - handling of failed replicas
- - studied since 70's
- - many misunderstandings for application developers
+# PART II Distributed Data
+- reasons for use of multiple machines
+    - scalability
+        - spread load for reads or writes across multiple machines if it is greater
+          than what can be handled by a single machine
+    - fault tolerance/high availability
+        - use multiple machines for redundancy to handle faults or failures by allowing
+          another to take over
+    - latency
+        - latency imposed by bad networks or geographic distance can be mediated by having
+          a machine that is part of the application in a location that is closer
 
- ## Leaders and Followers
- - replica -> node with a copy of data
- - main question -> how to ensure all data updates get propagated to all replicas?
- - leader-based replication (aka active/passive or master-slave)
-    - replica designated as leader (aka master or primary)
-    - write requests sent through leader
-    - leader sends updates to followers (aka read replicas, slaves, secondaries, hot
-      standbys) as a replication log or change stream
-    - follower udpates by running all writes in order of replication log
-    - reads can be sent to leader or any follower
-- used by
-    - relational
-        - PostgresQL (since 9.0)
-        - MySQL
-        - Oracle Data Guard
-        - SQL Server's AlwaysOn Availability Groups
-    - non-relational
-        - MongoDB
-        - RethinkDB
-        - Espresso
-    - distributed message brokers
-        - Kafka
-        - RabbitMQ
-    - networked file systems/replicate block devices
-        - DRBD
+## Scaling to Higher Load
+- if processing power/load increase is all that is needed, can just use a more
+  powerful computer (vertical scaling or scaling up)
+- shared-memory architecture
+    - combining multiple CPUs, RAM chips, and disks together under one operating
+      system with a fast interconnect to treat as a single machine
+- has a linear cost but due to bottlenecks may not be able to handle load in a linear
+  proportion to scaling
+- offers limited fault tolerance
+- shared-disk architecture
+    - CPU and RAM form a single machine but storage is on an array of disks that
+      is shared between machines
+    - increases fault tolerance and storage but is generally not scalable beyond
+      that
 
- ## Synchronous vs. asynchronous replication
- - important and often configurable
- - sync
-    - leader waits for a successful ack from first follower before reporting success
-    - advantage
-        - follower is always guaranteed to have up-to-date copy
-    - disadvantage
-        - write cannot be processed in case of replica or network failure and system
-          will become blocked
-    - only makes sense for one of the followers to be synchronous
- - async
-    - leader fires and forgets change stream
-    - advantage
-        - leader can process writes even in case of replica or network failure
-          between leader and replica
-    - disadvantage
-        - if leader fails, writes are not recoverable so not durable
+### Shared-Nothing Architectures
+- aka
+    - horizontal scaling
+    - scaling out
+- each machine is a node with independent hardware and coordination is performed
+  at a software level
+- can choose machines by best price/performance ratio because no special hardware
+  is needed
+- can use VMs for cloud deployments
+- a lot to be aware of in shared-nothing architecture for application developers
 
-  ## Setting up new followers
-  - increase number of replicas or replace failed nodes
-  - cannot simply copy
-  - could lock before copy but this remove HA requirement
-  - conceptual process to avoid downtime
-    - snapshot leader's DB at some pint in time (without locking)
-    - copy snapshot to follower
-    - follower comes online and requests replication log from point of snapshot
-      (log sequence number or binlog coordinates)
-    - after processing backlog, replica continues as any other follower would
+### Replication vs. Partitioning
+- replication
+    - storage of a copy of the same data on several different nodes for redundancy
+      and performance
+- partitioning
+    - splitting data in a data store into smaller subsets of the data (partitions)
+      so they can be assigned to different nodes (sharding)
 
- ## Handling node outages
- - reboots and crashes occur
- - achieving HA with leader-based replication
 
- ### Follower failure: catch-up recovery
- - follower logs data changes on disk
- - to recover, follower supplies leader with last log sequence point and leader
-   provides an update
+# Ch. 5 Replication
+- keeping multiple copies of same data
+   - geographic location (reduce latency)
+   - fault tolerance and availability
+   - increase throughput by increasing number of machines that can serve
+     queries (scale out)
+- assumes each dataset can be stored on a single machine (and discuss partitioning
+  later)
+- replication is easy for immutable data sets
+- difficulty lies in handling changes
+- three popular algorithms
+   - single-leader
+   - multi-leader
+   - leaderless
+- considerations
+   - synchronous vs. asynchronous replication
+   - handling of failed replicas
+- studied since 70's
+- many misunderstandings for application developers
 
- ### Leader failure: failover
- - promote follower to leader position
- - manual or automatic
- - process
-    1. determine that leader has failed -> can use a heartbeat/timeout
-    2. choose a new leader -> leader election algorithm (consensus problem) or chosen
-       by previously determined controller node (generally chooses most up-to-date
-       replica)
-    3. reconfigure system to new leader -> set clients and followers to send requests
-       to new leader, handle old leader coming back online by assigning as a follower
-       and updating data
+## Leaders and Followers
+- replica -> node with a copy of data
+- main question -> how to ensure all data updates get propagated to all replicas?
+- leader-based replication (aka active/passive or master-slave)
+   - replica designated as leader (aka master or primary)
+   - write requests sent through leader
+   - leader sends updates to followers (aka read replicas, slaves, secondaries, hot
+     standbys) as a replication log or change stream
+   - follower udpates by running all writes in order of replication log
+   - reads can be sent to leader or any follower
+ used by
+   - relational
+       - PostgresQL (since 9.0)
+       - MySQL
+       - Oracle Data Guard
+       - SQL Server's AlwaysOn Availability Groups
+   - non-relational
+       - MongoDB
+       - RethinkDB
+       - Espresso
+   - distributed message brokers
+       - Kafka
+       - RabbitMQ
+   - networked file systems/replicate block devices
+       - DRBD
+
+## Synchronous vs. asynchronous replication
+- important and often configurable
+- sync
+   - leader waits for a successful ack from first follower before reporting success
+   - advantage
+       - follower is always guaranteed to have up-to-date copy
+   - disadvantage
+       - write cannot be processed in case of replica or network failure and system
+         will become blocked
+   - only makes sense for one of the followers to be synchronous
+- async
+   - leader fires and forgets change stream
+   - advantage
+       - leader can process writes even in case of replica or network failure
+         between leader and replica
+   - disadvantage
+       - if leader fails, writes are not recoverable so not durable
+
+ ## Setting up new followers
+ - increase number of replicas or replace failed nodes
+ - cannot simply copy
+ - could lock before copy but this remove HA requirement
+ - conceptual process to avoid downtime
+   - snapshot leader's DB at some pint in time (without locking)
+   - copy snapshot to follower
+   - follower comes online and requests replication log from point of snapshot
+     (log sequence number or binlog coordinates)
+   - after processing backlog, replica continues as any other follower would
+
+## Handling node outages
+- reboots and crashes occur
+- achieving HA with leader-based replication
+
+### Follower failure: catch-up recovery
+- follower logs data changes on disk
+- to recover, follower supplies leader with last log sequence point and leader
+  provides an update
+
+### Leader failure: failover
+- promote follower to leader position
+- manual or automatic
+- process
+   1. determine that leader has failed -> can use a heartbeat/timeout
+   2. choose a new leader -> leader election algorithm (consensus problem) or chosen
+      by previously determined controller node (generally chooses most up-to-date
+      replica)
+   3. reconfigure system to new leader -> set clients and followers to send requests
+      to new leader, handle old leader coming back online by assigning as a follower
+      and updating data
 - common failover issues
     - for async replication, new leader may not be up-to-date
       (may discard old leaders writes but there are other solutions)
@@ -1005,3 +1052,845 @@ db_get () {
     - monotonic reads
     - consistent prefix reads
 - concurrency issues
+
+# Ch. 6 Partitions
+- aka
+    - shard
+    - region
+    - tablet
+    - vBucket
+- the result of splitting data replicas to handle large datasets or handle high
+  query throughput
+- generally each piece of data only belongs to a single partition
+- done to facilitate scalability
+- shared-nothing architecture -> horizontal scaling or scaling out, each machine
+  or VM is a distinct node, with independent CPU, RAM, disks, etc, and coordination
+  is done at a software level (i.e. through messaging) rather than sharing resources
+- not related to network partitions
+- pioneered in 80's with Teradata and Tandem NonStop SQL
+
+## Partitioning and replication
+- commonly combined
+- node may store more than one partition (various configurations)
+
+## Partitioning of key-value data
+- spread query load
+- data may be skewed where one node receives more queries than others (hot spot)
+- random distribution of keys is simplest resolution but causes a need to query
+  all nodes for data since do not know where the data is
+
+### Partitioning by key range
+- can determine which node contains a key the range it is responsible is known
+- can manually set partitions or automatically
+- partition boundaries adapt to data
+- used by
+    - BigTable
+    - HBase
+    - RethinkDB
+    - MongoDB (before 2.4)
+- can keep keys in sorted order within partitions
+- key range partitioning can lead to access patterns that cause hot spots
+- timestamps are susceptible to problems in this scheme
+
+### Partitioning by hash of key
+- good hash function uniformly distributes keys across partitions
+- MD5
+    - Cassandra
+    - MongoDB
+- Fowler-Noll-Vo
+    - Voldemort
+- (also Murmur 3 and City Hash)
+- can assign range of hashes to a partition
+- ranges can be evenly spaced or chosen pseudo-randomly
+- lose ability to do efficient range queries
+- in MongoDB, sends range queries to all partitions
+- not supported in Riak, Couchbase, and Voldemort
+- Cassandra compromises
+    - table can be declared with a compound primary key consisting of several columns
+    - only first part of key is hashed to determine partition
+    - other columns are used to concatenate index for sorting the data in SSTables
+    - cannot scan range on first part, but if first part is set, can scan range on
+      remainder
+    - facilitates one-to-many relationships
+
+### Consistent Hashing
+- method for evenly distributing load across internet-wide system of caches such as CDN
+- chooses random partition boundaries to avoid need for central control or distributed
+  consensus
+- use of word consistent here is different from other uses in book
+- doesn't work well for databases
+
+### Skewed workloads and relieving hot spots
+- hashing does not completely avoid hot spots
+- one technique is to add random number to beginning or end of hot key to split across
+  many keys
+- affects reads because reads then have to do more work
+
+## Partitioning and secondary indexes
+- very useful for data modeling, common in relational databases, some document DBs,
+  and has been added to Riak
+- Solr and Elasticsearch function solely for secondary indexes
+- don't map neatly to partitions
+- solutions
+    - document-based partitioning
+    - term-based partitioning
+
+### Partitioning secondary indexes by document
+- each partitions maintains the secondary index for the data within that partition
+  and is not concerned with secondary indexes in other partitions
+- known as local index
+- reading a document-partitioned secondary index does not guarantee to return a full
+  set of data based on the secondary index
+- scatter/gather -> send secondary index to all partitions and combine returned results
+- scatter/gather is a solution but is expensive
+- used in
+    - MongoDB
+    - Riak
+    - Cassandra
+    - Elasticsearch
+    - SolrCloud
+    - VoltDB
+- suggest to structure partitioning scheme so secondary index queries can be served
+  from a single partition
+
+### Partitioning secondary indexes by term
+- can construct global index that covers data in all partitions, but it must also
+  be partitioned
+- can be partitioned differently
+- term-based partitioning
+- can make reads more efficient by avoiding scatter/gather
+- can add write overhead
+- updates to global secondary indexes are often asynchronous
+- used in
+    - DynamoDB
+    - Riak
+    - Oracle data warehouse
+
+## Rebalancing partitions
+- database change
+    - query throughput increases, so add more CPUs to handle load
+    - dataset size increases, so more disks and RAM for storage
+    - machines fail and other machines handle new responsibilities
+- moving data for these reasons is called rebalancing
+    - updates load to balance load
+    - database should continue to handle reads and writes during rebalance
+    - rebalance should minimize data transfer
+
+### Strategies for rebalancing
+### How not to do it: hash mod N
+- number of nodes changing modifies N so most data needs to be moved making
+  rebalancing very expensive
+
+### Fixed number of partitions
+- create more partitions than nodes and store many partitions on each node
+- allows for stealing partitions on node addition
+- only entire partitions are transferred
+- can also assign more partitions to more powerful machines to balance load
+- used in
+    - Riak
+    - Cassandra since 1.2
+    - Elasticsearch
+    - Couchbase
+    - Voldemort
+- can split and modify partitions, but fixed number of partition databases
+  usually avoid this so best to choose a number of partitions high enough to handle
+  future growth
+
+### Dynamic partitioning
+- key-range partitioning facilitates dynamic partitioning
+- when partition grows beyond a configured size, partition is split and vice versa
+- similar to how B-trees work
+- used by
+    - HBase (uses underlying HDFS)
+    - RethinkDB
+- adapts to total data volume
+- empty DB starts with one partition which defeats the purpose
+- HBase and MongoDB allow an initial pre-split configuration to set the number of
+  minimum partitions
+- can work equally well with hash-partitioned data
+
+### Other rebalancing strategies
+- before 1.2, Cassandra used consistent hashing with pseudo-random partition boundaries
+- suffered from poor load distribution and made it difficult to add nodes
+- replaced with fixed partitioning after
+- most widely used approaches
+    - hashing with a fixed number of partitions
+    - dynamic partitioning by key range
+
+## Request routing
+- which node to connect to for request by client?
+- relates to service discovery problem (not limited to databases)
+    - any piece of software running on a network has this problem
+    - especially highly available software
+- many in-house solutions
+- approaches
+    - clients contact node (via round robin load-balancer) either handles or forwards
+      appropriately
+    - send all requests to routing tier which forwards, acting as partition-aware
+      load balancer
+    - client receives node-partition mapping and handles requests
+- difficult problem (related to consensus)
+- ZooKeeper often used to keep mapping of partitions to nodes
+- other actors can subscribe to read mapping
+- uses ZooKeeper
+    - Espresso -> Helix
+    - HBase
+    - SolrCloud
+    - Kafka
+- MongoDB uses config server and mongos daemons for routing
+- uses gossip protocol
+    - Cassandra
+    - Riak
+- gossip allows clients to connect to any node, removing reliance on external
+  coordination service, but adds more complexity to database node responsibility
+- Couchbase does not rebalance automatically
+- still requires IP discovery for machine connections, but can use DNS for this purpose
+
+### Parallel query execution
+- most NoSQL distributed data stores are limited to supporting simple queries
+- massively parallel processing (MPP) relational databases can support complex
+  queries and are often used for analytics
+- business analytics makes data warehouse queries an important topic
+
+## Summary
+- spread data and query load evenly across multiple machines, avoiding hot spots
+- main approaches
+    - key range partitioning
+    - hash partitioning
+    - (hybrid approaches)
+- secondary index partitioning
+    - document-partitioned index
+    - term-partitioned index (global index)
+- query routing for partition-aware load balancing or sophisticated parallel query
+  execution
+- partitions generally operate independently but operating on many partitions
+  requires difficult reasoning
+
+# Ch. 7 Transactions
+- many things can go wrong in a data system
+    - software or hardware
+    - crash
+    - network interruptions
+    - multiple conflicting concurrent writes
+    - corrupted data
+    - race conditions
+- implementing fault tolerance requires units on which one can reason about complex
+  data systems
+- transactions -> means to group several reads and writes into one logical unit or operation
+    - commit -> transaction success
+    - abort (rollback) -> transaction failure
+- transactions simplify the programming model
+- facilitate conceptual and theoretical safety guarantees
+- investigation of transactions will include look at concurrency control and isolation
+  levels
+    - read committed
+    - snapshot isolation
+    - serializability
+
+## The slippery concept of a transaction
+- most relational and many non-relational follow concept introduced in 1975 by IBM
+  System R, first SQL database
+    - MySQL
+    - PosgreSQL
+    - Oracle
+    - SQL Server
+- many NoSQL databases abandoned the conceptual model of transactions or redefined them
+    - some view transactions as the source of what makes a system unscalable
+    - some view transactions (and related guarantees) as a prerequisite for
+      serious applications handling valuable data
+- both are overstatements and transactions have advantages and disadvantages
+
+### The meaning of ACID
+- ACID
+    - atomicity
+    - consistency
+    - isolation
+    - durability
+- safety guarantees provided by transactions
+- in practice, each definition is malleable and "ACID compliant" is a label that is
+  not necessarily clear
+- BASE (systems used to refer to systems that do not meet ACID criteria)
+    - basically available
+    - soft state
+    - eventually consistent
+
+### Atomicity
+- atomic -> something that cannot be broken down into smaller parts
+- in threading, if one thread performs an atomic action means there is no way
+  another thread can see an intermediate state
+- in ACID, not about concurrency
+- in ACID, refers to guarantees about state after a transaction
+    - if a transaction is composed of many writes and the system fails in the middle
+      then the system guarantees the state of the writes will not be persisted
+- centered on notion of transaction and guarantees about state if a conceptually
+  atomic transaction is failed or aborted
+
+### Consistency
+- overloaded word in the contexts discussed in this book
+    - replica consistency and eventual consistency
+    - consistency = linearizability
+    - for ACID -> application-specific notion of a database being in a functionally
+      sound state
+- idea is that data has invariants and after any transactions there is still a
+  guarantee these invariants will always be satisfied
+- dependent on the application's notions of invariants and guarantees
+    - e.g. how to handle bad data from user? is any resulting inconsistency
+      beyond the scope of these guarantees
+- atomicity, isolation and durability are properties of the database
+- consistency (in the ACID sense) is a property of the application (so may not fit with
+  acronym)
+
+### Isolation
+- concurrently executing transactions are isolated from each other and will not affect
+  the resulting state of the database
+- isolation = serializability in classical theoretical sense
+- in practice, serializable isolation causes performance issues and is rarely used
+
+### Durability
+- guarantees that, once a transaction has been successfully been committed, it will
+  never be lost or removed even if there is a hardware fault or database crash
+- usually equivalent to commit to disk but also includes logging and crash
+  recovery
+- can include replication
+- no such thing as perfect durability
+
+### Replication and durability
+- write to disk vs. replication as the definition of durable
+    - write to disk and machine death = unavailable, replication would stay
+      available in face of a machine crash
+    - correlated fault (power outage or bug) can result in all replicas being
+      unavailable, writing to disk is still a necessary guarantee
+    - SSDs have been shown to lose data on a sudden power outage
+    - data storage engine interactions with the filesystem has been shown to
+      result in subtle bugs outside of data storage engine that corrupt data
+      (esp after crash)
+    - disk data can become corrupted which can propagate through replicas
+    - 30-80% of SSDs develop at least one bad block, magnetic drives have a higher
+      rate of failure but are less susceptible to corruption
+    - SSDs can lose data when not powered indefinitely
+- take theoretical guarantees with a grain of salt
+
+### Single-object and multi-object operations
+- atomicity and isolation describe proper behavior for multi-write transactions
+    - atomicity -> error partway through should be rolled back (all-or-nothing)
+    - isolation -> concurrent transactions should not affect each other
+- assumes several objects may be modified at once
+- multi-object transactions require the ability to identify source and interval/duration
+- many non-relational databases do not provide a mechanism for grouping operations
+
+### Single-object writes
+- large amounts of data (that take time to modify) still require same guarantees
+    - network connection
+    - power failure
+    - concurrent reads/writes
+- some databases provide atomic (in the sense of multithreaded programming) operations
+- these atomic operations are not transactions in the usual sense of the word
+    - sometimes referred to as lightweight transactions or ACID
+- to compare, a transaction is a mechanism for grouping multiple operations
+  on multiple objects into one unit of execution
+
+### The need for multi-object transactions
+- many distributed datastores have abandoned multi-object transactions
+- required uses
+    - in relational model, foreign key references require modification in a single
+      transaction
+    - graph databases require modifications on vertices connected by edges
+    - in document database, a document generally only requires one operation for
+      updates, but joined documents require denormalization and updates to
+      denormalized information require updating multiple documents in one transaction
+    - secondary indexes require update
+- without transactions, error handling becomes much more complex
+
+### Handling errors and aborts
+- transactions allow for abortion and retries
+- others (esp leaderless replication) follow the model of doing as much as possible
+  but not undoing when an error is encountered
+- popular ORMs (Django, Rails) do not retry aborted transactions
+- retries are susceptible to
+    - failed acks (network etc) which may result in client retrying manually
+    - errors from overload are worsened by retries and can result in feedback
+      cycles
+    - retrying permanent errors is useless
+    - side-effects outside of DB may persist even in failure
+    - data will be lost if process fails while retrying
+
+## Weak isolation levels
+- race conditions -> concurrent read and write, concurrent write and write
+- databases try to hide concurrency issues from application developers with
+  transaction isolation
+    - theoretically provides serializability
+- serializable isolation has a performance cost
+    - many databases don’t want to pay that price
+- common to use weaker isolation
+- concurrency issues have caused
+    - money loss
+    - financial audit
+    - data corruption
+- some ACID databases provide weak isolation
+- need strong understanding of concurrency issues to adequately understand and
+  avoid them
+
+## Read committed
+- most basic with two guarantees
+    1. only see data that has been committed for reads (no dirty reads)
+    2. on write, will only overwrite committed data (no dirty writes)
+- (also read uncommitted -> no dirty writes but does allow dirty reads)
+
+### No dirty reads
+- read during incomplete transaction -> should be prevented
+    - incomplete multi-object updates may cause reader to see inconsistent
+      state
+    - aborted multi-object updates may result in reading modifications that
+      are later rolled back
+
+### No dirty writes
+- avoids concurrency problems
+    - incomplete multi-object updates may cause inconsistent states
+    - does not prevent counter updates
+
+### Implementing read committed
+- default setting
+    - Oracle 11g
+    - PosgreSQL
+    - SQL Server 2012
+    - MemSQL
+    - others
+- writes most commonly implemented using row-level (unique) write locks
+- can use read locks to avoid double reads but affects performance
+- most databases prevent dirty reads by retaining old values during long running
+  writes and displaying the new value to users only after the write transaction
+  has completed
+
+### Snapshot isolation and repeatable
+- read skew can result in reads that show an inconsistent view (example is transfer
+  from one table to another and reading between completion of first write and before
+  completion of second write)
+- skew is an overloaded word -> means timing anomaly here
+- non-repeatable read or read skew is acceptable under read committed isolation
+- it is unacceptable during
+    - backups
+    - analytic queries and integrity checks
+- snapshot isolation is the most common solution
+- each transaction must read from a consistent snapshot of the database
+- snapshot isolation aids reasoning about isolation
+- supported in
+    - PostgreSQL
+    - MySQL
+    - Oracle
+    - SQL Server
+    - more
+
+### Implementing snapshot isolation
+- uses write locks to prevent dirty writes also but for reads does not use locks
+    - readers never block writers
+    - writers never block readers
+- must maintain many versions of the data at any given time to handle dirty reads
+- known as multi-version concurrency control (MVCC)
+- sufficient to only keep two versions for read committed isolation
+- implementation in PostgreSQL (similar to others)
+    - when a transaction is started, it is given an increasing UUID
+    - whene a transaction writes anything to the database, the data it writes is
+      tagged with the transaction ID of the writer
+    - each row in a table has a created by field, containing the ID of the transaction
+      that inserted this row into the table
+    - each row has a deleted by field, which is initially empty
+    - if a transaction deletes a row, the row isn’t actually deleted from the
+      database
+        - it is marked for deletion by setting the deleted by field to the ID of the
+          transaction that requested the deletion
+    - when no transaction can access the deleted data, it is garbage collected
+
+### Visibility rules for observing a consistent snapshot
+- database can ensure consistent snapshots by carefully defining visibility rules
+  for transactions based on transaction IDs
+    1. on transaction start, tracks each currently running transaction
+    2. writes made by aborted transactions are ignored
+    3. writes with transaction ID after current transaction are ignored even if
+       later write has already been committed
+    4. all other writes are visible to the application's queries
+- apply to both creation and deletion
+- object is visible if both
+    - at the time when the reader’s transaction started, the transaction which
+      created the object had already committed
+    - the object is not marked for deletion — or if it is, the transaction which
+      requested deletion had not yet committed at the time when the reader’s
+      transaction started
+
+### Indexes and snapshot isolation
+- many details to multi-version concurrency control in practice
+- PostgreSQL has optimizations for avoiding index updates if different versions of
+  the same object can fit on the same page
+- append-only/copy-on-write for B-trees
+    - CouchDB
+    - Datomic
+    - LMDB
+
+### Repeatable read and naming confusion
+- snapshot isolation is useful especially for red-only transaction
+- known by different names
+    - serializable -> PostgreSQL
+    - repeatable read -> MySQL
+- historically the SQL standard has confused these naming conventions and usages
+
+## Preventing lost updates
+- many concurrent write issues
+- lost update problem
+    - two concurrent read-modify-write cycles can lead to second clobbering first
+- occurs when
+    - incrementing a counter or a balance
+    - modifying a complex value with some numeric operation (i.e. value in list in
+      JSON doc)
+    - concurrent page edits (to a web based document, etc)
+
+### Atomic write operations
+- atomic updates avoid implementing read-modify-write cycles
+- SQL UPDATE is safe in most databases
+- MongoDB provides atomic document updates
+- atomic operations are usually implemented using an exclusive lock
+- aka cursor stability
+- can also force all atomic operations to be performed on a single thread
+- ORMs expose the ability to write read-modify-write cycles that do not take
+  advantage of DBs atomic operations
+
+### Explicit locking
+- can be used for updates to objects
+- difficult to get right and can result in race conditions
+
+### Automatically detecting lost updates
+- can allow read-modify-write cycles to execute in parallel and a transaction manager
+  can detect aborted transactions and force retries
+- used in
+    - PostgreSQL -> repeatable read
+    - Oracle -> serializable
+    - SQL Server -> snapshot
+- not used in
+    - MySQL/InnoDB
+- less error prone than locking
+
+### Compare-and-set
+- sometimes provide atomic compare-and-set in place of transactions
+- check safety on a per database basis before relying on it
+
+### Conflict resolution and replication
+- replicated databases require additional steps to avoid lost updates
+- multi-leader and leaderless databases can have multiple concurrent writes to
+  different nodes and cannot rely on locks or compare-and-set
+- one technique is allowing writes to create several versions (siblings)
+  and resolve conflicts after the fact
+- can use atomic operations in a replicated context (esp commutative atomic operations)
+- LWW is prone to lost updates
+
+### Preventing write skew and phantoms
+- two race condition types
+    - dirty writes
+    - lost updates
+- many more subtle bugs
+
+### Characterizing write skew
+- occurs if two transactions read the same objects and then update some of those objects
+  (different transactions can update different objects)
+- generalization of lost update
+- solutions are more restricted
+    - atomic single-object operations don't work because many objects are involved
+    - automatic lost update detection in some snapshot isolation doesn't help because
+      requires true serializable isolation
+    - some DBs allow configurable constraints but not always easy to solve with
+      constraints
+    - best option may end up being explicit locks
+
+### More examples of write skew
+- related to topological sorting constraints
+- booking systems, multiplayer games and physics constraints, concurrent resource
+  claims
+
+### Phantoms causing write skew
+- common events in write skew (maybe different order)
+    1. a SELECT query
+    2. continue or abort based on result of 1.
+    3. on continue, make a write (INSERT, UPDATE, or DELETE) and commit transaction
+    4. start over and receive different result from SELECT
+- could lock on 1. but when 1. does not return a result there is nothing to lock
+- phantoms -> one transaction changes the result of a search query in another transaction
+
+### Materializing conflicts
+- takes a phantom and turns it into a lock conflict on a concrete set of rows that
+  exist in the database
+- difficult and error prone - should be seen as a last resort
+
+## Serializability
+- situation to this point
+    - isolation levels are hard to understand and inconsistently implemented
+    - large application code can be difficult to reason about and results of
+      current isolation level may not be apparent
+    - static analysis can help find race conditions but many concurrency problems
+      are non-deterministic
+- research answers that solution is serializable isolation (strongest isolation level)
+- guarantees that concurrent execution can be mapped to a particular serial execution
+    - in other words database prevents all possible race conditions
+- options explored
+    1. actual serial execution
+    2. two-phase locking
+    3. optimistic concurrency control such as serializable snapshot isolation
+- each has problems
+- consider from single node and then examine generalizations
+
+### Actual serial execution
+- simplest solution is to remove concurrency
+- only became feasible due to
+    - reduced RAM cost to keep active dataset in memory
+    - OLTP transactions are usually short and make a small number of reads
+      and writes
+- used in
+    - VoltDB/H-Store
+    - Redis
+    - Datomic
+- (also consider the approach of Node.js)
+- can compete in performance due to avoidance of locking overhead but has a limited
+  throughput
+
+### Encapsulating transactions in stored procedures
+- rather than waiting for a user, databases encapsulate transactions
+  and generally commit on a single HTTP request
+- systems with single-threaded serial transaction processing don’t allow interactive
+  multi-statement transactions
+- the application submits the entire transaction code to the database ahead of time
+  as a stored procedure
+    - instead of querying and writing, the whole transaction is a chunk of code with
+      the logic for handling
+
+### Pros and cons of stored procedures
+- existed for some time
+- each has own language
+    - Oracle -> PL/SQL
+    - SQL Server -> T-SQL
+    - PostgreSQL -> PL/pgSQL
+- languages are generally pretty cumbersome and archaic
+- harder to debug, version control, test, and integrate with metrics
+- databases are very performance sensitive and bad stored procedures can cause serious
+  bottlenecks
+- many modern databases use general-purpose programming languages for stored procedures
+    - VoltDB -> Java or Groovy
+    - Datomic -> Java or Clojure
+    - Redis -> Lua
+- can achieve good throughput on a single trhead
+- VoltDB allows stored procedures to define the replication policy
+
+### Partitioning
+- single thread execution limitations can be scaled to run on separate partitions
+- steps that require multiple partitions need to coordinate across partitions which
+  adds overhead
+- the ability to do this at all can depend on the structure of the data being stored
+
+### Summary of serial execution
+- transactions must be small and fast
+- limited to use cases where active dataset can fit in memory (can also use LRU-style
+  caching to swap some data to disk to augment requirement)
+- write throughput must be acceptably low or data needs to be able to be partitioned
+  to require little to no cross-partition coordination
+- cross-partition transactions are possible, but there is a hard limit to the extent
+  which they can be used
+
+## Two-phase locking (2PL)
+- previously the main algorithm used for database serializability
+    - completely different from two-phase commit
+- several transactions can read the same object as long as it is not modified
+- writes require exclusive access
+    - uses mutual exclusion
+    - also requires that writers block readers but readers never block writers
+    - provides serializability (not provided by snapshot isolation)
+
+### Implementation of two-phase locking
+- used int
+    - MySQL (InnoDB)
+    - SQL Server
+    - DB2
+- lock has modes
+    - shared mode
+    - exclusive mode
+- readers acquire lock in shared mode and wait for only exclusive mode locks to
+  release
+- writers acquire lock in exclusive mode and wait on any shared or exclusive
+  mode locks to release
+- readers can convert shared mode locks to exclusive mode locks
+- all locks are held to end of transaction
+- deadlock detection is automated and triggers one thread holding a lock to release
+  and retry
+
+### Performance of two-phase locking
+- waiting and lock contention reduce performance
+- long running transactions add to potential bottlenecks caused by locks
+- can have unstable throughput, latencies, and be unstable at high percentiles
+- deadlocks are more common with 2PL serializability
+
+### Predicate locks
+- serializable isolation requires the prevention of phantoms
+- can be used by many objects that satisfy some condition, even those that
+  do not yet exist
+- restricts access as follows
+    - transaction A reads objects matching a condition by acquiring a shared-mode
+      predicate lock and must wait for any existing exclusive locks
+    - to modify any objects, A must check for any existing matching predicate locks
+      and wait for any to be released
+
+### Index-range locks
+- aka next-key locking
+- simplifies predicate locks by locking on a larger range of objects
+- any modifications to overlapping ranges requires waiting
+- can fall back to shared locks for cases where a query cannot be satisfied by a
+  particular range
+
+## Serializable snapshot isolation (SSI)
+- promising solution to performance hits caused by other serializable solutions
+- 2008 Michale Cahill PhD thesis
+- used in
+    - PostgreSQL 9.1 ->
+    - other distributed databases
+
+### Pessimistic vs. optimistic concurrency control
+- pessimistic
+    - like mutual exclusion -> if anything might go wrong, wait until situation
+      is safe again
+- serial execution is pessimistic to an extreme
+- optimistic
+    - don't block -> continue as normal
+    - check if isolation was violated in retrospect and retry if necessary
+    - only allow transactions that executed serializably
+- old idea
+- performs poorly under high contention
+- performs much better than pessimistic approaches under low contention
+- uses snapshot isolation
+- adds algorithm for detecting serialization conflicts and aborting accordingly
+
+### Decisions based on an outdated premise
+- write skew in snapshot isolation requires reading and deciding action based
+  on result of read
+- transaction takes action based on a potentially outdated premise
+- SSI must detect situations where a transaction takes action based on an outdated
+  premise and abort the transaction
+    1. detect stale MVCC reads (uncommitted write occurred before the read)
+    2. detect writes that affect prior reads (the write occurs after the read)
+
+### Detecting stale MVCC reads
+- reads from consistent MVCC snapshot ignore uncommitted writes
+- if the premise on which a transaction commits is invalid by the time it commits
+  SSI must abort the transaction
+- must also support long running reads, which is what complicates the situation
+  and keeps SSI from aborting as soon as the stale read is detected
+
+### Detecting writes that affect prior reads
+- writes must look for currently executing reads and notify the transactions
+  that the data they are currently reading may be out of date
+
+### Performance of serializable snapshot isolation
+- granular tracking may reduce performance but less granular tracking may lead to
+  more aborted writes
+- sometimes stale reads are OK
+    - used by PostgreSQL to reduce aborts
+- SSI removes need for locking in 2PL in cases
+    - read-only queries can run without locks
+    - improves variability in performance
+    - good for read-heavy workloads
+- can distribute cost of serialization across many CPUS (unlike serial execution)
+    - done by FoundationDB
+- rate of aborts affects performance of SSI
+
+# Summary
+- abstraction layer that reduces many considerations down to aborting the transaction
+- abandoned in many NoSQL DBs
+    - can result in inconsistent data on error
+- isolation levels
+    - read committed
+    - snapshot aka repeatable read
+    - serializable
+- race conditions
+    - dirty reads
+    - dirty writes
+    - read skew (non-repeatable reads)
+    - lost updates
+    - write skew
+    - phantom reads
+- only serializable isolation protects against all of the above issues
+    1. actual serial execution
+    2. two-phase locking
+    3. optimistic concurrency control such as serializable snapshot isolation
+
+# Ch. 8 The Trouble with Distributed Systems
+- distributed systems engineering is fundamentally different than systems engineering
+  on a single machine
+
+## Faults and Partial Failures
+- software running on a single, properly functioning computer should be deterministic
+  so issues are bugs with the software and not issues with the system
+- distributed systems operate within a model that has to assume much worse than ideal
+  conditions (the network and physical world do not operate as idealized theoretically)
+- partial failure -> one portion of system is broken in some unpredictable way even though
+  the rest of the system may be working as expected
+- partial failures are non-deterministic
+- these two things (partial failures and non-determinism) are what make distributed
+  systems difficult to work with
+
+## Cloud computing and supercomputing
+- high-performance computing (HPC) -> used for computationally intensive (often
+  scientific) computing tasks
+- cloud computing -> (not well-defined) related to multitenant datacenters, commodity
+  hardware connected via IP network, elastic/on-demand resource allocation, and
+  metered billing for scalable resources access
+- traditional datacenters lie in between
+- supercomputers are more like a single computer than a distributed system and are
+  often built from specialized hardware
+- nodes are generally reliable and communicate through shared memory and remote
+  direct memory access (RDMA)
+- use specialized network topologies such as multidimensional meshes and toruses
+- book focuses on systems for implementing internet services
+    - online -> service users at any/all times
+    - commodity hardware
+    - utilize large datacenter networks which are often based on IP and Ethernet
+      in Clos topologies to provide high bisection bandwidth
+    - increase in size of system increases likelihood of a broken component
+    - tolerance to failed nodes is important (e.g. rolling upgrades, node replacements)
+    - geographically distributed systems often requires public internet
+- must accept possibility of partial failure and build fault tolerant systems
+- beneficial to test for the widest range of possible faults explicitly (chaos
+  testing/engineering)
+
+### Building a reliable system from unreliable components
+- many computing systems have error-correcting codes
+- TCP can reassemble packets
+- despite the possibility for error correction, there is always a bound on reliability
+  that can be achieved when considering reliability of components
+
+## Unreliable Networks
+- focus on shared-nothing systems
+- asynchronous packet networks -> internet and most internal networks, a node can send
+  a packet but network provides no time or correctness guarantees
+- possible errors
+    1. dropped request
+    2. stalled in a queue for delivery
+    3. receiver may have failed/crashed
+    4. receiver may have temporarily stopped responding
+    5. dropped response
+    6. delayed response
+- generally handled with timeouts but still do not know how to handle delayed case
+
+### Network faults in practice
+- network faults are common even in controlled environments
+- network partitions -> occurs when one part of the network is cut off from the rest
+  due to a network fault (aka netsplit or network fault)
+- software must account for possible network faults but does not have to tolerate them
+
+### Detecting faults
+- systems need to detect faulty nodes
+    - load balancer should remove a faulty request from retry rotation
+    - single-leader replication leader failure should result in follower promotion
+- common situations
+    - can reach target machine but port is not open or service is not running the OS
+      should respond with TCP RST or FIN packet
+    - node process crashed or was killed by admin should send alert to trigger some
+      form of failover
+    - link failure at hardware level of network switches (can be queried for private
+      network but not public internet)
+    - router can reply with ICMP Destination Unreachable packets but router does not
+      know of many of the same failures as above
+- may never receive error responses
+
+### Timeouts and unbounded delays

@@ -1698,6 +1698,10 @@ public interface SeqObject {
 - FineList is starvation-free
 
 ## Optimistic Synchronization
+- fine grained locking is an improvement but may still impose a long sequence of lock
+  acquisitions and releases
+- optimistic synchronization -> assume locks are not needed until a target is found
+  then check correctness and retry in case of error
 
 
 # Additional Notes
