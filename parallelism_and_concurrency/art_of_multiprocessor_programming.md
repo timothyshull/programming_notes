@@ -1702,6 +1702,673 @@ public interface SeqObject {
   acquisitions and releases
 - optimistic synchronization -> assume locks are not needed until a target is found
   then check correctness and retry in case of error
+- code for OptimisticList here
+- traversing lock based data structures without locks requires careful consideration
+    - use some form of validation
+    - guarantee freedom from interference
+- path from nodes can change, necessitates need for validation to ensure reachability
+- OptimisticList
+    - not starvation-free, but starvation is rare
+    - individual nodes are starvation-free
+    - works best if the cost of traversing the list twice without locking is significantly
+      less than the cost of traversing the list once with locking
+
+
+## Lazy Synchronization
+- refinements to OptimisticLock
+    - make contains() wait-free
+    - in add() and remove(), while blocking, traverse list only once in absence of
+      contention
+    - use boolean marked field and maintain invariant that every unmarked node is
+      reachable
+    - remove() node is lazy (marks for removal then removes later)
+- code for LazyList here
+- advantages
+    - can separate logical steps that are non-modifying from physical steps that
+      are modifying
+    - to gain more benefit, physical steps can be delayed and batched
+- disadvantages
+    - add and remove calls are blocking and may result in delays
+
+## Non-Blocking Synchronization
+- can extend lazy marking to remove locks altogether
+- cannot use compare and set to change the next field
+- main need is the ability to ensure a node is not modified after it has logically
+  been marked for removal
+    - treat next and marked fields as a single atomic unit, if marked is true, attempts
+      to update next will fail
+- Pragma 9.8.1 ->
+    - can use AtomicMarkableReference<T> from java.util.concurrent.atomic
+- code for LockFreeList here
+
+## Discussion
+- gradually reduced frequency and granularity of locking in list-based locks
+- optimistic and lazy approaches are often used in the path to lock-free data
+  structures
+- LockFreeList guarantees progress in spite of arbitrary delays
+- cost of progress
+    - atomic operations on a reference and a boolean add performance cost
+    - add and remove must concurrently remove marked nodes (which adds contention
+      and can lead to restarting traversal)
+- LazyList does not guarantee progress but does not require atomic markable field
+  or traversal to clean-up logically removed nodes
+
+# Ch. 10 Concurrent Queues and the ABA Problem
+- pool -> similar to a concurrent multi-set, i.e. does not necessarily provide the
+  the contains() method and allows repeated elements
+- appear often in concurrent systems
+    - producer-consumer
+        - jobs
+        - input (keystrokes)
+        - purchases
+        - packets
+- bursty -> suddenly and briefly producing items faster than consumers can consume
+  them
+- can place buffer between producers and consumers to handle bursty producers
+- pools can be used as these buffers
+- pool varieties
+    - bounded vs. unbounded -> limited by capacity or unlimited capacity
+    - total (method) -> methods do not wait for certain conditions to become true
+      to complete
+    - partial (method) -> method calls may wait for conditions before completing
+    - synchronous -> waits for a condition (another method call's interval to overlap)
+      to complete
+    - fairness guarantees -> LIFO, FIFO, or another policy
+
+## Queues
+- concurrent queues are linearizable to a sequential queue and are pools where
+  enqueue = set and dequeue = get
+
+## A Bounded Partial Queue
+- if queue is neither empty or full, enqueue and dequeue should be able to operate
+  without interference
+- code for BoundedQueue
+- similar to linked list code but sentinel node is replaced
+- uses an enqueue lock and a dequeue lock and two condition variables
+- must carefully avoid lost-wakeup
+    - enqueuer encounters full queue in two steps (checks size and then waiits
+      on not full condition variable)
+- the queue's actual head and tail fields are not always the same as its logical
+  head and tail fields
+- disadvantage
+    - enqueue and dequeue calls interfere with each other and could cause a bottleneck
+- can split counter into two
+
+## An Unbounded Total Queue
+- simpler than bounded algorithm
+- code for UnboundedQueue
+- cannot deadlock because each method acquires only one lock
+
+## An Unbounded Lock-Free Queue
+- code for LockFreeQueue
+- prevents starvation by having faster calls assist slower calls
+- enqueue method is lazy (completes in two steps) so each other method must
+  be able to handle an incomplete enqueue call
+- subtle issue with dequeue
+    - must make sure tail is not left referring to sentinel node before
+      advancing head
+    - test for head == tail
+- lock-free because some method call always completes and each call checks for an
+  incomplete enqueue
+- lock-free queues significantly outperform blocking ones
+
+## Memory Reclamation and the ABA Problem
+- can use a pool to handle custom memory reclamation to avoid garbage collector
+  or expensive construction/destruction
+- lock-free queue will not work for most logical method of recycling using a pool
+  (see figure 10.14 for details)
+- known as the ABA problem
+    - reference about to modified using compare-and-set is changed from a to b
+      by another thread and then back to a again a resulting in a successful call
+      even though it shouldn't
+
+- the ABA problem occurs when multiple threads (or processes) accessing shared data interleave
+    - process P1 reads value A from shared memory
+    - P1 is preempted, allowing process P2 to run
+    - P2 modifies the shared memory value A to value B and back to A before preemption
+    - P1 begins execution again, sees that the shared memory value has not changed and continues
+- can tag each atomic reference with a unique stamp
+- (can use intermediate nodes)
+- (can use deferred reclamation)
+- Pragma 10.6.1 ->
+    - an AtomicStampedReference<T> object encapsulates both a reference to an object
+      of Type T and an integer stamp (which can be atomically updated together
+      or separately)
+- ABA problem occurs in many concurrent scenarios
+
+### A Naive Synchronous Queue
+- multiple producers and multiple consumers, producer blocks until a consumer consumes
+  the produced data
+- code for SynchronousQueue
+- uses monitors
+- has a high synchronization cost
+    - where one thread might wake another, enqueuers and dequeuers wake up all threads
+    - number of wakeups is quadratic in number of waiting threads
+    - can use condition objects but still necessary to block on every call
+
+## Dual Data Structures
+- alternative synchronous queue that splits enqueue and dequeue calls
+    - dequeue
+        - add reservation object to queue to indicate dequeuer is waiting for
+          an enqueuer to rendezvous and spins
+        - when enqueuer discovers reservation, fulfills reservation by enqueueing
+          and notifying the dequeuer
+    - enqueue
+        - wait for rendezvous partner by adding reservation and spinning on reservation
+          flag
+- dual data structure -> data structure with methods that take effect in two stages,
+  reservation and fulfillment
+- can use locally cached flag for spinning
+- linearizable
+- code for SynchronousDualQueue
+
+# Ch. 11 Concurrent Stacks and Elimination
+- stacks are not inherently sequential
+
+## An Unbounded Lock-Free Stack
+- use a linked list with a top field
+- code for LockFreeStack
+- lock free because if a thread fails on a push or a pop it means there are infinitely
+  many successful modifications to top from various threads
+
+## Elimination
+- LockFreeStack performs poorly, not because of contention, but because of sequential
+  bottlenecking
+- backoff can reduce contention but it doesn't reduce sequential bottlenecking
+- can try to cause concurrent pairs of pushes and pops to cancel out (elimination)
+
+## The Elimination Backoff Stack
+- must avoid allowing a thread to try to coordinate for elimination with more than
+  one thread
+- use an EliminationArray
+- exchangers -> objects that allow exactly two threads to rendezvous for exchange
+- use spinning rather than blocking
+
+### A Lock-Free Exchanger
+- code for LockFreeExchanger
+- uses states of EMPTY, BUSY, and WAITING
+- lock-free because overlapping exchange() calls with sufficient time to exchange
+  will fail only if other exchanges are repeatedly succeeding
+
+### The Elimination Array
+- max capacity for array
+- thread picks array entry at random, calls exchange, and provides its own exchange
+  value
+- uses visit() method with timeout
+- code for EliminationArray
+- code for EliminationBackoffStack
+- EliminationBackoffStack is a linearizable stack
+- performs like LockFreeStack at low loads
+- has potential to scale over LockFreeStack
+- reduces contention over LockFreeStack
+
+# Ch. 12 Counting, Sorting, and Distributed Coordination
+- measuring concurrent data structures requires measuring latency and throughput
+
+## Shared Counting
+- stacks and queues can be viewed as pools that provide different semantics as
+  additional fairness guarantees
+- course-grained locking for pools leads to sequential bottlenecks and hot spots
+- can use cyclic array with two counters for put and get location
+- removes one bottleneck
+- two bottlenecks are better than one!
+    - need to avoid memory contention
+    - need to achieve real parallelism
+
+## Software Combining
+- combining ->
+    - achieved through binary tree (node-based) with counter in root
+    - to increment, thread ascends from leaf to root
+    - if a thread encounters another at a node, combine increments, and one active
+      thread continues forward
+    - when active thread increments, all related passive threads are notified that
+      the increment has been completed
+- disadvantage
+    - latency increases has increment increases
+- advantage
+    - provides much better throughput
+    - can be adapted to apply any commutative function to a value
+- consider solutions that improve throughput over concern for latency
+
+### Overview
+- complex implementation
+- split into two classes for clarity
+- short term synchronization provided by Nodes
+- long term synchronization provided by boolean lock field to exclude threads from
+  a node
+- each tree node has a combining status
+    - FIRST -> one active thread has visited and will return to check for another
+      passive thread to have visited
+    - SECOND -> a passive second thread has visited and stored a value to be combined
+      but the combination has not yet occurred
+    - RESULT -> both thread's operations have been combined and completed and
+      result is stored in node
+    - IDLE -> not in use
+    - ROOT -> node is root and must be treated specially
+- code for CombiningTree
+- Pragma 12.3.1 ->
+    - always provide an arm for each enumeration value (program defensively)
+- code for Node class' combine(), op(), and distribute() methodd
+
+### An Extended Example
+- TODO: more here
+
+# Ch 16 Futures, Scheduling, and Work Distribution
+
+## Introduction
+- demonstrate decomposition of algorithms/computations into parallel components (tasks)
+- consider matrix multiplication
+    - Worker class creates a thread to perform the multiplication for a single cell
+- creating, scheduling, and destroying threads takes substantial computation and
+  approach above becomes inefficient for large matrices
+- more effective to use thread pooling and assign tasks to threads
+- thread pools also allow the pool to work in conjunction with hardware limitations
+  on the number of threads, improving performance hits that also occur when an
+  application attempts to create too many threads
+- executor service -> thread pool (java.util.ExecutorService)
+    - submit task
+    - wait for submitted task
+    - task cancellation
+- tasks are represented by Runnable objects combined with Callable objects
+- submitting a task to an executor service returns a Future
+- promise -> contract provided by Future guaranteeing to return the result of an
+  asynchronous computation
+- for Java, submitting a Runnable returns a different type of Future than a Callable
+    - can call get() to block until Runnable based future returns
+- all submissions to executor service are advisory, indicating that it may execute
+  tasks in parallel but not being given any guarantee that they will be executed in
+  in parallel
+- code for Matrix, MatrixTask, MulTask, and FibTask
+
+## Analyzing Parallelism
+- multithreaded computations can be viewed as a DAG
+    - links predecessor to successor
+    - future creates two successors
+        - node that is successor in same thread
+        - node that is successor as first task in future's computation
+    - link between child to parent when value is returned (i.e. get() call)
+- some computations are inherently more parallel than others
+- latency -> minimum time required to execute a parallel program from start to finish
+  on a set of dedicated processors
+- critical-path length -> given that a program has a set number of steps to execute,
+  the number of steps to execute the program on an infinite number of processors
+- linear speedup
+- parellelism -> maximum possible speedup or average amount of work available at each
+  step along the critical path
+
+## Realistic Multiprocessor Scheduling
+- practical multiprocessors run many jobs and have to balance between jobs
+- applications typically have no control over scheduling of user-level threads
+- three-level model
+    - application decomposes parallel computations into short-lived tasks
+    - user-level scheduler maps tasks to a finite number of threads
+    - kernel maps threads onto hardware processors (depending on availability)
+- greedy -> a schedule that executes as many ready nodes on as many available
+  processors as possible
+- Theorem 16.3.1 ->
+    - consider a multithreaded program with work T1, critical-path length T inf,
+      and P user-level threads
+    - any greedy execution has length T which is at most T1/PA + Tinf(P - 1)/PA
+- proof here
+
+## Work Distribution
+- multithreaded computations create and destroy tasks dynamically, sometimes
+  unpredictably
+- work distribution -> algorithm used to assign ready tasks to idle threads as
+  efficiently as possible
+- work dealing -> overloaded thread offloads tasks to less overloaded threads
+- flaw is that overloaded threads may waste extra work searching for less overloaded
+  threads
+- work stealing -> a free thread tries to steal work from other busy threads
+- avoids flaw above
+
+### Work Stealing
+- use double-ended queue for each threads task pool
+- when queue is empty, thread randomly chooses another thread to check for work
+  to steal from
+- code for WorkStealingThread
+- to avoid endless attempts to steal, use a termination-detecting barrier (ch 17)
+
+### Yielding and Multiprogramming
+- multiprogrammed environment ->
+    - more threads than processors
+    - not all threads can run at the same time
+    - any thread can be preemptively suspended at any time
+- must ensure that working threads are not delayed by thief threads
+    - each thief calls thread.yield() before attempting to steal allowing thread's
+      processor to be yielded to a working thread
+
+## Work-Stealing DEqueues
+- linearizable with pop always returning a task if possible
+
+### A Bounded Work-Stealing DEqueue
+- code for BDEQueue here
+
+### An Unbounded Work-Stealing Deque
+- BDEQueue's limitation is that the queue has a fixed size which may be difficult
+  to predict and maxing out for each thread is a waste of space
+- unbounded deque resizes dynamically using a cyclic array
+- code for CircularArray and UnboundedDEQueue
+- both algorithms become complex but this complexity is justifiable for an application
+  such as an executor pool which may be a performance critical center point of a
+  concurrent multithreaded application
+
+### Work Balancing
+- threads balance workloads with a randomly chosen partner
+- thread’s probability of balancing is inversely proportional to the number of
+  tasks in the thread’s queue
+    - threads with few tasks are likely to rebalance
+    - threads with nothing to do are certain to rebalance
+- advantages
+    - provides strong fairness guarantees
+    - balancing of tasks over threads reduces contention because there will not
+      be a synchronization overhead for each individual task
+- code for WorkSharingThread
+
+# Ch. 17 Barriers
+- soft real-time -> has a real-time requirement but occasional failure to meet that
+  requirement is not catastrophic
+- tasks like window display may take drastically varying times when split amongst
+  threads
+- phase -> splitting concurrent tasks into grouped sets of computations where no
+  concurrently executing thread should start the ith set (phase) until others have
+  finished it
+- barrier -> mechanism for enforcing phases, or forcing asynchronous threads to
+  act almost like a synchronous process, blocking at a phase until all others have
+  completed
+- barriers have similar performance issues to spin locks + more
+- notification time -> interval between when some thread has detected that all threads
+  have reached the barrier and when that specific thread leaves the barrier
+
+## Barrier Implementations
+- code for SimpleBarrier
+- breaks because is not reusable between phases
+
+## Sense-Reversing Barrier
+- sense -> true for even-numbered barriers, false for odd
+- thread caches current sense value and either reverses current barrier's sense to
+  continue or spins waiting for current barrier's sense field to change to match its
+  own local sense
+- code for SenseBarrier here
+- Pragma 17.3.1 ->
+    -
+
+## Combining Tree Barrier
+- reduce memory contention at cost of increased latency
+- split a large barrier into a tree of smaller barriers
+    - have threads combine requests going up the tree
+    - distribute notifications going down the tree
+- code for TreeBarrier and Node
+- reduces memory contention by spreading memory accesses across multiple barriers
+- may or may not reduce latency, depending on whether it is faster to decrement a
+  single location or to visit a logarithmic number of barriers
+
+## Static Tree Barrier
+- barriers so far
+    - simple and sense reversing suffer from contention
+    - combining tree requires excessive communication
+- static tree barrier
+    - each thread is assigned to a node in a tree
+    - thread at a node waits until all nodes below it in the tree have finished
+    - then informs parent
+    - then spins waiting for the global sense bit to change
+    - on root notification of children completion
+        - toggle the global sense bit to notify the waiting threads
+          that all threads are done
+    - on a cache-coherent multiprocessor
+        - completing the barrier requires log(n) steps moving up the tree
+        - notification simply requires changing the global sense
+          (propagated by the cache-coherence mechanism)
+    - on machines without coherent caches
+        - threads propagate notification down the tree like the combining barrier
+- code for StaticTreeBarrier
+
+## Termination Detecting Barriers
+- work stealing but with termination detection for threads to finish spinning once
+  all threads have finished all tasks
+- threads are active or inactive
+- termination cannot be solved by having each thread announce that it has become inactive
+- use setActive(bool) and isTerminated() methods to increment an atomic integer
+  with a count of the number of active threads
+- code for SimpleTDBarrier
+- works only if used correctly
+    - safety and liveness properties need to be satisfied
+    - safety
+        - no active thread ever declares itself inactive
+        - isTerminated() must only return true if computations really have terminate
+    - liveness
+        - if computation terminates than isTerminated will eventually return true
+
+# Ch. 18 Transactional Memory
+
+## Introduction
+- tools for multiprocessor programming are flawed
+
+### What is Wrong with Locking?
+- difficult for inexperience programmers
+- priority inversion -> a lower-priority thread is preempted while holding a lock
+  needed by higher-priority threads
+- convoying -> thread holding a lock is descheduled, perhaps by exhausting its scheduling
+  quantum by a page fault, or by some other kind of interrupt
+    - while the thread holding the lock is inactive, other threads that require
+      that lock will queue up, unable to progress
+- deadlocks -> occur if threads attempt to lock the same objects in different orders
+- no one really knows how to organize and maintain large systems built on locking
+
+### What is Wrong with compareAndSet()?
+- difficult to devise and understand synchronization primitive based algorithms
+- no obvious way to implement a multi-compare and set on conventional architectures
+
+### What is Wrong with Compositionality?
+- all synchronization mechanisms are not easily composed
+- generally requires atomic actions that do not exist
+- solutions are generally ad hoc
+
+### What can We Do about It?
+- problem summary
+    - locks are hard to manage effectively, especially in large systems
+    - atomic primitives are too granular and result in complex algorithms
+    - it is difficult to compose multiple calls to multiple objects into
+      atomic units
+- transactional memory is an emerging solution
+
+## Transactions and Atomicity
+- transaction -> a sequence of steps executed by a single thread
+    - must be serializable
+- serializability is a kind of coarse-grained version of linearizability
+    - linearizability defined atomicity of individual objects by requiring that
+      each method call of a given object appear to take effect instantaneously
+      between its invocation and response
+    - serializability defines atomicity for entire transactions (blocks of code that
+      may include calls to multiple objects)
+        - ensures that a transaction appears to take effect between the invocation
+          of its first call and the response to its last call
+- transactions do not deadlock or livelock
+- livelock -> similar to deadlock but each thread takes action that then continues
+  to cause the other thread(s) to not progress, resulting in starvation (common
+  in deadlock avoidance algorithms)
+- atomic keyword (hypothetical language feature) delimits a transaction
+- speculative execution -> as a transaction executes, makes tentative changes to
+  objects
+    - completion without a synchronization conflict results in a commit
+    - otherwise aborts and discards changes
+- transactions are nestable and modular
+- for conditional synchronization, the atomic block has a corresponding orElse block
+- transactional memory can be implemented in hardware (HTM) or software (STM)
+
+## Software Transactional Memory
+- implemented with libraries
+
+### Transactions and Transactional Threads
+- thread local Transaction object
+    - active
+    - aborted
+    - committed
+- transactional thread
+    - handlers
+        - onCommit
+        - onAbort
+        - validation handler
+    - takes a callable object
+
+### Zombies and Consistency
+- some aborted threads still continue to run as zombie transactions
+- zombies must be prevented from seeing inconsistent states
+
+### Atomic Objects
+- concurrent transactions communicate through shared atomic objects
+
+### Dependent or Independent Progress
+- transactional memory
+    - free the programmer from worrying about starvation, deadlock, and many other
+      issues that locking is prone to
+- must decide on a progress condition for STM
+- wait-free and lock-free STM systems can be designed but are not efficient enough
+  to be practical
+- two practical approaches
+    - nonblocking -> obstruction-free
+    - blocking, lock-based -> deadlock-free
+- obstruction freedom -> not all threads can be blocked by delays or failures of other
+  threads
+- deadlock-freedom -> does not guarantee progress if threads stop in critical sections
+- for both, progress is guaranteed by a contention manager
+     - uses spinning or yielding to delay contending threads so that some thread can
+       always make progress
+
+### Contention Managers
+- advises a transaction that may cause a synchronization conflict on whether to abort
+  the other transaction immediately or to stall to allow the other transaction an
+  opportunity to complete
+- code for ContentionManager (abstract)
+- types
+    - backoff -> a stalling thread repeatedly backs off (doubling time limit)
+    - priority -> transactions are timestamped, older timestamps abort other
+      transaction and wait otherwise
+    - greedy -> timestamped, A aborts B if A is older or B is waiting for another
+      transaction (eliminates chains of waiting)
+    - karma -> transactions track work accomplished and more work accomplished takes
+      precedence
+- code for BackoffManager
+
+### Implementing Atomic Objects
+- transactional implementation of an atomic object must provide getter and setter
+  methods that invoke transactional synchronization and recovery
+- implement from abstract AtomicObject
+
+### An Obstruction-Free Atomic Object
+- any thread that runs by itself will eventually make progress
+- overview
+    - owner field
+    - old version field
+    - new version field
+    - logical fields -> may not be implemented as fields
+    - transaction access means opening and possibly resetting fields
+    - for B as previous owner
+        - if B committed, new version is current
+            - A is new owner
+            - A sets old = new
+            - sets new to a copy of previous new or sets new to new value
+    - for B as aborted
+        - old version is current
+        - A is new owner
+        - old = old
+        - new = old copy if setter call
+        - new = old if getter call
+    - for B active
+        - A and B conflict
+        - A consults contention manager
+        - one transaction aborts other based on contention manager
+- why it works
+    - serializable because if A active -> committed it must still be owner because
+      it would've been aborted otherwise
+    - follows that none of objects read or wrote have been updated since A first
+      accessed them, so A is updating a snapshot of the objects it accessed
+- in detail
+    - code for FreeObject and openWrite method here
+
+### A Lock-Based Atomic Object
+- obstruction-free is inefficient
+    - writes continually allocate locators and versions
+    - reads go through two levels of indirection
+- overview
+    - reads optimistically and later detects conflicts
+    - detects conflicts with a global version clock
+    - stamp field, lock field, and version field
+    - transaction virtually executes (stores cached thread local version and modifies)
+    - validate check that the object's timestamp is not greater than the transaction's
+      read stamp
+    - steps to commit
+        - lock objects in write set using timeouts to avoid deadlock
+        - compareAndSet global version clock (serialization point)
+        - transaction checks each object in read set for lock and stamps that
+          are less than transaction's and commits if so
+        - transaction updates the stamp field of each object in its write set then
+          releases lock
+        - aborts at any failed test
+- why it works
+    - transactions are serializable in the order they increment the global version
+      clock
+    - if A reads x and A later commits, then x could not have changed between the
+      time A first reads x and the time A increments the global version clock
+    - if A with read stamp r observes x is unlocked at time t, then any subsequent
+      modifications to x will give x a stamp larger than r
+    - if a transaction B commits before A, and modifies an object read by A,
+      then A’s validation handler will either observe that x is locked by B,
+      or that x’s stamp is greater than r, and will abort either way
+- in detail
+    - code for WriteSet, VersionClock, LockObject openRead, openWrite, validate and
+      OnValidate and OnCommit handlers
+
+## Hardware Transactional Memory
+- most cache coherence protocols already implement requirements for transactional
+  memory at a hardware level
+- only requires a few minor changes
+
+### Cache Coherence
+- caches store cache lines and can map addresses to lines
+- processors and memory communicate over a bus
+- cache lines are tagged with state information
+- MESI protocol states
+    - modified -> eventually requires write back due to modification, not cached
+      elsewhere
+    - exclusive -> not modified and not cached elsewhere (typical default on load)
+    - shared -> not modified, may be cached elsewhere
+    - invalid -> no meaningful data in line
+- detects synchronization conflicts and ensures processors agree on shared state
+- cache coherence protocols can be complex
+    - a requested load to exclusive causes other copies to be invalidated and
+      modified copies to write before load
+    - a requested load to shared causes exclusives to be switched to shared
+      and modifieds must write back before load
+    - full cache may cause eviction which will discard shared or exclusive but
+      write back modified
+
+### Transactional Cache Coherence
+- add transactional bit to each cache line, defaulted to unset
+- when cache is used for transaction, set
+- ensure modified transactional lines are not written back to memory
+- invalidating a transactional cache lines aborts the transaction (represents
+  synchronization conflict -> two stores or load and store)
+- modified line is invalidated or evicted, discard value
+- if cache evicts a transactional line, abort transaction
+- commit when transaction is complete if no lines have been invalidated or evicted
+
+### Enhancements
+- limitations
+    - size of transaction is limited to size of cache line
+    - best suited for short, small transactions
+    - many caches are direct-mapped so a transaction that accesses addresses
+      mapped to same cache line will fail
+    - some caches are set-associative so a transaction that accesses addresses
+      mapped to k + 1 addresses will fail
+    - few caches are fully-associative
+- can split cache
+    - large, direct-mapped main cache and small fully associative victim cache
+    - large set-associated non-transactional cache, and a small fully-associative
+      transactional cache for transactional lines
+
+
+# See Appendix B for Hardware Information and a description of cache-conscious programming
 
 
 # Additional Notes

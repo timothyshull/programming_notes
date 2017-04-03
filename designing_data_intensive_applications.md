@@ -1,13 +1,50 @@
 # Ch. 1 Reliable, Scalable and Maintainable Applications
+## Thinking About Data Systems
 ## Reliability
+- general expectations
+    - the application performs the function that the user expected
+    - it can tolerate the user making mistakes, or using the software in
+      unexpected ways
+    - its performance is good enough for the required use case, under
+      expected load and data volume
+    - the system prevents any unauthorized access and abuse
+- generally handles faults (fault tolerance or resiliance)
 ### Hardware faults
 ### Software errors
 ### Human errors
 ### How important is reliability
 ## Scalability
+- ability to cope with increased load
 ### Describing load
+- described with numbers called load parameters
+- choice for measurement depends on system
+- fan-out -> number of requests to other services that need to be made to service
+  one incoming request
 ### Describing performance
+- once load parameters have been defined
+    - how is system performance affected when a load parameter is increased but
+      system resources stak the same?
+    - how to keep system performance constant when increasing a load parameter (i.e.
+      which resources need to be scaled to maintain performance in the face of load)?
+- throughput -> number of records/transactions/requests that can be processed per second
+  (or time it takes to run a job on a dataset of a certain size)
+- response time -> time from client request to receipt of response by client
+- latency and response time
+    - not equivalent
+    - response time is time observed by client
+    - latency is time a request is waiting to be serviced
+- measure response time as a distribution
+- check for outliers
+- consider average/arithmetic mean but prefer percentiles
+- service level objectives (SLOs)
+- service level agreements (SLAs)
 ### Approaches for coping with load
+- scale up -> vertical scaling, i.e. moving to a more powerful machine
+- scale out -> horizontal scaling, i.e. distributing load across multiple machines
+- elastic -> ability scale  according to load
+- previous wisdom was to keep database on a single node
+- currently conceivable that distributed systems are or will become the default
+- distributed architectures are generally very specific to the system
 ## Maintainability
 ### Operability: making life easy for operations
 ### Simplicity: managing complexity
