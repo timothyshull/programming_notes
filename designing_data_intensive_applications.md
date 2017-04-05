@@ -23,7 +23,7 @@
 ### Describing performance
 - once load parameters have been defined
     - how is system performance affected when a load parameter is increased but
-      system resources stak the same?
+      system resources stay the same?
     - how to keep system performance constant when increasing a load parameter (i.e.
       which resources need to be scaled to maintain performance in the face of load)?
 - throughput -> number of records/transactions/requests that can be processed per second
@@ -41,7 +41,7 @@
 ### Approaches for coping with load
 - scale up -> vertical scaling, i.e. moving to a more powerful machine
 - scale out -> horizontal scaling, i.e. distributing load across multiple machines
-- elastic -> ability scale  according to load
+- elastic -> ability scale according to load
 - previous wisdom was to keep database on a single node
 - currently conceivable that distributed systems are or will become the default
 - distributed architectures are generally very specific to the system
@@ -78,7 +78,288 @@
             - effective system health management
 
 # Ch. 2 Data Models and Query Languages
-# Summary
+- data models are incredibly important because they affect how developers
+  think about the problem
+- layers of abstraction built on each other
+
+## Relational Model vs. Document Model
+- SQL is the best known relational model
+- relations = table in SQL
+- unordered(?) collection of tuples = rows in SQL
+- started as a theoretical model and became most popular model for data storage systems
+- business data processing
+    - transaction processing
+    - batch processing
+- competing approaches
+    - network model
+    - hierarchical model
+    - object databases
+
+## The birth of NoSQL
+- name started as twitter hashtag
+- defining characteristics
+    - need for greater scalability than relational databases can easily achieve
+      (large datasets or very high write throughput)
+    - preference towards free and open source software over commercial database products
+    - specialized query operations that are not well supported by the relational model
+    - frustration with the restrictiveness of relational schemas, and a desire for a more
+      dynamic and expressive data model
+- polyglot persistence -> combination of data stores with different data models into a
+  connected system
+
+## The object-relational mismatch
+- impedance mismatch between object-oriented programming and data model storage in
+  relational databases
+- ORMs adapt the two but don't achieve complete fluid translation
+- some solutions
+    - use foreign keys to tables within SQL
+    - store multi-valued data in fields in SQL (e.g. array, etc)
+        - Oracle
+        - DB2
+        - SQL Server
+        - PostgeSQL
+    - store structured data in fields in SQL (JSON, XML, etc)
+- many document-oriented databases
+    - MongoDB
+    - RethinkDB
+    - CouchDB
+    - Espresso
+- JSON is good at translating across the impedance mismatch
+    - still has other issues
+    - lack of a schema is good at times
+    - better locality (one query to retrieve all info for a record)
+
+## Many-to-one and many-to-many relationships
+- normalization -> removing duplication across tables
+    - literature distinguishes many different normal forms in relational model
+      but simple view is removing duplication
+- normalization often requires many-to-one relationships
+- document model is not good at many-to-one (weak join support)
+- relational model uses joins
+- may need to emulate joins in application code
+- data model evolution in document model often leads to a need for joins
+
+## Are document databases repeating history?
+- most popular DB in 70's was IBM IMS
+    - used a hierarchical model (similar to JSON) as tree of records with nesting
+- worked well for one-to-many relationships
+- had issues with many-to-many relationships -> use dernomalization or manually resolve
+  references?
+- solutions
+    - relational model
+    - network model
+
+### The network model
+- CODASYL
+- generalizes tree-based hierarchical model to graph-like (in sense of data structure)
+  model to facilitate
+  many-to-many relationships
+- used something like pointers to make connections (access path)
+- very difficult to make changes to an application's data model
+
+### The relational model
+- relation (table) as collection of tuples (rows)
+- query optimizer handles access path optimizations behind the scenes
+- query optimizers are complex but only need to be built once and general
+  purpose solution wins in the long run
+
+### Comparison to document databases
+- like hierarchical model in that they store nested records (one-to-many)
+- many-to-one and many-to-many relationships are not fundamentally different
+  from relational model
+    - foreign key in relational model
+    - document reference in document model
+- use a join or follow-up query to resolve document references
+
+## Relational vs. document databases today
+- arguments for document data model
+    - closer to application data model for some applications
+    - schema flexibility
+    - performance due to locality
+- arguments for relational model
+    - better support for joins
+    - better support for many-to-one relationships
+    - better support for many-to-many relationships
+
+### Which data model leads to simpler application code?
+- tree structure data application -> use document model
+- many-to-many -> use relational
+- shredding -> relational technique of splitting a document-like structure into multiple
+  tables
+- document model has poor support for references to nested items
+- document model is awkward for highly interconnected data
+
+### Schema flexibility in the document model
+- no enforced schema in document model means arbitrary keys and values can be added
+  to a document and clients have no guarantee of format of data
+- sometimes called schemaless (misleading)
+- schema-on-read (vs. schema-on-write of relational DBs)
+- similar to dynamic (runtime/duck) typing vs static (compile-time) typing
+    - each has relative merits
+- migration and schema changes in relations DBs can be slow and cause downtime
+- schema-on-read is advantageous for heterogeneous data models
+    - many different types of objects
+    - objects are close but vary in ways that cannot be modeled in relational db
+    - structure of data is determined externally and may change over time
+- schemas are useful for consistent structures
+
+### Data locality for queries
+- stored as single string (JSON, XML, BSON, etc)
+- storage locality -> all data is close together on disk unlike data
+  split across multiple tables
+- only applies if need parts of document at same time
+- updates require complete rewrite of document
+- recommended to keep documents small
+- can be achieved in other models like relational
+    - Spanner achieves storage locality by interleaving rows within a parent table's
+      rows
+    - Oracle uses multi-table index cluster tables
+    - Bigtable model (Cassandra, HBase) uses column-families
+
+### Convergence of document and relational databases
+- many relational DBs support XML storage
+- support for JSON
+    - PostgreSQL -> v9.3
+    - MySQL -> v5.7
+    - DB2 -> v10.5
+- RethinkDB supports relational-like joins
+- MongoDB drivers automatically resolve database references
+- hybrid of relational and document models is a good route for databases to take
+  in the future
+
+## Query Languages for Data
+- SQL -> declarative
+- IMS & CODASYL -> imperative
+- many benefits to declarative approach
+    - more concise and easier to reason about/work with (at times)
+     - lends itself to parallel execution
+
+## Declarative Queries on the Web
+- CSS and XSL use a declarative approach
+- achieving the same modifications in JavaScript by modifying the DOM is
+  often ugly and error prone
+
+## MapReduce Querying
+- popularized by Google and a limited form is supported by MongoDB and CouchDB
+- neither declarative nor imperative (many related traits to functional languages)
+- filters, maps across records, and modifies results, sometimes into single result as
+  in map
+- must be pure functions
+- lower level than SQL in general
+- disadvantage
+    - often requires writing two coordinate operations rather than one query
+- MongoDB added support for aggregation pipeline (a declarative query language) which
+  mixes declarative SQL-like syntax with a JSON like syntactical structure
+
+## Graph-Like Data Models
+- many-to-many
+- vertices (nodes/entities)
+- edges (relationship/arcs)
+- examples
+    - social graphs
+    - graph of the web
+    - road or rail networks
+- many different but related ways of structuring data in graphs
+- property graph model
+    - Neo4j
+    - Titan
+    - InfiniteGraph
+- triple-store model
+    - Datomic
+    - AllegroGraph
+    - others
+- declarative query languages
+    - Cypher
+    - SPARQL
+    - Datalog
+- imperative/graph processing frameworks
+    - Gremlin
+    - Pregel
+
+## Property Graphs
+- vertex
+    - UID
+    - outgoing edge set
+    - incoming edge set
+    - collection of properties (key-value pairs)
+- edge
+    - UID
+    - start vertex (tail vertex)
+    - end vertex (head vertex)
+    - label describing edge's vertex relationship
+    - collection of properties (key-value pairs)
+- can think of it as consisting of two relational tables
+    - one for vetices
+    - one for edges
+- important aspects
+    - no restrictions on how vertices can be connected, any to any
+    - can traverse the graph efficiently given its vertex
+    - can store many different kinds of information in a graph by labeling
+      edges and storing key-value pairs
+- good for evolvability
+
+## The Cypher Query Language
+- query language for Neo4j
+- see examples here
+
+## Graph Queries in SQL
+- both are possible and different data will result in different data models in each
+- one equivalent query may be easy in one (graph/SQL) and difficult in other
+
+## Triple-Stores and SPARQL
+- all information is stored in the form of very simple three-part statements
+    - (subject, predicate, object)
+- subject = vertex
+- object
+    - a value in a primitive datatype
+        - key-value = predicate-object
+    - another graph vertex
+        - predicate = edge in graph
+        - subject is tail vertex
+        - object is head vertex
+
+### The semantic web
+- idea was that websites should publish information as machine-readable data in
+  conjunction with the published human-readable data
+- Resource Description Framework (RDF)
+- would allow for data from different websites to be combined in a web of data
+- never caught on but has many interesting ideas
+
+### The RDF data model
+- Turtle language
+- can also be expressed in XML
+
+### The SPARQL query language
+- triple-stores using RDF data model
+- can be powerful tool for internal use within an application
+
+### Graph Databases Compared to the Network Model
+- differ from CODASYL's network model in many ways
+    - CODASYL used a schema which specified nesting abilities
+    - no restrictions on interconnections in graph model DBs
+    - CODASYL requires traversal through a path
+    - graph DBs can access vertex through ID
+    - CODASYL - children of record were ordered set (maintained ordering)
+    - no implicit ordering in graph DB
+    - CODASYL - imperative and difficult queries broken by schema changes
+    - graph DBs high-level declarative query languages as well as some
+      support for imperative queries
+
+## The Foundation: Datalog
+- older language (80's)
+- provided foundations for many later query languages
+- used in
+    - Datomic
+    - Cascalog (used with Hadoop)
+- similar to triple-stores
+    - predicate(subject, object)
+- builds up complex queries from one small piece at a time
+- can build rules for predicate-based matching
+- requires a different kind of thinking
+    - less convenient for one-off queries
+    - powerful for dealing with complex data
+
+## Summary
 - many different models, huge subject
 - historically
     - large tree
@@ -106,7 +387,6 @@
       GenBank
     - massively large datasets often require custom solutions to reduce costs
     - full-text search -> information retrieval is its own problem domain
-
 
 # Ch. 3 Storage and Retrieval
 - storage and retrieval are most basic characteristic operations of a database
@@ -481,7 +761,7 @@ db_get () {
 - can use replicas to store in a separate sort order
 
 ### Writing to column-oriented storage
-- column-oriented storage is good for that OLAP use case
+- column-oriented storage is good for the OLAP use case
 - not good for many writes
 - LSM-trees are a good solution
     - store writes in memory
@@ -1931,3 +2211,1150 @@ db_get () {
 - may never receive error responses
 
 ### Timeouts and unbounded delays
+- no simple answer to optimal timeout
+- high can lead to poor user experience/application performance
+- short timeout an lead to false negatives and issues where an ongoing action is
+  superseded by a failover or other transfer of responsibility based on a false negative
+- transferring responsibility incorrectly can lead to cascading failures
+- asynchronous networks have unbounded delays and no guarantee of service time
+
+### Network congestion and queueing
+- variability of packet delays in networks is most often due to queueing
+    - two concurrent packets to a destination will get queued in a network link and
+      delivered sequentially
+    - network congestion may increase delay at a link and may lead to packet drop
+    - a packet may be queued at a machine if all CPUs are busy which may take an
+      arbitrary amount of time
+    - scheduling of VMs to CPUs may cause more queued delays
+    - TCP and applications perform flow control (aka congestion avoidance or
+      backpressure) to rate limit packet sends
+    - TCP invalidates packets over a time limit which may lead to retries and greater
+      delays
+- systems that are close to max capacity will suffer from these queueing delays to
+  increasingly extreme degrees
+- public clouds and data centers share resources among many tenants and batch workloads
+  can lead to network saturation
+- often need to choose application timeouts experimentally
+- systems can continually measure response times and variability/jitter and adjust
+  times based on observed response time distribution
+- can be done with Phi Accrual failure detector
+- used in
+    - Cassandra
+    - Akka
+- TCP retransmission timeouts work similarly
+
+### TCP Versus UDP
+- latency sensitive applications prefer UDP over TCP due to increased speed at the
+  cost of decreased reliability
+- UDP
+    - no flow control
+    - no packet retransmission
+    - still susceptible to switch queues and other packet delays
+- good choice when delayed data is useless
+
+## Synchronous Versus Asynchronous Networks
+- reliable packet delivery would simplify distributed systems
+- fixed-line telephone network is extremely reliable with constantly low end-to-end
+  latency
+- fixed bandwidth, synchronous network with no queueing, bounded delay
+
+### Can we not simply make network delays predictable?
+- circuit-switched networks would be possible to establish a guaranteed maximum
+  round-trip
+- Ethernet and IP are packet-switched networks
+- datacenters are optimized for bursty traffic
+- circuit-switched networks are good for transferring a predictably constant number
+  of bits-per-second
+- packet-switched networks allow for servicing connections with variable amounts of
+  bandwidth
+- trying to predict bandwidth for normal datacenter connections could result in
+  unpredictable misallocations of resources
+- have been attempts to build hybrid netwrosk
+    - Asynchronous Transfer Mode (ATM)
+    - InfiniBand
+- can use QoS (prioritization and scheduling of packets) and admission control
+  (rate-limiting senders) to emulate circuit switching on packet networks
+- QoS like this is not enabled in multi-tenant datacenters and public clouds
+
+### Latency and Resource Utilization
+- latency -> consequence of dynamic resource partitioning
+- circuit-switching -> static resource partitioning
+- networks -> dynamic resource sharing
+    - uses queueing which leads to potential downsides above
+    - optimizes resource utilization
+- similar to CPU usage within a computer
+- latency guarantees are possible if resources are statically partitioned but
+  comes at the cost less than optimal resource utilization
+- variable delays in networks are result of cost/benefit trade-off
+
+## Unreliable Clocks
+- clocks and understanding of time are important
+    - time outs
+    - response times
+    - load handling (queries per second handled)
+    - timing of user interactions
+    - event timestamps
+    - times to trigger events
+    - caching and cache expiration
+    - error tracking
+- 1-4 -> durations
+- 5-8 -> points in time
+- distributed time is tricky partially due to issues above and effect on communication
+- complicates ordering of events for record keeping
+- each machine has its own notion of time and quartz clocks are not perfectly precise
+- most common synchronization mechanism is NTP
+
+## Monotonic Versus Time-of-Day Clocks
+- two types of clocks in computers
+
+### Time-of-day clocks
+- current data and time according to some calendar
+- usually synchronized with NTP
+- oddities
+    - if time-of-day clocks get too far ahead of NTP, clock may jump
+    - ignore leap second
+    - generally coarse grained resolution
+- unsuitable for measuring elapsed time
+
+### Monotonic clocks
+- suitable for measuring elapsed time due to monotically increasing guarantees
+- CPUs may have own monotonic clock, OS attempts to present synchronized view
+- guarantee of monotonicity is not an absolute guarantee
+- NTP can slew a monotonic clock forward or back
+- usually distributed systems can use monotonic clocks to measure elapsed time
+
+## Clock Synchronization and Accuracy
+- monotonic -> don't need synchronization
+- time-of-day -> must be synchronized via NTP
+- hardware clocks and NTP both have issues
+    - quartz clocks have drift (Google assumes drift of 200 ppm for servers ->
+      6 ms drift for server that is resynchronized every 30 seconds)
+    - drift puts bound on accuracy
+    - a delta that is too large from NTP can prevent resynchronization
+    - accidental firewalls from NTP may go unnoticed
+    - limit to accuracy of NTP due to network delay (min of 35ms)
+    - some NTP servers are wrong or misconfigured
+    - leap seconds occur and can crash servers
+        - often best to distribute leap second adjustment over time
+    - VMs virtualize hardware clock
+    - if software is on a device that is not under the operator's complete control
+      it cannot be trusted
+- hardware and protocols exist to achieve much more reliable clock accuracy
+    - MiFID II
+    - GPS receivers
+    - Precision Time Protocol
+
+## Relying on Synchronized Clocks
+- software must be designed under assumption of network issues and clock issues
+- clocks often seem to work fine when they are faulty
+- must implement monitoring of clocks to handle faults
+
+### Timestamps for ordering events
+- dangerous to rely on clocks for ordering of events across multiple nodes
+- LWW
+    - Cassandra
+    - Riak
+- LWW will cause issues when clocks are faulty
+    - writes can disappear -> laggy clock will never be able to overwrite
+      competing writes from a faster clock
+    - cannot distinguish sequential writes in quick succession (requires
+      version vectors to prevent violations of causality)
+    - tiebreakers can lead to violations of causality
+- logical clocks are a safer solution which are incrementing counters
+
+### Clock readings have a confidence interval
+- better to think of single clock reading as representing a range of times based
+  on confidence interval
+- hardware clocks (and related crystal) have a measured spec
+- often not exposed at software level
+- exposed in TrueTime API in Spanner
+
+### Synchronized clocks for global snapshots
+- snapshot isolation often requires a monotonically increasing snapshot ID
+- difficult to generate in distributed environment due to coordination requirement
+- can use the fact that two confidence intervals are only questionable if they overlap
+    - Spanner waits for length of confidence interval before making a commit
+    - ensures any reads are at a later time
+- Google uses a GPS receiver to improve clock accuracy in a datacenter
+
+## Process Pauses
+- leaders must stay leader or release leadership in spite of dangerous clocks and
+  network issues
+- lease -> similar to distributed lock with timeout between nodes
+- to remain leader, node periodically renews lease
+- lease renewing in a loop is not reliable if clock is not reliable
+- monotonic clocks may not work in the face of processor pauses and more
+    - garbage collection
+    - VM suspension
+    - VM live migration
+    - end-user devices may be paused arbitrarily
+    - OS context switching
+    - slow disk I/O
+    - paging and page faults (and thrashing)
+    - Unix signals (accidental)
+    - thread preemption
+
+### Response time guarantees
+- some systems have response time deadlines
+- hard real-time vs. soft real-time
+- requires an RTOS, guaranteed performance within libraries, memory management, and
+  much testing and measurement
+- range of tools, hardware, libraries and programming languages becomes limited
+- real-time != high-performance and may have lower throughput
+
+### Limiting the impact of garbage collection
+- emerging idea is to treat GC pauses like planned node outages
+    - used in some latency-sensitive financial trading systems
+- can use GC only for short-lived objects and periodically restart processes
+  to remove long-lived objects
+
+## Knowledge, Truth, and Lies
+- distributed vs. single computer
+    - no shared memory
+    - message passing via unreliable network
+    - partial failures
+    - unreliable clocks
+    - processing pauses
+- a node cannot know anything with certainty -> it must make guesses based on messages
+  (received and not received) via the network
+- to address many semi-philosophical questions related to this, a system can state
+  its system model -> assumptions about behavior/design of system
+- algorithms can be proven correct within a model
+- difficult to make software behave correctly within an unreliable system model
+
+## The Truth is Defined by the Majority
+- a distributed system cannot rely on the judgment of a single node to reliably determine
+  its state in relation to the rest of the system
+- many distributed algorithms rely on quorum to address this issue
+- commonly quorum = absolute majority
+
+### The leader and the lock
+- often a system allows only one of some thing
+    - leader for a partition (to prevent split brain)
+    - one lock owner for a resource (to prevent corruption)
+    - one user per username (to ensure uniqueness)
+- shows actual data corruption bug HBase previously had
+
+### Fencing tokens
+- fencing -> technique used to ensure owner of a protected resource does not disrupt
+  rest of system
+- lock returns a fencing token or monotonically increasing number, and all write
+  requests must be issued with fencing token
+- storage server disallows writes with lower numbers than max number for resource
+- ZooKeeper achieves this with zxid or cversion
+- resource must also protect against bad writes
+
+## Byzantine Faults
+- fencing tokens can protect against nodes mistakenly acting in error but cannot
+  protect against forgeries
+- Byzantine fault -> messaging in a shared nothing system that is intentionally
+  falsified
+- Byzantine Generals problem -> problem of reaching consensus in an environment that
+  can have Byzantine faults (Lamport named the problem)
+- Byzantine fault tolerant -> a system that continues operation even if some of the
+  nodes are malfunctioning and not obeying the protocol, or if malicious attackers
+  are interfering with the network
+- protocols for making systems Byzantine fault-tolerant are quite complicated,
+  and fault-tolerant embedded systems rely on support from the hardware level
+- many public web facing applications require assumption that malicious behavior will
+  occur, but this only requires making server handle and deny as many malicious situations
+  as possible
+- most Byzantine fault tolerant software requires a supermajority so a bug deployed
+  to all nodes cannot be Byzantine fault tolerant
+- in most systems, if an attacker can compromise one node, it can compromise all of them
+
+### Weak forms of lying
+- invalid messages due to hardware failure
+- software bugs
+- misconfiguration
+- network packet corruption
+    - use checksums at an application level
+- user input
+    - application must sanitize, limit string size, and perform other sanity checks
+- misconfigured NTP server
+    - usually handled by protocol (requires a majority among many servers) but should
+      prefer configuration with multiple servers over one server
+
+## System Model and Reality
+- distributed algorithms need to handle distributed faults and be generally hardware
+  independent
+- system models for timing
+    - synchronous -> assumes bounded network delay, bounded process pauses, and
+      bounded clock error (not realistic for most systems)
+    - partially synchronous -> behaves like a synchronous system most of the time,
+      but it sometimes exceeds the bounds for network delay, process pauses, and
+      clock drift
+    - asynchronous model -> no timing assumptions (no clock and timeouts - difficult
+      model to design algorithms for)
+- system models for crashes
+    - crash-stop faults -> algorithm may assume that a node can fail in only one way,
+      namely by crashing (and will never come back)
+    - crash-recovery faults -> nodes may crash at any moment, and perhaps start
+      responding again after some unknown time (nodes have stable storage but
+      in-memory state is lost)
+    - Byzantine (arbitrary) faults -> nodes may do absolutely anything, including
+      trying to trick and deceive other nodes
+
+### Correctness of an algorithm
+- uniqueness -> no two requests for a fencing token return the same value.
+- monotonic sequence -> if request x returned token tx, and request y returned
+  token ty, and x completed before y began, then tx < ty.
+- availability -> a node that requests a fencing token and does not crash eventually
+  receives a response
+- more properties for correctness exist
+
+### Safety and liveness
+- safety -> nothing bad happens
+    - uniqueness
+    - monotonicity
+- liveness -> something good eventually happens
+    - availability
+    - eventual consistency
+- actually have precise and mathematical definitions
+    - if safety is violated, it happened at a point in time and cannot be undone
+    - liveness is in some ways opposite -> may not hold for an extended time but
+      may hold at some time in the future
+- common for distributed algorithm to require that a safety property always holds
+
+### Mapping system models to the real world
+- many other issues not mentioned occur
+    - corrupted data
+    - wiped out data
+    - firmware bug
+    - etc
+- some algorithms state that certain conditions are assumed not to happen
+- algorithm correctness != real-world implementation correctness
+
+## Summary
+- many common issues
+    - packet delay and packet loss and how to respond
+    - clock issues between machines and unreliability of clocks
+    - process pauses, e.g. garbage collector, and relation to node agreement
+- partial failures are a defining characteristic of distributed systems
+- partial fault tolerance needs to be built in
+- first step is to detect partial faults
+- handling faults is difficult due to no shared state and simple agreement
+    - require protocols to handle faults
+- many distributed problems are trivial when considered in the context of a single
+  node
+- distributed systems are not just good for scalability, also good for fault tolerance
+  and low latency
+- clock/timing issues are the result of a cost/benefit trade off
+- supercomputers (e.g. scale up) are generally not fault tolerant in the face of hardware
+  failure whereas distributed systems can ideally run forever
+
+# Ch. 9 Consistency and Consensus
+- focus is finding abstractions that allow distributed systems to continue functioning
+  in the face of faults
+- consensus -> reaching agreement between nodes in distributed systems
+
+## Consistency Guarantees
+- state of two nodes at any given moment is likely to be different regardless of
+  the replication model used
+- eventual consistency -> convergence is a weak guarantee as it doesn't give a time
+  for convergence
+- programming for weak guarantees requires never assuming too much
+- stronger guarantees affect performance and fault-tolerance
+- similarities between consistency and transaction isolation
+    - linearizability
+    - ordering of events
+    - atomic commit
+
+## Linearizability
+- aka
+    - atomic consistency
+    - strong consistency
+    - immediate consistency
+    - external consistency
+- basic idea is to make a system appear as if there is only one copy of the data and
+  all operations are atomic
+- on successful write, all clients must be able to observe written value
+- linearizability = recency guarantee
+
+## What Makes a System Linearizable?
+- example 1
+    - if a read request is concurrent with a write request it may return the old
+      or new value
+- due to variability of networks and clocks, events/requests/responses occur over a range
+- generally two operations
+    - read(x) => v ->
+        - the client requested to read the value of register x, and the database
+          returned the value v
+    - write(x, v) => r ->
+        - the client requested to set the register x to value v, and the database
+          returned response r (which could be ok or error)
+- possible responses
+    - read operation happens before write so read must return old value
+    - read begins after write completed so it must definitely return new value
+    - if the read operation overlaps with the write operation it can return
+      either the old or new value
+- concurrent reads and writes can lead to a value toggling
+- linearizable system requires one point in time in an operation in which the operation
+  can be viewed as taking effect
+- constraint
+    - after any one read has returned the new value, all following reads (on the same
+      or other clients) must also return the new value
+- additional operation
+    - cas(x, vold, vnew) => r ->
+        - the client requested an atomic compare-and-set operation
+        - if the current value of the register x equals vold, it should be
+          atomically set to vnew
+        - if x != vold then the operation should leave the register unchanged and
+          return an error
+        - r is the database’s response (ok or error)
+- requirement of linearizability is that the global set of linearization points for
+  operations on a system are monotonically increasing over time
+- details
+    - concurrent requests can be viewed as being arbitrarily ordered even though they
+      may have a strict ordering when compared in absolute time
+    - a response to a client will happen after the actual event and must be considered
+      to avoid causal confusion
+    - no transaction isolation is assumed
+- refer to formal definition for more precision
+
+### Linearizability Versus Serializability
+- important to distinguish differences
+- serializability ->
+    - isolation property of transactions with single transactions reading and
+      writing to potentially many objects
+    - guarantees that transactions behave as if they had executed in some serial order
+      but does not guarantee that serial order is order in which they were actually
+      run in absolute time
+- linearizability ->
+    - recency guarantee on reads and writes of a register (individual object)
+    - no concept of operations on many objects within a larger operation
+- strict serializability (strong one-copy serializability) -> combination of both
+  guarantees within a database
+    - 2P locking
+    - actual serial execution
+- serial snapshot isolation is not linearizable by design
+
+## Relying on Linearizability
+### Locking and leader election
+- single-leader replication needs to guarantee against split brain
+- can use a lock
+- lock must be linearizable and agreed upon by all nodes
+- coordination services
+    - ZooKeeper
+    - etcd
+- used to implement distributed locks and leader election
+- Apache Coordinator provides higher-level library on top of ZooKeeper
+- Oracle Real Application Clusters uses more granular distributed locking
+
+### Constraints and uniqueness guarantees
+- need linearizability for hard uniqueness constraints
+- similar to a lock and atomic compare-and-set
+- sometimes acceptable to treat uniqueness constraints loosely
+
+### Cross-channel timing dependencies
+- race conditions can occur when two different message channels for resource access
+  and persistence exist within a system
+- linearizability is not the only method for avoiding these race conditions but it is
+  the easiest to understand
+- if the 2nd communication channel is under the application developer's control,
+  race conditions can be avoided at the cost of additional complexity
+
+## Implementing Linearizable Systems
+- to tolerate faults cannot take the simple approach of only storing one copy of the
+  data, so must use replication
+- replication models
+    - single-leader -> potentially linearizable
+    - consensus algorithms -> linearizable
+    - multi-leader replication -> not linearizable
+    - leaderless replication -> probably not linearizable
+
+### Linearizability and quorums
+- seems that strict quorum reads and writes should be linearizable in a Dynamo-style
+  model
+- variable network delays cause race conditions in this model
+- to make Dynamo-style quorums linearizable a reader must perform read repair
+  synchronously and writer must read latest state of quorum before sending write
+- affects performance
+- Riak does not perform synchronous read repair
+- Cassandra waits for read repair on quorum reads but loses linearizability due to
+  LWW
+- cannot implement linearizable compare-and-set with quorums because it requires
+  a consensus algorithm
+- safest to assume that Dynamo-style replication does not provide linearizability
+
+## The Cost of Linearizability
+- split datacenters (no network communication between them) can lead to interesting
+  problems for single-leader database (with multi-leader each datacenter can operate
+  normally and sync up when network is restored)
+- clients in single-leader that can only connect to the datacenter without the leader
+  will experience an outage
+
+### The CAP theorem
+- any linearizable database has the above issue no matter how it is implemented
+- trade-offs
+    - required linearizability in a network disconnection will cause unavailability
+    - multi-leader replication can remain available in the case of a network disconnection
+- Eric Brewer -> CAP theorem 2000
+- started as rule of thumb
+- formal definition has a very narrow scope
+- little practical value and has been superseded by more precise results
+
+### The Unhelpful CAP Theorem
+- often presented as pick 2 out of 3
+    - consistency
+    - availability
+    - partition tolerance
+- misleading because network partitions are a kind of fault and will happen inevitably
+- better way of phrasing would be consistent of available when partitioned
+- several contradicting definitions of the term availability
+- due to many misunderstandings around CAP it is best avoided
+
+### Linearizability and network delays
+- few systems are linearizable in practice
+    - even threaded systems can lead to non-linearizable results unless using a
+      memory barrier or fence
+- due to cache systems in modern architectures
+- reason for dropping linearizability is performance and not fault tolerance
+- proven that to have linearizability, the response time of read and write
+  requests is at least proportional to the uncertainty of delays in the network
+- weaker consistency models can be faster
+
+## Ordering Guarantees
+- ordering is a recurring theme
+    - single-leader replication determines order of writes to apply writes
+    - serializability ensures sequential ordering in transactions
+    - timestamps and clocks and distributed systems are mechanisms for adding
+      order to difficult and disorderly problems
+- deep connections between ordering, linearizability, and consensus
+
+## Ordering and Causality
+- ordering helps preserve causality
+    - consistent prefix reads -> out of order causality can cause problems for users
+      (think chat app)
+    - writes can overtake others due to network delays and modifications to a record
+      may happen in reverse order which causes problems when the writes are not commutative
+    - consistent snapshots mean consistent with causality or in a causally sound order
+    - write skew has causal dependencies
+    - cross-channel timing dependencies lead to causal dependencies
+- causality imposes ordering
+- causally consistent -> obeys causal ordering
+
+### The causal order is not a total order
+- total ordering permits unequivocal comparison
+- mathematical sets are sometimes incomparable and therefore partially ordered
+    - some sets are subsets or supersets and thus can be compared
+- total order vs. partial order
+    - linearizability = total order
+    - causality = partial order
+- linearizability means no concurrent operations
+- version control systems keep histories as a graph (possibly linearly or tree-like
+  DAG)
+
+### Linearizability is stronger than causal consistency
+- linearizability implies causality
+- can harm performance and availability
+- middle ground is possible
+- causal consistency is strongest possible consistency model that does not slow down
+  due to network delays and remains available in the face of network failures
+- new research into database systems that only preserve causality
+
+### Capturing causal dependencies
+- what happened before, partial order
+- similar techniques to what is outlined in "Detecting Concurrent Writes"
+- causal consistency has to track causal dependencies across an entire database
+  (can be done with version vectors)
+
+### Sequence Number Ordering
+- do not need to explicitly track all read data
+- can use sequence numbers or timestamps (logical clock)
+- provide a total order and can be consistent with causality
+- replication log in single-leader replication provides a total order of write
+  operations that is consistent with causality
+- if follower applies writes in order of replication log it will maintain causal
+  consistency
+
+### Noncausal sequence number generators
+- various methods for generating timestamps in environments without a
+  single-leader
+    - each node can maintain own set of sequence numbers and encode node ID within
+      it
+    - sufficiently high-resolution time-of-day timestamps may not ensure sequential
+      ordering but can provide causal ordering
+    - each node can be given a particular block of sequence numbers which can be
+      reallocated as needed
+- not causally consistent
+
+### Lamport timestamps
+- simple method for generating sequence numbers that are causally consistent
+    - pair of (counter, node ID)
+    - each node and client maintain the maximum timestamp seen so far and it is
+      included on each request
+    - node increases max on receipt of a request with higher timestamp
+- using max ensures causal consistency
+
+### Timestamp ordering is not sufficient
+- creation of conflicting resources on separate nodes may succeed on both nodes
+  but then a winner will be selected by timestamp after the fact, not allowing concurrent
+  creation would lead to a system bottleneck
+- to implement something like a uniqueness constraint it is not sufficient to rely
+  on a total ordering of operations
+- also need to know when the resolution of the order of operations has occurred
+
+## Total Order Broadcast
+- determining a total order of operations is simpler in a single-leader context
+- total order broadcast or atomic broadcast -> a protocol for exchanging messages
+  between nodes with the following safety properties
+    - reliable delivery -> no messages are lost; if a message goes to one node it
+      goes to all nodes
+    - totally ordered delivery -> messages are delivered to every node in the same
+      order
+- ensure these safety guarantees using retries
+
+### Using total order broadcast
+- ZooKeeper and etcd implement total order broadcast
+- state machine replication ->
+    - if every message represents a write to the database, and every replica
+      processes the same writes in the same order, then the replicas will remain
+      consistent with each other (aside from any temporary replication lag)
+- exactly what is required for database replication
+- order is fixed at point of message delivery
+- similar to creating a log
+    - replication log
+    - transaction log
+    - write-ahead log
+- can be used to implement a lock service with fencing tokens (zxid in ZooKeeper)
+
+### Implementing linearizable storage using total order broadcast
+- close links between the total order broadcast and linearizability
+    - total order broadcast is async with no delivery timing guarantee
+    - linearizability guarantees recency, i.e. a read will return the most recent
+      write
+- can build linearizable storage on top of total order broadcast
+- linearizable compare-and-set with unique resource
+    - append message to log with tentative operation indication
+    - read log and wait for previous message to be returned
+    - check for any other claims on unique resource
+        - if none, commit
+        - otherwise, abort
+- a similar approach can be used to implement serializable multi-object transactions
+  on top of a log
+- procedure does not guarantee linearizable reads
+    - provides sequential consistency or timeline consistency
+- to linearize reads
+    - sequence reads by first writing to log and reading when log is returned after
+      write (similar to quorum reads in etcd)
+    - if fetching latest log message is linearizable, can fetch and wait for all
+      entries up to that point to be delivered and then perform the read
+    - read from a replica that is synchronously updated on writes
+
+### Implementing total order broadcast using linearizable storage
+- can invert order - build a linearizable compare-and-set operation from a total
+  order broadcast
+    - use linearizable register with an integer that has an atomic increment-and-get
+      operation
+    - atomic compare-and-set
+- algorithm
+    - increment-and-get the linearizable register for each message sent through the
+      total order broadcast
+    - send the message to all nodes (retrying for lost messages) and recipients will
+      deliver messages consecutively by sequence number
+- form sequence with no gaps (unlike Lamport timestamps)
+- algorithms for linearizable sequence number generation lead to consensus
+    - linearizable compare-and-set (or increment-and-get) registers and
+      total order broadcast are both equivalent to consensus (provably)
+
+## Distributed Transactions and Consensus
+- one of the most important and fundamental problems in distributed computing
+- simple view -> get several nodes to agree on something
+- requires a very subtle understanding which only developed over decades in academia
+- situations where consensus is required
+    - leader election
+    - atomic commit
+
+### The Impossibility of Consensus
+- FLP result (Fischer, Lynch, Paterson)
+    - no algorithm that is always able to reach consensus if there is a risk that a node
+      will crash
+- this is proven in an asynchronous system model (no clocks or timeouts)
+- in a system that can use timeouts or some other method for identifying suspected
+  crashed nodes, consensus becomes solvable
+
+## Atomic Commit and Two-Phase Commit (2PC)
+- transaction is for atomicity when making several writes and transaction is either
+  committed or aborted
+- especially important for multi-object modifications and secondary indexes
+
+### From single-node to distributed atomic commit
+- on a single node transaction commitment crucially depends on the order in which
+  data is durably written to disk
+    1. data
+    2. commit record
+- thus creating an atomic commit is dependent on the drive
+- for distributed databases, it can easily happen where a commit succeeds on some
+  nodes and fails on others which leads to inconsistencies
+- transactions are irrevocable and a node must only commit once it is sure all other
+  nodes in the transaction are going to commit
+    - once data has been committed, it becomes visible to other transactions, and
+      thus other clients may start relying on that data
+- basis of read committed isolation
+- (possible for transaction rollback based on compensating transactions which are
+  separate transactions)
+
+### Introduction to two-phase commit
+- method for achieving atomic transaction commit across multiple nodes
+    - used in some databases (XA transactions)
+    - used in SOAP web services
+- 2PC is very different from two-phase locking
+- process
+    - coordinator or transaction manager (can be library within application process
+      or a separate process or service)
+    - start with reading/writing on multiple nodes or participants
+    - on commit begin coordinator
+        1. sends a prepare request to each node
+            - if all acks, coordinator sends commit request in phase 2
+            - if any failed acks, coordinator sends an abort request in phase 2
+
+### A system of promises
+- process in detail
+    1. transaction start request from application is given UUID from coordinator
+    2. application sends transaction to each node with UUID, abort on error
+    3. on commit prepare, coordinator sends prepare request with UUID, aborts on error
+    4. on prepare request, each node checks for conflicts or errors and acks back
+    5. when all responses are received by coordinator, coordinator logs (commit point)
+    6. once coordinator logs commit, it must ensure all nodes receive notification
+       (by retrying forever) to commit also
+- main points in process
+    - participant's decision to confirm request
+    - coordinator's decision to commit after receiving all positive responses
+
+### Coordinator failure
+- crash before sending prepare request -> participant abort
+- after acking back, node can only abort or commit if all others abort or commit
+- if coordinator crashes after commit but before sending commit request to nodes
+  then the only way to continue is for the coordinator to recover
+
+### Three-phase commit
+- 2PC = blocking atomic commit
+- three-phase commit (3PC) is a method for non-blocking atomic commits but assumes
+  bounded network delay (requires perfect failure detector)
+
+## Distributed Transactions in Practice
+- often avoided in practice
+- can kill performance
+    - additional network round-trips
+    - additional forced disk sync (fsync)
+- two types of ditributed transactions
+    - database-internal distributed transactions -> same software on all nodes
+    - heterogeneous distributed transactions -> different systems (software, etc)
+      communicating via message brokers
+- internal can specify own protocol
+- heterogeneous is much more complicated
+
+### Exactly-once message processing
+- message brokers and databases can communicate based on atomic commits and distributed
+  transaction support
+- all systems affected by the transactions must be able to use the same atomic commit
+  protocol
+
+### XA tranasactions
+- X/Open XA (eXtended Architecture) -> standard for 2PC across heterogeneous technologies
+- supported in
+    - PostgreSQL
+    - MySQL
+    - DB2
+    - SQL Server
+    - Oracle
+- message brokers that support it
+    - ActiveMQ
+    - HornetMQ
+    - MSMQ
+    - IBM MQ
+- just a C API for interfacing with transaction coordinator
+- more info for it here
+
+### Holding locks while in doubt
+- system cannot continue when a doubtful transaction is stuck due to locking on the
+  related data (both written and read)
+- other parts of the system cannot continue because if they want to access the data
+  they will be blocked
+- can cause large parts of application to become unavailable
+
+### Recovering from coordinator failure
+- on coordinator crash orphaned in-doubt transactions can occur which can lead
+  to locks and blocking
+- requires an administrator to manually commit or rol-back in-doubt transactions
+- this often has to be done under high-pressure situations
+- many XA implementations provide an emergency escape hatch
+    - heuristic decisions (probably breaks atomicity)
+
+### Limitations of distributed transactions
+- transaction coordinator becomes a form of database
+    - HA? potential single point of failure
+    - removes the potential for stateless application servers
+    - XA is a lowest common denominator for compatibility
+        - no deadlock detection
+        - not compatible with SSI
+    - 2PC and requirement that all participants must respond can lead to amplifying
+      or cascading failures
+
+## Fault-Tolerant Consensus
+- normally formalized as
+    - one or more nodes propose values
+    - consensus algorithm decides on values
+    - satisfies following properties
+        - uniform agreement -> no two nodes come to different decision
+        - integrity -> no node decides twice
+        - validity -> if a node decides value v, then v was proposed by some node
+        - termination -> every node that does not crash eventually decides some value
+- first three properties are relatively easy to satisfy without fault tolerance
+- termination formalizes idea of fault tolerance
+    - guarantees progress even when some nodes fail
+- assumption is that node disappears when it crashes (not satisfied by 2PC)
+- mathematically provable that any consensus algorithm requires a majority of nodes
+  to be functional in order to assure the termination property
+- most consensus algorithm implementations ensure the safety properties are always met
+- most assume no Byzantine faults
+- possible to harden consensus against Byzantine faults if fewer than 1/3 of nodes
+  are Byzantine faulty
+
+### Consensus algorithms and total order broadcast
+- best known
+    - Viewstamped Replication
+    - Paxos
+    - Raft
+    - Zab
+- difficult to implement on your own
+- most decide on a sequence of values (e.g. total order broadcast)
+- total order broadcast = repeated rounds of consensus
+    - due to the agreement property of consensus, all nodes decide to deliver the
+      same messages in the same order
+    - due to the integrity property, messages are not duplicated
+    - due to the validity property, messages are not corrupted and not fabricated
+      out of thin air
+    - due to the termination property, messages are not lost
+- Viewstamped Replication, Raft, and Zab implement total order broadcast directly
+- Multi-Paxos (Paxos variant) is more efficient for total order broadcast
+
+### Single-leader replication and consensus
+- manual choice of single-leader results in dictatorial consensus and total order
+  broadcast
+- automatic leader election and failover is closer to fault-tolerant total order broadcast,
+  and thus to consensus
+- need consensus to prevent split brain which leads to a conundrum loop between
+  total order broadcast, single-leader replication, and consensus
+
+### Epoch numbering and quorums
+- no guarantee of unique leader in consensus algorithms
+- epoch number -> time period within which each leader is unique
+- aka
+    - ballot number
+    - view number
+    - term number
+- description of leader election algorithm here
+    - involves two rounds of voting (superficially similar to 2PC)
+
+### Limitations of consensus
+- benefits come at a cost
+- leader election is a form of synchronous replication which can lead to data loss
+  on failover when misconfigured
+- requires strict majority which means requires at least 3 nodes for one failure
+  or 5 for two failures
+- dynamic membership consensus algorithms are much less understood than static
+  membership algorithms
+- the reliance on timeouts can lead to frequent mistaken leader re-elections on
+  highly variable networks which will damage performance
+- Raft has unpleasant edge cases in face of network problems
+    - leadership can bounce between two nodes
+    - leader may continually be forced to resign, stopping progress
+- other algorithms have similar problems
+
+## Membership and Coordination Services
+- ZooKeeper & etcd
+    - distributed key-value stores
+    - coordination and configuration services
+- basically databases with consensus but rarely useful directly for an application
+  developer
+- applications that use ZooKeeper
+    - HBase
+    - Hadoop
+    - YARN
+    - OpenStack Nova
+    - Kafka
+- hold small amounts of data that fit in memory
+    - replicated across nodes using fault-tolerant total order broadcast
+- ZooKeeper modeled after Google's Chubby lock service
+- other included features
+    - linearizable atomic operations
+    - total ordering of operations
+    - failure detection
+    - change notifications
+- only linearizable atomic operations require consensus
+
+### Allocating work to nodes
+- useful for leader election in single-leader database but also for job schedulers
+  and similar stateful systems
+- partition assignment to nodes
+    - database
+    - message streams
+    - file storage
+    - distributed actor system
+- operations can be achieved by use of atomic operations, ephemeral nodes, and
+  notifications in ZooKeeper
+- not easy to use but easier than starting from scratch
+- ZooKeeper works with a fixed number of nodes (3 or 5 usually) and can outsource
+  coordination work
+- ZooKeeper generally manages information that changes slowly
+- Apache BookKeeper is a good option for replicated data that represents application
+  state
+
+### Service discovery
+- service discovery -> find out IP/port to connect to to connect to a particular service
+    - ZooKeeper
+    - etcd
+    - Consul
+- variable nodes can register in central service registry
+- unclear whether service discovery actually requires consensus
+- DNS is traditional method for discovering IP
+    - not linearizable
+    - more important for DNS to be reliable and robust to network issues
+- leader election does require consensus
+
+### Membership services
+- ZooKeeper, etcd, Consul are part of history of research into membership services
+- determines active and live members of a cluster
+- coupling failure detection with consensus makes it possible to agree on whether
+  a node should be considered alive and a member or not
+- can still result in incorrect dead declarations
+
+## Summary
+- linearizability is like access a variable through coarse-grained locks which affects
+  performance
+- linearizability
+    - puts all operations in a single, totally ordered timeline,
+- causality
+    - weaker consistency model -> some things can be concurrent, so the version history is
+      like a timeline with branching and merging
+- ensuring uniqueness led to consensus
+- achieving consensus means deciding something in such a way that all nodes agree on what
+  was decided, and such that the decision is irrevocable
+- equivalent problems
+    - linearizable compare-and-set registers
+        - register needs to atomically decide whether to set its value, based on
+          whether its current value equals the parameter given in the operation
+    - atomic transaction commit
+        - database must decide whether to commit or abort a distributed transaction
+    - total order broadcast
+        - messaging system must decide on the order in which to deliver messages
+    - locks and leases
+        - several clients are racing to grab a lock or lease, the lock decides which
+          one successfully acquired it
+    - membership/coordination service
+        - given a failure detector (e.g., timeouts), the system must decide which nodes
+          are alive, and which should be considered dead because their sessions timed out
+    - uniqueness constraint
+        - when several transactions concurrently try to create conflicting records with
+          the same key, the constraint must decide which one to allow and which
+          should fail with a constraint violation
+
+# Ch. 10 Batch Processing
+- three types of systems for data processing
+    - services (online systems) -> request/response, measured in response time
+    - batch processing (offline systems) -> runs a job on large amount of data periodically,
+      measured in throughput
+    - stream processing (near-real-time systems) -> consumes input, produces outputs
+      like batch, but operates on events close to their point of occurrence in time
+- MapReduce -> algorithm published in 2004
+    - Hadoop
+    - CouchDB
+    - MongoDB
+- MapReduce is important still but declining
+- many batch processing concepts come from Unix tools
+
+## Batch Processing with Unix Tools
+- servers and systems store log files with complex, line-by-line info on events/requests
+
+### Simple Log Analysis
+```
+cat /var/log/nginx/access.log |
+     awk '{print $7}' |
+     sort             |
+     uniq -c          |
+     sort -r -n       |
+     head -n 5
+```
+- pipeline for data processing the log file
+- sometimes obscure syntax but very powerful
+- many forms of data analysis can be done quickly using
+    - awk
+    - sed
+    - grep
+    - sort
+    - uniq
+    - xargs
+
+### Chain of commands versus custom program
+- can write simple imperative script to do same thing (Python, Ruby, etc)
+- big difference in execution flow especially when running on a large file
+
+### Sorting versus in-memory aggregation
+- script pulls data in memory so for large datasets the data may need to be split
+  across several files
+- GNU `sort` automatically handles data sets larger than memory
+- mergesort can be utilized
+- simple Unix commands above scale more easily than Ruby script
+
+## The Unix Philosophy
+- connect programs like plumbing and have utilities that do one thing and do it well
+- outline
+    1. Make each program do one thing well. To do a new job, build afresh rather than
+       complicate old programs by adding new “features”
+    2. Expect the output of every program to become the input to another, as yet
+       unknown, program. Don’t clutter output with extraneous information.
+       Avoid stringently columnar or binary input formats. Don’t insist on
+       interactive input.
+    3. Design and build software, even operating systems, to be tried early,
+       ideally within weeks. Don’t hesitate to throw away the clumsy parts
+       and rebuild them.
+    4. Use tools in preference to unskilled help to lighten a programming task,
+       even if you have to detour to build the tools and expect to throw some
+       of them out after you’ve finished using them.
+- striking similarity to Agile and DevOps
+- Unix shell enable composable programs
+
+### A uniform interface
+- need to be able to connect output of one program to input of another
+- file descriptors (socket, stdin, stdout, stderr)
+- often use ASCII text with common "\n"
+- generally a line is a record but many tools expose options for selecting
+  various record separators
+- still elegant many decades later and few programs now work to interoperate as
+  easily as Unix tools
+- many databases with the same data model are difficult to interoperate
+
+### Separation of logic and writing
+- can read/write from/to stdin/stdout or files
+- facilitated by pipes
+- form of loose coupling, late binding, or inversion of control
+- programs can be limited when more input or output sources are needed
+
+### Transparency and experimentation
+- very easy to see the underlying processes of each tool
+- often idempotent -> immutable input files
+- can pipe to less to debug
+- can write output at one stage to file and use file for input to next stage
+- biggest limitation is that Unix tools only run on a single machine
+
+## MapReduce and Distributed Filesystems
+- takes one or more inputs and produces one or more outputs but can operate distributed
+  across potentially thousands of machines
+- writes output to files once sequentially
+- operates on files on a distributed filesystem
+- for Hadoop -> HDFS (Hadoop Distributed File System) = open source Google File System (GFS)
+- other distributed file systems
+    - GlusterFS
+    - QuantcastFS (QFS)
+    - NFS
+    - (https://en.wikipedia.org/wiki/List_of_file_systems#Distributed_file_systems)
+- object storage is similar
+    - Amazon S3
+    - Azure Blob Storage
+    - OpenStack Swift
+- Hadoop -> shared nothing (in contrast with shared-disk NAS and SAN possibly using Fibre Channel)
+- HDFS
+    - daemon process exposing network service on each machine
+    - central server NameNode
+    - uses replication (both copies on machines or erasure coding -> possibly Reed-Solomon)
+
+## MapReduce Job Execution
+- general possible process for MapReduce
+    1. read set of input files, broken into records
+    2. called map function extracts key-value from each record
+    3. sort key-value pairs by key
+    4. call reducer
+- implement two callbacks; mapper and reducer
+
+### Distributed execution of MapReduce
+- parallelizes jobs similar to Unix utilities across many machines
+- Hadoop MapReduce uses Java classes
+- MongoDB and CouchDB use JavaScript functions
+- scheduler runs on each machine and backs up input file to run mapper and reducer
+  in partitioned manner
+- to combine and sort data set
+    - each map task partitions its output by reducer based on hash of key and is
+      stored on mapper's machine
+    - reducers do similar operation in process called shuffle
+
+### MapReduce workflows
+- one single MapReduce job is limited in what it can achieve
+- common to chain jobs into workflows
+    - done implicitly by directory name, filenaming protocols
+    - less like Unix pipelining and more like usage of temporary files between jobs
+- Hadoop workflow schedulers
+    - Oozie
+    - Azkaban
+    - Luigi
+    - Pinball
+- schedulers also have management features for maintaining large collections of batch
+  jobs
+- additional higher-level tools
+    - Pig
+    - Hive
+    - Cascading
+    - Crunch
+    - FlumeJava
+
+## Reduce-Side Joins and Grouping
+- an association within one record to another record
+    - foreign-key in a relational model
+    - document reference in document model
+    - edge in graph model
+- smaller queries grab records by index
+- MapReduce has no concept of indexes -> uses full table scans over set of input files
+- joins in batch processing = resolving all references to an association within
+  a full data set
+
+### Example: analysis of user activity events
+- good throughput in batch processing requires localizing requests to one machine
+- random access requests over the network will slow the process drastically
+
+### Sort-merge joins
+- secondary sort -> mapper can arrange sorted output such that reducer always sees
+  record first followed by timestamp
+- sort-merge join -> reducer merges together sorted lists of records from both
+  both sides of joind
+
+### Bringing related data together in the same place
+- kind of like mappers sending messages to reducers
+- MapReduce separates physical network communication aspects of logic (required
+  when accessing traditional database systems) from application logic (logic
+  required to process retrieved data)
+- also shields programmer from handling failures, transparently managing retries
+
+### GROUP BY
+- common action is bringing related data to the same place
+    - all records with the same key form a group
+    - aggregation of some form by groups
+        - counting
+        - adding fields
+        - ranking
+- grouping and joining look very similar inside MapReduce
+- sessionization -> use of grouping to collate activity events for a particular
+  user session to find sequence of actions taken by user during the session
+- user's actions may be spread across log files on many servers
+
+### Handling skew
+- grouping can break down if there is a very large amount of data related to a group
+- linchpin objects or hot keys -> database records with a disproportionately high
+  number of connections to other records
+- can lead to skew or hot spots -> reducers that must process a significantly higher
+  amount of data than others
+- there are a few algorithms to handle this problem
+    - Pig -> skewed join method samples first to determine hot spots
+    - Crunch -> sharded join - similar but requires explicitly specifying hot keys
+    - Hive -> hot keys stored in metadata, stores separately, and performs mapside
+      join
+
+## Map-Side Joins
+- reduce-side joins -> joins performed during reducer step
+- advantage
+    - no need for assumptions about input data
+- disadvantage
+    - sorting, copying to reducers, and merging of reducer input is expensive
+- map-side join -> cut-down MapReduce job with no reducers and no sorting
+    - mapper just reads one input file from distributed filesystem and writes one
+      output file

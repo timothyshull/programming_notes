@@ -147,13 +147,15 @@
 - Channel Purger
 
 
-# Consensus
+# Consensus (Replication protocols)
 - Paxos (also cheap Paxos and fast Paxos)
 - Raft
 - Chandra-Toueg
 - Lockstep protocol
 - MSR-type algorithms
 - hashgraph
+- Zab (ZooKeeper Atomic Broadcast)
+- viewstamped replication
 - see also:
     - gossip
 - bitcoin-related consensus
@@ -173,4 +175,7 @@
     - proof of elapsed time
 
 
-
+- NOTE: when considering Thrift vs. ZeroMQ
+    - Thrift -> designed for use with streaming protocol (TCP)
+    - ZeroMQ -> designed for messaging
+    - consider which applications are better suited to which
