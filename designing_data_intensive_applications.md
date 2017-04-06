@@ -807,6 +807,327 @@ db_get () {
 - column oriented storage
 
 # Ch. 4 Encoding and Evolution
+- evolvability allows an application to adapt to change
+- change will happen
+- data schemas may change
+- server side code can be upgraded with rolling upgrades
+- client-side code will be upgraded by users at their will
+- leads to a need for both forward and backward compatibility
+- forward compatibility can be tricky
+
+## Formats for Encoding Data
+- programs generally work with at least 2 different representations of data
+    1. in-memory
+        - objects
+        - structs
+        - lists
+        - arrays
+        - hash tables
+        - trees
+        - etc
+    2. encoded data for writing to a file or sending over a network which is
+       generally very different from in-memory data
+- translation is
+    - encoding-decoding
+    - serialization-deserialization
+    - marshalling-unmarshalling
+
+## Language-Specific Formats
+- built-in support and third-party libraries
+- Java -> java.io.Serializable
+- Ruby -> Marshal
+- Python -> Pickle
+- issues
+    - encoding is tied to the programming language which blocks integration with
+      other systems
+    - decoding leads to restoring arbitrary object types
+        - presents various security issues
+    - versioning data is often not built in which prevents forward and backward
+      compatibility
+    - they are generally not very efficient
+- often best to avoid built-in serialization in enterprise applications
+
+## JSON, XML, and Binary Variants
+- JSON, XML, and CSV are most common standardized data interchange formats
+- issues
+    - ambiguity around encoding of numbers (number vs string of digits, int vs float)
+    - issues with large numbers
+    - JSON and XML support Unicode but not binary strings
+    - optional schema support for XML and JSON but it is complicated to learn
+    - many JSON based tools do not bother using schemas
+    - CSV does not have a schema so application must define meta-info about rows
+      and columns and changes must be handled manually
+
+### Binary encoding
+- JSON is less verbose than XML, but both still use a lot of space compared to
+  binary formats
+- profusion of binary formats for JSON
+    - MessagePack
+    - BSON
+    - BJSON
+    - UBJSON
+    - BISON
+    - Smile
+- XML
+    - WBXML
+    - Fast Infoset
+- describes MessagePack binary encoding format here
+
+## Thrift and Protocol Buffers (protobuf)
+- binary encoding libraries
+    - Protocol Buffers was originally developed at Google
+    - Thrift was originally developed at Facebook
+    - both were made open source in 2007–08
+- Thrift defines schema using Thrift IDL
+- provide code generation tool which can then be called to encode or decode records
+  based on schema
+- Thrift has two binary protocols
+    - BinaryProtocol -> format described here
+    - CompactProtocol -> format also described here
+- CompactProtocol is semantically equivalent but encodes with smaller size
+- Protocol Buffers encode the data similarly but in a generally smaller size than
+  CompactProtocol
+
+### Field tags and schema evolution
+- each format allows for adding and removing schema components
+- need to make new fields optional and add a new tag number to maintain both forward
+  and backward compatibility
+- can only remove optional fields and can never use same tag number again
+
+### Datatypes and schema evolution
+- check docs for details
+- Protocol Buffers does not have array data type, uses repeated marker
+- Thrift has dedicated list datatype
+
+## Avro
+- binary encoding format started as subproject of Hadoop
+- two schema languages
+    - Avro IDL -> human readable
+    - JSON based -> machine readable
+- Avro encoding size is smaller
+- reader and writer need to use same schema -> see below
+
+### The writer's schema and the reader's schema
+- reader schema and writer schema need to be compatible
+- spec defines how resolution for changes works
+
+### Schema evolution rules
+- forward compatibility means that you can have a new version of the schema as
+  writer and an old version of the schema as reader
+- backward compatibility means that you can have a new version of the schema as
+  reader and an old version as writer
+- uses unions to represent null
+- does not support optional and required
+- some datatypes can be converted between each other
+
+### But what is the writer's schema?
+- reader's awareness of writer's schema depends on the context in which Avro is
+  being used
+    - large files with lots of records -> i.e. Hadoop, lots of records, same schema,
+      include writer's schema once at the beginning of the file
+    - database with individual records -> reader extracts record once, gets version
+      number, finds writer's schema with version number and decodes records
+    - sending records over network -> negotiate schema on connection (Avro RPC)
+- useful to keep database of schema versions
+
+### Dynamically generated schemas
+- advantage -> no tag numbers stored in schema
+    - friendlier to dynamically generated schemas
+    - can easily encode Avro schema from database schema and dump database to Avro
+      records
+    - easy to redo on database schema change
+    - with Thrift or Protocol Buffers the schema changes and tagging would need to
+      be done manually
+
+### Code generation and dynamically typed languages
+- code generation for language of choice is especially useful in statically typed
+  languages
+- code generation is often frowned upon in dynamic languages like JavaScript, Python,
+  or Ruby
+- Avro provides optional code generation
+- Pig integrates well with Avro -> can write derived datasets to output files in
+  Avro format without much effort
+
+## The Merits of Schemas
+- concepts behind Avro, Thrift, and Protocol Buffers are not new - related to ASN.1
+- advantages of binary encodings based on schemas
+    - much more compact than even binary JSON
+    - schema documents much of intent and has to be up to date
+    - schema database documents forward and backward compatibility
+    - code generation is useful and allows compile time checking
+- schema evolution generally provides the same kind of flexibility as schemaless or
+  schema-on-read JSON DBs provide
+- provide better guarantees about structure and versioning of data and better tooling
+
+## Modes of Dataflow
+- sharing data when there is no shared memory requires encoding data as a sequence of
+  bytes
+- forward and backward compatibility are essential to evolvability
+- dataflow mechanisms
+    - databases
+    - service calls
+    - asynchronous message passing
+
+## Dataflow Through Databases
+- process for write and read (encode and decode) that may be same process
+- need to ensure future changes can still encode/decode current data
+- often many processes accessing database and common for processes to run different
+  code versions (written by newer and read by older or vice versa)
+- Avro, etc solve issues caused by addition and removal of a field in relation to
+  versioning
+
+### Different values written at different times
+- data often outlives code
+- migrations are possible but expensive
+- can use nulls in some DBs to handle potentially missing values
+- Espresso uses Avro for storage so it can use the schema evolution rules
+
+### Archival storage
+- snapshotting for data warehousing is a good use case for Avro's object container
+  files
+- also good to consider Parquet or some other column-oriented storage for this use
+  case
+
+## Dataflow Through Services: REST and RPC
+- client-server architecture is most common (model of the web and web browsers)
+- many native apps also use this
+- HTTP is used for API access and as transport protocol
+- server can also be client to another service
+- microservices architecture (aka service oriented architecture or SOA) ->
+  approach often used to decompose a large application into smaller services by
+  area of functionality, such that one service makes a request to another when
+  it requires some functionality or data from that other service
+- services are similar to DBs but only expose application-specific API for IO
+- key design goal is to make application more adaptable to change
+
+### Web services
+- use of HTTP = web service
+    - client app on user device making HTTP requests for resources
+    - middleware within same organization
+    - inter-organization API access (OAuth, etc)
+- REST and SOAP (SOAP is almost dead)
+- REST -> design philosophy outlining data formats, URLs for access to resources,
+  cache control, authentication, and content type negotiation
+- gaining much popularity over SOAP and associated with microservices
+- SOAP -> XML-based protocol for API requests, commonly associated with web service
+  frameworks that may be monoliths
+- uses WSDL to describe web service and enable code generation
+- requires tool support and often IDE usage
+- RESTful APIs are simpler
+    - involve less code generation and automated tooling
+- definition format such as OpenAPI, also known as Swagger, can be used to describe
+  RESTful APIs and produce documentation
+
+### The problems with remote procedure calls (RPCs)
+- web services are latest in API network requests lineage
+    - Enterprise JavaBeans
+    - Java's Remote Method Invocation (RMI)
+    - Distributed Component Object Model (DCOM - Microsoft)
+    - Common Object Request Broker Architecture (CORBA)
+- all based on RPC
+- RPC is fundamentally flawed
+    - success or failure of networked function calls is not clear and prone to
+      network issues
+    - network function call can throw, return, or timeout and timeouts may be
+      inconclusive
+    - retries can lead to violations idempotency
+    - network is slow
+    - passing references and pointers and other non-primitive objects can be difficult
+      or impossible
+    - client and service may be in different languages which can cause any number of
+      impedance mismatches
+- best to view RPC as its own thing and accept it as network-based
+
+### Current directions for RPC
+- Thrift and Avro have RPC support
+- gRPC for Protocol Buffers and streams
+- Finagle and Rest.li
+- some are more explicit about outlining difference between remote request and
+  local function calls (using futures/promises and streams)
+- some provide service discovery
+- RPC with binary is often faster
+- REST advantages
+    - experimentation and debugging
+    - supported by all mainstream languages and platforms
+    - vast ecosystem of tools
+- REST = public APIs
+- RPC = service requests within the same organization
+
+### Data encoding and evolution for RPC
+- RPC clients and services must be able to be changed and deployed independently
+- reasonable to assume servers are update before clients
+    - backward compatibility on requests
+    - forward compatibility on responses
+- compatibility properties of each listed here
+- RPC may be made across organizational boundaries so control over upgrades may
+  be impossible
+- no standardization on API versioning
+    - REST should use version number in URL or HTTP Accept header
+    - can use an API key
+
+## Message-Passing Dataflow
+- asynchronous message passing systems are somewhere between RPC and databases
+    - client request is delivered with low-latency
+    - like databases, delivered via intermediary which stores message temporarily
+        - message broker
+        - message queue
+        - message-oriented middleware
+- advantages of message broker over RPC
+    - improve system reliability by acting as buffer
+    - redeliver/retry to prevent loss of messages
+    - does not require sender to know IP/port of recipient
+    - allows broadcast
+    - provides decoupling
+- however, message passing is usually one-way
+
+### Message brokers
+- previously dominated by enterprise software
+    - TIBCO
+    - IBM WebSphere
+    - webMethods
+- recent open source
+    - RabbitMQ
+    - ActiveMQ
+    - HornetMQ
+    - NATS
+    - Kafka
+    - (ZeroMQ)
+- delivery semantics varies by implementation
+    - send to queue or topic
+    - delivered to consumer or subscriber (potentially many to on topic)
+- topic is one-way
+- consumers can publish to topics consumed by orginal sender allowing two-way dataflow
+- usually do not enforce a data model
+
+### Distributed actor frameworks
+- actor model -> programming model for concurrency in a single process where actors
+  maintain state and communicate with other actors (asynchronously) for the sake of
+  abstracting over error prone manual threaded programming
+- distributed actor frameworks -> actor model across multiple with communication
+  transparently performed over network
+- location transparency is better in actor model than RPC (local and remote communication
+  generally looks the same)
+- puts message broker and actor into single framework
+- still requires forward and backward compatibility
+- popular
+    - Akka -> works with Java built-in serialization but can add Protocol Buffers,
+      etc for versioning
+    - Orleans -> custom data encoding but no support for rolling upgrades (plug-ins
+      for other serializers)
+    - Erlang OTP -> difficult to change schemas
+
+## Summary
+- explored methods of encoding/decoding
+- need for rolling upgrades and evolvability
+- data encoding formats
+    - programming-language specific
+    - JSON, XML, CSV
+    - Thrift, Protocol Buffers, Avro
+- modes of dataflow
+    - DBs with process(es) for read and write
+    - RPC and REST APIs (client-server)
+    - async message passing with message brokers or actors
+
 
 # PART II Distributed Data
 - reasons for use of multiple machines
