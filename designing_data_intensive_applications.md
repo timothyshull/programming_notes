@@ -3679,3 +3679,801 @@ cat /var/log/nginx/access.log |
 - map-side join -> cut-down MapReduce job with no reducers and no sorting
     - mapper just reads one input file from distributed filesystem and writes one
       output file
+
+### Broadcast hash joins
+- mapper starts, reads (small enough to fit into memory) user database from distributed
+  filesystem into an in-memory hash table, and scans over hash table by IDs/keys
+- broadcast ->  each mapper for a partition of the large input reads the entirety of
+  the small input which is broadcast to large input
+- supported by
+    - Pig -> replicated join
+    - Hive -> MapJoin
+    - Cascading
+    - Crunch
+    - Impala
+
+### Partitioned hash joins
+
+### Map-side merge joins
+
+### MapReduce workflows with map-side joins
+- choice of map-side or reduce-side affects the structure of the output
+    - output of a reduce-side join is partitioned and sorted by the join key
+    - output of a map-side join is partitioned and sorted in the same way as the
+      large input
+        - one map task is started for each file block of the join’s large input,
+          regardless of whether a partitioned or broadcast join is used
+- knowing about the physical layout of datasets in the distributed filesystem becomes
+  important when optimizing join strategies
+    - not sufficient to just know the encoding format and the name of the directory
+      in which the data is stored
+    - must also know the number of partitions and the keys by which the data is
+      partitioned and sorted
+    - maintained in HCatalog and Hive metastore in Hadoop ecosystem
+
+## The Output of Batch Workflows
+- purpose of running jobs?
+- batch processing isn't transaction processing or analytics, often leads to
+  something other than a report on the data
+
+### Building search indexes
+- Google originally used MapReduce to build indexes for its search engine
+- abandoned by Google but still good for building indexes for Lucene/Solr
+- search index is like Lucene term dictionary but with additional metadata
+  etc
+- building search index with batch operation is a good operation and results
+  in immutable, read-only files which are good for this operation
+- can periodically rerun or build indexes incrementally
+
+### Key-value stores as batch process output
+- common to build machine learning systems such as classifiers
+- can run batch jobs and write results back into database through driver for
+  MapReduce job language within mapper or reducer
+- bad idea
+    - network requests for each record is very slow
+    - reduces benefits of parallelization within MapReduce and potentially cause
+      other operational problems within the system
+    - takes away clean success or failure result in MapReduce jobs
+- better to build new database inside batch job and write it as output files
+- supported in
+    - Voldemort
+    - Terrapin
+    - ElephantDB
+    - HBase
+
+### Philosophy of batch process outputs
+- explicit input to immutable output files avoids side effects and facilitates
+  maintenance
+    - easy to roll back issues (human fault tolerance)
+    - feature development can proceed quickly, minimizing irreversibility
+    - automatic retries on failure with immutable inputs and discarded failed tasks
+    - can use input files for many jobs which allows metrics and comparison
+    - separation of concerns, code reuse
+- can reduce issues from less structured text storage in Hadoop by using
+  Avro, Parquet, etc
+
+## Comparing Hadoop to Distributed Databases
+- like Unix with HDFS = filesystem and MapReduce = process/shell utility
+- many parallel components in MapReduce were not new
+- MPP (massively parallel processing) allows execution of queries whereas
+  HDFS and MapReduce are more like a general purpose OS with arbitrary utility program
+  execution
+
+### Diversity of storage
+- Hadoop allows indiscriminate data dumping into HDFS
+- MPP requires careful schema planning
+- difference of value is in practice and some due to human nature tendencies
+- similar idea to data warehousing
+- shifts responsibility from producer to consumer
+- sushi principle -> raw data is better
+
+### Diversity of processing models
+- MPP is associated with tightly coupled software components and SQL queries
+- not all kinds of processing can be expressed with SQL queries
+- MapReduce allows engineers to easily run custom code over large data sets
+- can build SQL query engine on top of MapReduce and HDFS
+    - Hive
+- MapReduce can be limiting and perform poorly on certain types of operations
+- led to creation of more data processing models with Hadoop
+- additional parts of ecosystem
+    - HBase -> OLTP random-access database
+    - Impala -> MPP-style analytic database
+
+### Designing for frequent faults
+- MapReduce vs. MPP databases -> handling faults vs. use of memory and disk
+- MPP
+    - node crash causes re-execution of query
+
+- TODO: more here
+- open source cluster schedulers
+    - YARN's CapacityScheduler
+    - Mesos
+    - Kubernetes
+
+## Beyond MapReduce
+- MapReduce is a useful learning tool but is not as hyped as it once was
+- provides simple abstraction on top of distributed filesystem
+- abstractions on MapReduce
+    - Pig
+    - Hive
+    - Cascading
+    - Crunch
+- higher-level programming abstractions provide ways to make batch processing
+  and workflow tasks even easier
+- MapReduce can be slower than other tools because of issues with the execution model
+
+## Materialization of Intermediate State
+- each job is independent, need to use directories for job output to job input for workflow
+  scheduler to connect
+- intermediate state -> intermediate job output files are not going to be used beyond
+  that workflow (materialization)
+- Unix pipes do not generally materialize intermediate state but rather stream output
+  to input (using small memory buffer)
+- downsides of MapReduce's materialization
+    - must be sequential
+    - mappers are often redundant
+    - intermediate state in distributed filesystem means replicas of intermediate
+      state as well
+
+### Dataflow engines
+- new engines for distributed batch computations
+    - Spark
+    - Tez
+    - Flink
+- handle entire workflow as one job
+- more flexible methods for operating on data using operators
+    - can repartition and sort
+    - can partition without sorting
+    - same output from one operator can be sent to all partitions for join operator
+      in broadcast hash joins
+- based on research systems like Dryad and Nephele
+- benefits
+    - only perform expensive operations where required
+    - do not necessarily need map, can perform map and reduce in one operation
+    - scheduler can optimize over a workflow
+    - can keep intermediate state in memory
+    - operators can operate on input asap so no blocking for task end
+    - JVM instances can be reused between operations
+
+### Fault tolerance
+- intermediate state has the advantage of being able to be used after a fault
+- Spark, Flink, Tez fault tolerance
+    - if a machine fails and the intermediate state on that machine is lost, it is
+      recomputed from other data that is still available
+- Spark uses the resilient distributed dataset (RDD) abstraction for tracking the
+  ancestry of data
+- Flink checkpoints operator state, allowing it to resume running an operator that
+  ran into a fault during its execution
+- must know computations are deterministic
+- cheaper to materialize the intermediate data to files than to recompute if the
+  intermediate data is much smaller than the source data or the computation is
+  very CPU-intensive
+
+### Discussion of materialization
+
+## Graphs and Iterative Processing
+- often interesting to run offline computations on graph-like data
+    - machine learning
+    - ranking systems (PageRank)
+- Spark, Flink, Tez run operators in DAG which is not the same as what is being discussed
+  here
+- can store graph in a distributed filesystem
+- must run graph traversal/processing in iterative style
+    - scheduler runs batch for each step of algorithm
+    - on batch completion scheduler checks for total completion and runs again
+      if necessary
+
+### The Pregel processing model
+- bulk synchronous parallel (BSP) model of computation has become popular (aka Pregel model)
+    - Apache Giraph
+    - Spark's GraphX API
+    - Flink's Gelly API
+- mappers send messages to reducers and similarly vertices can send messages to vertices
+  along edges
+- similar to actor model
+
+### Fault tolerance
+- only waiting is between iterations because messages sent in one iteration are delivered
+  in next iteration
+- Pregel guarantees messages are processed only once at their destination
+- recovers from faults by periodically checkpointing state of all vertices between
+  iterations
+
+### Parallel execution
+- framework partitions graph and run in parallel requiring many cross-machine communications
+- if graph fits in memory on single machine, the processing will probably perform better
+  on a single machine
+- GraphChi can spread graph on disk of single machine
+
+## High-Level APIs and Languages
+- high-level APIs and languages related to frameworks discussed here use relational-style
+  building blocks to express computations
+
+### The move toward declarative query languages
+- framework can analyze components involved in joins and optimize accordingly
+- Hive, Spark, and Flink have cost-based query optimizers that can do this
+- just specifying joins in a declarative way can remove potential inefficiencies
+- freedom to run arbitrary code is what distinguishes batch from MPP
+- query optimizer can take advantage of column-oriented storage
+    - Hive, Spark DataFrames, and Impala
+        - use vectorized execution
+        - iterate over data in a tight inner loop that is friendly to CPU caches
+        - avoid function calls
+    - Spark generates JVM bytecode
+    - Impala uses LLVM to generate native code for these inner loops
+
+### Specialization for different domains
+- MPP databases have traditionally served the needs of business intelligence analysts
+  and business reporting
+- batch processing is used in that domain as well as many other domains
+    - statistical and numerical algorithms
+    - machine learning
+    - spatial algorithms such as k-nearest neighbors
+- reusable implementations
+    - Mahout
+    - MADlib (MPP in Apache HAWQ)
+
+## Summary
+- Unix tools are like MapReduce batch jobs with piping and related filesystems
+- problems for distributed batch processing
+    - partitioning
+    - fault tolerance
+    - sort-merge joins
+    - broadcast hash joins
+    - partitioned hash joins
+- callback functions in distribute batch jobs are assumed to be stateless and have no
+  side effects
+- input date must be bounded or of a known fixed size
+
+# Ch. 11 Stream Processing
+- batch processing resulted in output of derived data and works on the assumption
+  of bounded input
+- much data today is unbounded because it arrives gradually over time
+- to work with this using batch processors, the data must be artificially divided over
+  time
+- stream processing -> processing data at a highly granular rate (e.g. every second)
+  or continuously by processing every even that happens
+- stream concept appears in many other places
+
+## Transmitting Event Streams
+- record is more commonly known as an event in a stream processing context
+    - user actions
+    - machine system events
+    - log append
+- may be encoded as text, JSON, or binary
+- event generated by producer/publisher/sender
+- processed by potentially multiple consumers/subscribers/recipients
+- related events are usually grouped together by a topic or stream
+- can use polling by consumers but this becomes expensive when moving towards
+  continual updates so better to use notifications in that case
+- DBs traditionally used triggers which can react to change but they are limited
+
+## Messaging Systems
+- common to use producer-consumer pattern
+- most expand on Unix pipe or TCP socket usage to multiplex each side
+- publish/subscribe differentiations
+    1. handling faster production than consumption
+        - drop messages
+        - buffer messages in queue
+            - be aware of how this will be handled in program and by system
+              as the queue approaches and reaches capacity
+        - apply backpressure/flow control
+            - used by Unix pipes and TCP sockets
+    2. handling node crash or offline node
+        - may require system for durability or persistence at a cost
+        - if losing messages is acceptable, it will probably allow for higher
+          throughput and lower latency
+- some applications, like metrics tracking, can handle dropped messages
+- message counters cannot handle dropped messages
+
+### Direct messaging from producers to consumers
+- many systems use direct messaging rather than employing an intermediary
+    - financial industry uses UDP multicast for stock update
+    - ZeroMQ & nanomsg are brokerless and use TCP or IP multicast
+    - StatsD & Brubeck use UDP for metrics
+    - using services, producers can mae HTTP or RPC requests (webhooks)
+- direct messaging may require additional application code to handle dropped requests
+
+### Message brokers
+- message broker aka message queue -> essentially database optimized for message
+  handling
+- some only store in-memory and some persist to disk
+- many allow unbounded queueing as opposed to dropping messages or backpressure
+- consumers are generally asynchronous
+
+### Message brokers compared to databases
+- some participate in 2PC protocols using XA or JTA
+- practical differences between message brokers and DBs
+    - DBs keep data indefinitely whereas brokers remove messages on successful
+      delivery
+    - brokers assume a small working set and throughput may degrade as the set
+      increases past a point
+    - DBs support secondary indexes and querying, brokers support subscribing
+      to a queue or topic
+    - DB query results in a snapshot, brokers do not support queries but send
+      updates on data change
+- standards
+    - JMS
+    - AMQP
+- software
+    - RabbitMQ
+    - ActiveMQ
+    - HornetQ,
+    - TIBCO Enterprise Message Service
+    - IBM MQ
+    - Azure Service BUs
+    - Google Cloud Pub/Sub
+
+### Multiple consumers
+- load balancing
+    - each message goes to one consumer
+    - consumers share work of processing message in topic
+    - broker may assign messages arbitrarily to consumers
+    - useful for parallelizing expensive message processing
+    - see shared subscription
+- fan-out
+    - each message delivered to all consumers
+    - each consumer "tunes in" to broadcast messages
+    - topic subscriptions/exchange bindings
+- can be combined
+
+### Acknowledgements and redelivery
+- problems
+    - crashed consumers
+    - partial processing
+    - dropped messages
+- acknowledgements -> client must explicitly tell the broker when it has finished
+  processing a message so that the broker can remove it from the queue
+- used for redelivery when necessary
+- may lead to reordering of messages at point of delivery
+    - attempts to preserve ordering will be overridden by load balancing
+    - message ordering is not a problem if messages are completely independent
+      of each other but will lead to causal issues otherwise
+
+## Partitioned Logs
+- can log messages but normally they are transient and leave no permanent trace
+- DBs and filesystems imply persistence
+- cannot approach message processing with the same mindset as batch processing
+  as input is not bounded and read-only
+- a new consumer will only have a view of the state from the point it was added
+- hybrid approach is idea behind log-based message brokers
+
+### Using logs for message storage
+- append-only sequence of records on disk
+- with messaging
+    - a producer sends a message by appending it to the end of the log
+    - consumer receives messages by reading the log sequentially
+- can increase throughput by partitioning a log and making a topic correspond to
+  a group of partitions
+- a broker assigns a monotonically increasing sequence number or offset to every message
+- no ordering guarantee across different partitions
+- used by
+    - Kafka
+    - Amazon Kinesis Streams
+    - Twitter's DistributedLog
+- Google Cloud Pub/Sub is architecturally similar but exposes a JMS-style API rather than a log abstraction
+
+### Logs compared to traditional messaging
+- trivially supports fan-out
+- load balancing by assigning consumers to partition nodes
+    - downsides
+        - number of nodes sharing consumption of a topic is limited to number
+          of log partitions
+        - slow message in a partition delays processing of subsequent messages
+
+### Consumer offsets
+- broker can only track acks for current consumer offsets which reduces overhead
+  and increases throughput
+- very similar to log sequence number in single-leader replication
+    - message broker = leader
+    - consumer = follower
+
+### Disk space usage
+- append-only leads to running out of disk space
+- log is divided into segments and old segments are occasionally discarded
+- essentially implements a circular/ring buffer on disk
+- log retention does not relate to throughput as throughput remains more or less
+  bounded by disk write time
+
+### When consumers cannot keep up with producers
+- slow consumers lead to messages removed from broker which means dropped messages
+- can use human intervention fix a slow consumer
+- slow consumers do not affect other consumers
+
+### Replaying old messages
+- for log-based message brokers consuming messages is like reading from a file
+  and is non-destructive, like AMQP and JMS-style message brokers
+- logs can be used to replay messages
+- this allows easier recovery from errors and bugs
+
+## Databases and Streams
+- writes to databases can be seen as events that can be captured, stored, and processed
+- replication log is stream of database write events describing a stream of changes
+  over time
+- state machine replication represents states over time that can be represented as a
+  stream of events
+
+## Keeping Systems in Sync
+- no single system can satisfy all data storage, querying, and processing needs
+- duplicated data needs to be kept in sync
+    - ETL processes
+    - batch processes
+    - periodic full database dumps
+- dual writes -> application code explicitly writes to each of the systems when
+  data changes
+- many problems including race condition issues and mismatched failures
+
+## Change Data Capture
+- most DB's replication logs are seen as an internal implementation detail and not
+  public API
+- change data capture (CDC) -> process of observing all data changes written to a
+  database and extracting them in a form in which they can be replicated to other
+  systems
+- more recent development
+- interesting approach is to capture changes as a stream as they are written
+
+### Implementing change data capture
+- log consumers = derived data systems
+- DB where changes are observer = leader, rest are followers
+    - can use log-based message broker to transport changes to other DBs
+- triggers can be used but are not robust and have performance overheads
+- used by
+    - LinkedIn’s Databus
+    - Facebook’s Wormhole
+    - Yahoo!’s Sherpa
+    - Bottled Water for PostgreSQL (API decodes WAL)
+    - Maxwell and Debezium for MySQL (using binlog)
+    - Mongoriver for MongoDB (using oplog)
+    - GoldenGate for Oracle
+- usually asynchronous
+
+### Initial snapshot
+- cannot store full set of changes indefinitely
+- without full log history need to start with a consistent snapshot which will
+  correspond to a known position within a change log
+
+### Log compaction
+- either need to manually snapshot system and delete logs occasionally or use
+  compaction
+    - storage engine periodically looks for log records with the same key
+    - throws away duplicates
+    - keeps only recent update for each key
+    - compaction and merging runs in the background
+- uses tombstones and garbage collection to occasionally clean values so only the
+  most recent value is retained
+- same idea used in log-based message brokers and change data capture
+- can then rebuild a system of derived data by scanning from 0
+- supported by Kafka
+
+### API support for change streams
+- change streams are supported as a first-class interface in
+    - RethinkDB
+    - Firebase
+    - CouchDB
+    - Meteor uses MongoDB oplog
+    - VoltDB allows continuous data export as a stream
+    - Kafka Connect can be used for change data capture with wide range of DBs
+
+## Event Sourcing
+- developed in domain driven design community
+- store changes to application state as a log of change events but applied
+  at different level of abstraction
+    - CDC uses DB mutably and application writing to DB does not need to know
+      about CDC
+    - event sourcing application logic is built on immutable events that are logged
+- event sourcing record's user actions rather than result of actions
+- facilitates
+    - evolving applications over time
+    - debugging
+    - guarding against bugs
+- similar to chronicle data model and fact table in star schema
+- Event Store -> specialized event sourcing database
+
+### Deriving current state from the event log
+- applications need to translate between log of events to system and a readable
+  format for users to interact with (s/b deterministic)
+- can replay state
+- compaction is handled differently
+    - generally not possible because state modifications are not tracked but rather
+      interactions are observed/snapshotted and written
+- requires some mechanism for snapshotting current state to speed restoring from a point
+
+### Commands and events
+- command -> initial request from user which may still fail
+- event -> state of command after validation which represents a durable and immutable
+  action executed on application
+- fact -> event at point after initial event generation
+- validation of command is synchronous before creating event
+
+## State, Streams, and Immutability
+- immutability is powerful
+- changing state is result of mutations of state over time
+- no matter how state changes, it is always result of unchangeable set of events
+  over time
+- log of all changes (changelog) represents evolution of state over time
+- application state is result of integrating an event stream over time
+- change stream is result of differentiating the state by time
+
+### Advantages of immutable events
+- old idea, like account ledgers which are append-only
+- provides auditability
+- immutable events capture more information that current state
+    - events that cancel each other out are still observable
+
+### Deriving several views from the same event log
+- Kafka is an example of event log that is used to view same data in many different
+  ways
+- translation step from log to DB makes application feature addition and change
+  over time easier
+- often easier to run old and new systems side-by-side than performing a schema
+  migration
+- command query responsibility segregation (CQRS) -> method for gaining flexibility
+  in software development by separating the form in which data is written from
+  the form in which data is read
+- fallacy to assume that the form in which data is written must correspond to the
+  form in which data is read
+
+### Concurrency control
+- event sourcing and change data capture is asynchronous by nature so leads to
+  all issues discussed previously with concurrent reads and writes
+    - can combine writes to read view and write log into one single atomic
+      transaction (either within same system or across a distributed system)
+- using a single event log simplifies many concurrency control issues
+- for an event log that is partitioned in the same way as application state,
+  a single-threaded log consumer needs no concurrency control for writes
+
+### Limitations of immutability
+- various databases use immutable data structures or multi-version data internally
+  to support point-in-time snapshots
+- VCS for example
+    - Git
+    - Mercurial
+    - Fossil
+- easy for rarely updated or deleted data
+- high rates of modification lead to
+    - fragmentation
+    - need for performant compaction
+    - need for performant garbage collection
+- custom admin modification abilities to correct errors may be required
+    - rewriting history = excision of shunning
+- deleting data may be difficult so often deleting data means making data
+  impossible to retrieve
+
+## Processing Streams
+- options
+    1. store event data to some storage system and allow clients to query from there
+    2. push events to users as notifications or real-time dashboard/monitoring
+    3. pipeline input streams to output streams
+- option 3 is focus and is similar to batch processing facilities but data
+  is unbounded
+    - sorting does not make sense
+    - fault tolerance mechanisms must change
+
+## Uses of Stream Processing
+- long used for monitoring
+    - fraud detection in financial systems
+    - trading systems
+    - manufacturing systems monitoring
+    - military and intelligence systems
+
+### Complex event processing
+- complex event processing (CEP) -> approach developed in the 1990s for analyzing
+  event streams, especially geared toward the kind of application that requires
+  searching for certain event patterns
+- often use high-level declarative language
+- observed patterns of events results in emission of a complex event with details
+  of pattern detected
+- inverts system of query and data from traditional DB with queries being stored
+  long term
+- used in
+    - Esper
+    - IBM InfoSphere Streams
+    - Apama
+    - TIBCO StreamBase
+    - SQLstream
+- distributed stream processors
+    - Samza
+
+### Stream analytics
+- analytics -> aggregation of event data vs. recognition of pattern of events
+- usually observed over fixed time intervals using windowing
+- probabilistic algorithms used
+    - Bloom filters for set membership
+    - HyperLogLog for cardinality estimation
+    - various percentile algorithms
+    - approximation algorithms
+- nothing inherently lossy in stream processing despite use of approximation algorithms
+- related tools
+    - Apache Storm
+    - Spark Streaming
+    - Flink
+    - Concord
+    - Samza
+    - Kafka Streams
+- hosted services
+    - Google Cloud Dataflow
+    - Azure Stream Analytics
+
+### Maintaining materialized views
+- can view stream of changes to database for derived systems as a form of maintaining
+  materialized views (same as event sourcing event log application)
+- event sourcing often requires windowing from beginning of time start to current state
+- Samza and Kafka Streams support this use case
+
+### Search on streams
+- conventional search engines first index the documents and then run queries over
+  the index
+- searching a stream inverts process
+    - the queries are stored
+    - documents run past the queries, like in CEP
+- possible to index queries and documents
+
+### Message passing and RPC
+- message-passing systems and RPC can be thought of as stream processors due to some
+  crossover
+- Storm supports distributed RPC
+    - RPC queries are spread across nodes and results are interleaved back to user
+- can process streams with actor frameworks
+
+## Reasoning About Time
+- many stream processing frameworks use the local system clock on the processing machine
+  (the processing time) to determine windowing
+- simple approach but breaks down in face of processing lag
+
+### Event time versus processing time
+- example causes
+    - queueing
+    - network faults
+    - contention
+    - stream consumer restart
+    - reprocessing of past events resulting from failure recovery
+- delays can lead to unpredictable ordering of messages which may lead to bad data
+
+### Knowing when you're ready
+- windowing makes it impossible to know when stream of events for current window is
+  complete
+- need to be able to handle straggler events
+    - ignore straggler and handle risk of dropped events
+    - publish correction and possibly retract old output
+
+### Whose clock are you using anyway?
+- many devices have incorrect clocks
+- can use three timestamps
+    - time at which the event occurred, according to the device clock
+    - time at which the event was sent to the server, according to the device clock
+    - time at which the event was received by the server, according to the server clock
+- can estimate offset between device clock and server clock by subtracting 2nd timestamp
+  from third
+- same problems of reasoning about time arise in many places
+
+### Types of windows
+- tumbling window -> fixed length, and every event belongs to exactly one window
+    - implement a fixed time interval tumbling window by taking each event
+      timestamp and rounding it down to the nearest fixed time interval to determine
+      the window that it belongs to
+- hopping window -> fixed length, but allows windows to overlap in order to provide some
+  smoothing
+    - implement by first calculating fixed time interval tumbling windows, and then
+      aggregating over several adjacent windows
+- sliding window -> capture all events that occur within some interval of each other
+    - implement by keeping a buffer of events sorted by time and removing old events
+      when they expire from the window
+- session window -> no fixed duration; defined by grouping together all events for
+  the same user that occur closely together in time; window ends when the user has
+  been inactive for some time
+
+## Stream Joins
+- same need for joins on streams of data
+- more challenging
+
+### Stream-stream join
+- two separate streams of data with information about a related resource (e.g. URL,
+  UUID, etc) are combined to retrieve related information
+- stream processor must maintain state and when either event arrives, the stream
+  processor checks the other event stream for a matching event and emit event
+  with info about matching events or failure to find matching events
+
+### Stream-table join (stream enrichment)
+- basically adds table information attached to a related (foreign key-like) piece
+  of information in an incoming stream event
+    - can query DB
+    - can load DB copy locally into stream processor
+- difference from stream-stream join ->
+
+### Table-table join (materialized view maintenance)
+- track one-to-many table relationships in real-time by caching incoming data
+  for the "many" portion and associate it with the "one" record
+    - incoming data to a record within the "many" portion is cached with
+      each other record that has a link to that record (and deleted/modified
+      as necessary)
+- requires multiplexing streams of events to both the record persistence layer
+  and the caching layer
+
+### Time-dependence of joins
+- commonalities
+    - require the stream processor to maintain some state based on one join input,
+      and query that state on messages from the other join input
+- ordering of events is important
+- if ordering is undetermined across streams, the ordering is nondeterministic
+- slowly changing dimension (SCD) -> use UID for particular version of nondeterministically
+  joined records
+
+## Fault Tolerance
+- need batch processing-like exactly-once semantics
+- less straightforward in stream processing
+    - cannot wait until a task is finished before exposing output because stream
+      is infinite
+
+### Microbatching and checkpointing
+- can  break the stream into small blocks, and treat each block like a miniature
+  batch process
+- leads to performance compromise when choosing batch size
+- implicitly implies tumbling window at batch size
+- used in Spark Streaming
+- can periodically generate rolling checkpoints of state and write them to
+  durable storage
+- used in Flink
+
+### Atomic commit revisited
+- need to ensure processing output of event takes effect if and only if the
+  processing is successful
+- brings back atomic commit issue
+- implementations keep results of transactions across heterogeneous technologies
+  internally by managing both state changes and messaging within the stream
+  processing framework rather than attempting to sync transactions across them
+- used in
+    - Google Cloud Dataflow
+    - VoltDB
+- plans to add to Kafka
+
+### Idempotence
+- idempotent (operation) -> operation that can be performed multiple times but
+  result is identical to if the operation had been performed only once
+- can make operations idempotent by storing metadata about operations using UUIDs
+  for operations
+- Storm Trident
+- several related assumptions
+    - restarting a failed task must replay the same messages in the same order
+      (a log-based message broker does this)
+    - processing must be deterministic, and no other node may concurrently update
+      the same value
+
+### Rebuilding state after a failure
+- stream processes that require state must ensure that this state can be recovered
+  after a failure
+    - any windowed aggregations (such as counters, averages, and histograms)
+    - any tables and indexes used for joins
+    - etc
+- can keep state local to a stream processor and replicate periodically
+- Flink periodically captures snapshots of operator state and writes them to
+  durable storage such as HDFS
+- Samza and Kafka Streams replicate state changes by sending them to a
+  dedicated Kafka topic with log compaction, similar to change data capture
+- VoltDB replicates state by redundantly processing each input message on several
+  nodes
+- can sometimes avoid replicated state because state can be rebuilt from input
+  streams
+- all require trade-offs on performance characteristics
+
+## Summary
+- message brokers and event logs serve as the streaming equivalent of a filesystem
+- two main types
+    - AMQP/JMS-style message broker
+    - Log-based message broker
+- sources
+    - user activity events
+    - sensors providing periodic readings
+    - data feeds (e.g., market data in finance)
+- purposes for stream processing
+    - searching for event patterns (complex event processing)
+    - computing windowed aggregations (stream analytics)
+    - keeping derived data systems up to date (materialized views)
+- types of joins
+    - stream-stream joins
+    - stream-table joins
+    - table-table joins
+- fault tolerance
+- exactly once semantics
+
+# Additional Notes
+- https://en.wikipedia.org/wiki/Join_(SQL)
