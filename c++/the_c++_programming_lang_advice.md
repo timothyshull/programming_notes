@@ -351,12 +351,8 @@
 4. When defining a template, first design and debug a non-template version adding parameters
 5. Templates are type-safe, but checking happens too late
 6. When designing a template, carefully consider the concepts (requirements) assumed for its template arguments
-
-
 7. If a class template should be copyable, give it a non-template copy constructor and a non-template copy assignment
 8. If a class template should be movable, give it a non-template move constructor and a non-template move assignment
-
-
 9. A virtual function member cannot be a template member function
 10. Define a type as a member of a template only if it depends on all the class template’s arguments
 11. Use function templates to deduce class template argument types
@@ -366,7 +362,6 @@
 15. There is no separate compilation of templates: #include template definitions in every translation unit that uses them
 16. Use ordinary functions as interfaces to code that cannot deal with templates
 17. Separately compile large templates and templates with nontrivial context dependencies
-
 
 # Chapter 24 - Generic Programming
 1. A template can pass argument types without loss of information

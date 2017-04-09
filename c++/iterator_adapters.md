@@ -43,7 +43,7 @@ std::insert_iterator<std::vector<int>> it{coll, coll.begin() + n};
 *it = val;
 
 // or
-auto it = std::back_inserter(coll, coll.begin() + n);
+auto it = std::inserter(coll, coll.begin() + n);
 *it = val;
 ```
 
