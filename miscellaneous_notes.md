@@ -50,6 +50,38 @@ readelf -h main.o
 ```
 readelf -h main.o | grep "Entry point address"
 ```
+- basic clang ast
+```
+clang -Xclang -ast-dump -fsyntax-only source_file.cpp
+```
+- list ast symbols
+```
+clang-check source_file.cpp -ast-list
+```
+- full dump of any file
+```
+clang-check source_file.cpp -ast-dump
+```
+- full dump and filter for symbols
+```
+clang-check source_file.cpp -ast-dump -ast-dump-filter Symbol_name
+```
+- emit ast as binary file
+```
+clang(++) -emit-ast source_file.cpp
+```
+- CMake generate compile commands for project
+```
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+```
+- set path for compile-commands database
+```
+clang-check -p <build-path>
+```
+- pretty print clang-check ast
+```
+-ast-print
+```
 
 ## Additional Commands
 - tail -f /private/var/log/system.log (macOS)

@@ -45,7 +45,7 @@
 - socket -> (tcp or udp)
 - marshalling -> convert a collection of data into a suitable form for message passing (serialization)
 - unmarshalling -> disassembling
-- corba, xml, java serialization, son, protocol buffers
+- corba, xml, java serialization, json, protocol buffers
 - multicast
 - network virtualization - overlay networks
 
