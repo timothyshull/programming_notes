@@ -49,3 +49,10 @@ csplit --digits=2  --quiet --prefix=outfile infile "/-|/+1" "{*}"
 csplit -n2 -s -b outfile infile "/-|/+1" "{*}"
 awk '{print $0 " -|"> "file" NR}' RS='-\\|'  input-file
 ```
+
+# Operate on each line of file
+```
+for i in $(cat tmp.txt);  do touch $i; done
+
+# may need to set IFS first to $'\n'
+```

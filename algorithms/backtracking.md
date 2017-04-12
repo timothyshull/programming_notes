@@ -121,13 +121,15 @@ values to variables according to a set of constraints.
 - stores the state of each variable in a separate stack frame
 
 ### recursion vs. iteration
-- recursive methods can often be easily converted to a non-recursive method that uses iteration.
+- recursive methods can often be easily converted to a non-recursive method that uses iteration
 - this is especially true for methods in which:
-- there is only one recursive call
-- it comes at the end (tail) of the method these are known as tail-recursive methods.
-- once you're comfortable with using recursion, you'll find that some algorithms are easier to implement using recursion.
-- we'll also see that some data structures lend themselves to recursive algorithms.
-- recursion is a bit more costly because of the overhead involved in invoking a method.
+    - there is only one recursive call
+    - it comes at the end (tail) of the method these are known as tail-recursive
+      methods
+- when comfortable with recursion, some algorithms are easier to implement using recursion
+- some data structures lend themselves to recursive algorithms
+- recursion is a bit more costly because of the overhead involved in invoking a method
 - rule of thumb:
-    - if it's easier to formulate a solution recursively, use recursion, unless the cost of doing so is too high
+    - if it's easier to formulate a solution recursively, use recursion, unless the cost
+      of doing so is too high
     - otherwise, use iteration

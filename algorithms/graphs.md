@@ -74,9 +74,9 @@
     - networks: weighted digraphs
 
 - properties:
-    - a graph with V vertices has at mose V * (V - 1) / 2 edges (V ^ 2 possible pairs of edges
+    - a graph with V vertices has at most V * (V - 1) / 2 edges (V ^ 2 possible pairs of edges
       includes self-loops and counts twice for each edge)
-    - identifying isomorphic graphs is difficult because there a V! ways to label vertices
+    - identifying isomorphic graphs is difficult because there V! ways to label vertices
     - a graph G with vertices V is a tree if and only if (NOTE: each of these conditions is sufficient on their own):
         - G has V - 1 edges and no cycles
         - G has V - 1 edges and is connected
@@ -1969,15 +1969,6 @@ all-pairs
 
 
 - simple pseudocode:
-```
-DFS(u)
-for each neighbor v of u
-  if v is unvisited, tree edge, DFS(v)
-  else if v is explored, bidirectional/back edge
-  else if v is visited, forward/cross edge
-```
-
-- more detail:
 ```
 DFS(u)
 for each neighbor v of u
