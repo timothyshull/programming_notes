@@ -737,3 +737,284 @@ struct __mptr {
 - inline functions can lead to executable bloat
 
 # Ch. 5 Semantics of Construction, Destruction, and Copy
+- a private/protected data member in an abstract base class (any class with pure
+  virtual functions) must be initialized otherwise any inheriting class
+- only way to ensure this member is initialized by inheriting classes is to provide
+  a protected ctor in base that takes an argument of that type with a default value
+- in general, the data members of a class should be initialized and assigned to only
+  within the constructor and other member functions of that class
+- often better to remove data members from abstract base classes
+
+### Presence of a Pure Virtual Destructor
+- a pure virtual may be defined and invoked but it must be invoked statically
+  rather than through the virtual resolution mechanism
+```
+inline void
+Abstract_base::interface()
+{
+    // ...
+}
+
+inline void
+Concrete_derived::interface()
+{
+    // ok: static invocation
+    Abstract_base::interface();
+    // ...
+}
+```
+- this is rarely done except in instance of a pure virtual dtor
+- each derived class dtor is internally augmented to statically invoke each of its
+  virtual base and immediate base class destructors
+- absence will generally result in link time error
+
+### Presence of a Virtual Specification
+- compilers may optimize virtual function specifications that are not used but
+  it is a bad design choice to declare all functions virtual and rely on compiler
+  to optimize away calls
+
+### Presence of const within a Virtual Specification
+- results in problems and author tends towards leaving off const specification in
+  virtual declarations
+
+### A Reconsidered Class Declaration
+- lifetime of an object is a runtime attribute of that object
+- local object's lifetime extends from definition to scope end (or rarely explicit
+  destruction)
+- global object lifetime is entire program execution
+- heap object lifetime extends from point at which operator new is called to allocate
+  heap memory for the object to the point at which operator delete is called on the
+  object to deallocate it
+- internally even a POD has default ctors and a dtor generated and called for
+  lifetime management
+- difference between data segment and bss segment in C is not exercised in the same
+  way in C++ due to this fact (all global objects are treated as initialized)
+
+### Abstract Data Type
+- explicit initialization lists are generally faster
+- gives drawbacks here that no longer apply
+- defines Point without any virtual mechanism (no inheritance)
+
+### Preparing for inheritance
+- adds virtual getters and outlines previously discussed internal augmentations to
+  code
+
+## Object Construction under Inheritance
+- ctors often have a lot of internal compiler augmentation
+    1. data members initialized in the member initialization list have to be entered
+       within the body of the constructor in the order of member declaration
+    2. if a member class object is not present in the member initialization list but
+       has an associated default constructor, that default constructor must be invoked
+    3. before that, if there is a virtual table pointer (or pointers) contained within
+       the class object, it (they) must be initialized with the address of the
+       appropriate virtual table(s)
+    4. before that, all immediate base class constructors must be invoked in the order
+       of base class declaration (the order within the member initialization list is
+       not relevant)
+        - if the base class is listed within the member initialization list, the
+          explicit arguments, if any, must be passed
+        - if the base class is not listed within the member initialization list, the
+          default constructor (or default memberwise copy constructor) must be invoked,
+          if present
+        - if the base class is a second or subsequent base class, the this pointer must
+          be adjusted
+    5. before that, all virtual base class constructors must be invoked in a
+       left-to-right, depth-first search of the inheritance hierarchy defined by the
+       derived class
+        - if the class is listed within the member initialization list, the explicit
+          arguments, if any, must be passed
+        - otherwise, if there is a default constructor associated with the class,
+          it must be invoked
+        - in addition, the offset of each virtual base class subobject within the class
+          must somehow be made accessible at runtime
+        - these constructors, however, may be invoked if, and only if, the class object
+          represents the "most-derived class."
+        - some mechanism supporting this must be put into place
+
+### Virtual Inheritance
+- there is an idiom for suppressing the invocation of a virtual base class dtor
+
+### The Semantics of vptr Initialization
+-  within the constructors (and destructor) of a class, the invocation of a virtual function
+  by the object under construction is limited to the virtual functions active within
+  the class
+- necessary because of the class order of constructor invocation
+    - Classes are built from the bottom up and then the inside out
+- result is that the derived instance is not yet constructed while the base class
+  constructor executes
+- the virtual table is what actually determines the virtual function set that is
+  active for a class
+- the best option for handling vptr initialization is to initialize it after the
+  invocation of the base class ctors but before execution of use-provided code
+  or the expansion of members initialized within the member initialization list
+  within the ctor
+- general algorithm of ctor execution
+    1. within the derived class constructor, all virtual base class and then
+       immediate base class constructors are invoked
+    2. when 1 is complete, the object's vptr(s) are initialized to address the
+       associated virtual table(s)
+    3. the member initialization list, if present, is expanded within the body of
+       the constructor
+        - this must be done after the vptr is set in case a virtual member function
+          is called
+    4. explicit user-supplied code is executed
+- two conditions under which vptr must be set
+
+1. When a complete object is being constructed
+    - declare a Class object, the Class constructor must set its vptr
+2. within the construction of a subobject instance, a virtual function call is made
+   either directly or indirectly
+
+## Object Copy Semantics
+
+
+
+
+# TODO: more here
+
+
+
+# Ch. 6 Runtime Semantics
+- many transformations occur to source code, thus throwing off expectations about
+  how many instructions may be executed by a given expression/statement/operation etc
+
+## Object Construction and Destruction
+- ctor/dtor insertion for a simple declaration is as expected
+- multiple return blocks from a function require that a dtor be placed for locals
+  at each exit point in which any given locals are alive
+- presence of a goto statement may require many dtors to be inserted
+- in general, limit the lifetime of an object as much as possible
+
+### Global Objects
+- language guarantees global objects are constructed before program startup
+- all placed in data segment and initialized to 0 or a specified value
+- description of older methods for handling statics/globals here
+- drawbacks to using statically initialized objects:
+    - if exception handling is supported, these objects cannot be placed within
+      try blocks
+        - bad statically invoked constructors because any throw will by necessity
+          trigger the default terminate() function within the exception handling
+          library
+    - complexity involved in controlling order dependency of objects that require
+      static initialization across modules
+- recommendation is to not use global objects that require static initialization
+  and not use global objects at all
+
+### Local Static Objects
+- guaranteed semantics for local static objects
+    - object must have its constructor applied only once, although the containin function
+      may be invoked multiple times
+    - object must have its destructor applied only once, although again the function
+      may be invoked multiple times
+- compiler implementations use address of local static objects to check if the object
+  has been initialized on first use and initialize if necessary
+- dtors are invoked within the static deallocation functions associated with a program
+  text file
+- semantics of this may have been changed by standards committee
+
+### Arrays of Objects
+
+TODO: more here
+
+### Default Constructors and Arrays
+
+TODO: more here
+
+## Operators new and delete
+- operator new has discrete steps
+    - allocate memory (as void ptr) and cast depending on context
+    - check for successful allocation
+    - assign memory
+- delete is handled similarly
+
+### The Semantics of new Arrays
+
+TODO: more here
+
+### The Semantics of Placement Operator new
+
+TODO: more here
+
+## Temporary Objects
+
+TODO: more here
+
+### A Temporary Myth
+
+TODO: more here
+
+# Ch. 7 On the Cusp of the Object Model
+- templates
+- exception handling
+- runtime type identification
+
+## Templates
+- powerful feature but can be difficult and error prone
+- template support
+    1. processing of the template declarations
+        - what happens when a template class is declared
+        - template class member function
+        - etc
+    2. instantiation of the class object and inline nonmember and member template
+       functions
+        - instances required within each compilation unit.
+    3. instantiation of the nonmember and member template functions and static
+       template class members
+        - instances required only once within an executable
+        - where the problems with templates generally arise
+
+### Template Instantiation
+- must specify explicit instantiations of templates to access nested public
+  types and static members
+```
+Class<Type>::Nested_type
+Class<Type>::static_member
+
+// rather than
+Class::Nested_type
+Class::static_member
+```
+- definition of class instance as in
+```
+Class<Type> instance;
+```
+  results in instantiation of template
+- template member functions are only instantiated for a specific type instantiation
+  of the template if the member is used
+    - for space and time efficiency
+    - avoid errors based on unimplemented functionality
+
+### Error Reporting within a Template
+- errors in a standard class definition are resolved by the compiler at compiler time
+- for templates, type checking for template parameters is deferred until an actual
+  instantiation is encountered
+- various compilers instantiate templates in different ways and thus errors are caught
+  at different times
+TODO: check this in current standard
+
+### Name Resolution within a Template
+- scope of template definition -> site at which template is defined
+- scope of template instantiation -> site at which template is actually instantiated
+- an implementation must keep two scope contexts
+    1. the scope of the template declaration, which is fixed to the generic template
+       class representation
+    2. the scope of the template instantiation, which is fixed to the representation
+       of the particular instance
+- a compiler's resolution algorithm must determine which is the appropriate scope within
+  which to search for the name
+
+### Member Function Instantiation
+- current (old) implementations provided two instantiation strategies
+    - a compile-time strategy in which the code source must be available within the
+      program text file
+    - a link-time strategy in which some meta-compilation tool directs the compiler
+      instantiation
+- (I think this is all compile time now)
+- three questions to answer
+    1. how does the implementation find the function definition?
+    2. how does the implementation instantiate only those member functions that are
+       actually used by the application?
+    3. how does the implementation prevent the instantiation of member definitions
+       within multiple .o files?
+
+# TODO: more details here and refer to standard for updated information
