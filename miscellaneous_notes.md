@@ -17,6 +17,7 @@
 - use otool to display information about object files
 - use -install_name on mac when creating a dylib to avoid having to export DYLD_LIBRARY_PATH
 - clang++ -S -mllvm --x86-asm-syntax=intel test.cpp
+- hexdump - displays hexadecimal files
 
 - run C source code through preprocessor
 ```
