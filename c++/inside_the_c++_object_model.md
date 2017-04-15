@@ -1018,3 +1018,234 @@ TODO: check this in current standard
        within multiple .o files?
 
 # TODO: more details here and refer to standard for updated information
+
+## Exception Handling
+- requires tracking the local functions and info about objects local to that function
+- requires ability to query type of exceptions (limited type information mechanism)
+- requires some clean up mechanism
+- requires tightly coupled link between compiler-generated data structures and the
+  runtime exception library
+    - to maintain execution speed, the compiler can build up the supporting data
+      structures during compilation
+    - adds to the size of the program, but means the compiler can ignore these
+      structures until an exception is thrown
+    - to maintain program size, the compiler can build up the supporting data structures
+      "on the fly" as each function is executed
+    - affects the speed of the program but means the compiler needs to build (and then
+      can discard) the data structures only as they are needed
+- exception handling has historically led to many issues for compilers
+
+### A Quick Review of Exception Handling
+- consists of
+    1. throw clause
+        - a throw clause raises an exception at some point within the program
+        - the exception thrown can be of a built-in or user-defined type
+    2. one or more catch clauses
+        - each catch clause is the exception handler
+        - it indicates a type of exception the clause is prepared to handle and
+          gives the actual handler code enclosed in braces
+    3. try block
+        - a try block surrounds a sequence of statements for which an associated
+          set of catch clauses is active
+- thrown exception causes program control to incrementally be passed back up the stack
+  until an appropriate catch handler is encountered or main is reached
+    - when main is reached, the default handler (terminate()) is invoked
+- as the stack is unwound, destructors are invoked for each active object within
+  the current scope of the function with control
+- each segment of a scope requires the compiler to add additional bookkeeping that
+  tracks the local objects that need to be cleaned up when the stack is unwound
+  through a particular scope
+- any function that requires resource clean-up must provide a mechanism for a final
+  action within a scope otherwise nothing will be done as the stack is unwound through
+  a scope and resources will be leaked
+- can be done with a default catch clause
+```
+try {
+    // ...
+}
+catch (...) {
+    // ...
+}
+```
+
+- (can also be done with a Final_action object)
+
+```
+template<typename F>
+struct Final_action {
+    Final_action(F f) : clean{f} {}
+    ~̃Final_action() { clean(); }
+    F clean;
+};
+
+template<class F>
+Final_action<F> finally(F f) {
+    return Final_action<F>(f);
+}
+
+auto act1 = finally([&] {
+    // do cleanup
+});
+```
+- best approach in general is to use RAII classes (smart pointers, etc) for
+  all resources
+- be aware of the exceptional cases for memory allocation (new, malloc, etc)
+
+### Exception Handling Support
+- compilation system must do the following to handle exceptions:
+    1. examine the function in which the throw occurred
+    2. determine if the throw occurred in a try block
+    3. if so, then the compilation system must compare the type of the exception
+       against the type of each catch clause
+    4. if the types match, control must pass to the body of the catch clause
+    5. if either it is not within a try block or none of the catch clauses match,
+       then the system must
+        - destruct any active local objects
+        - unwind the current function from the stack
+        - go to the next active function on the stack and repeat items 2–5
+
+### Determine if the Throw Occurred within a try Block
+- function can be thought of set of regions
+    - a region outside a try block with no active local objects
+    - region outside a try block but with one or more active local objects
+      requiring destruction
+    - a region within an active try block
+- compiler marks regions for exception handling system
+    - commonly done with program counter-range tables
+    - program counter holds address of next instruction (EIP/RIP, etc)
+    - range table tracks try blocks with beginning and ending program counter
+      for block and related catch block
+- on throw
+    - if current program counter is within a try/catch block, related catch blocks
+      are checked for a type match
+    - if exception is not handled, current function is popped from program stack,
+      the program counter is modified to point to the entry point of the previously
+      active function and the range tables are checked for a match to current
+      program counter
+    - exception handling mechanism is performed recursively until exception is handled
+      or main is reach and the default terminate() is called
+
+### Compare the Type of the Exception against the Type of Each Catch Clause
+- for each throw expression, the compiler must create a type descriptor encoding
+  the type of the exception
+- if the type is a derived type, encoding must include information on all of its
+  base class types (to handle polymorphic catches by reference)
+- RTTI is a necessary side effect of exception handling support
+- type descriptors are used for catch clauses
+
+### What Happens When an Actual Object Is Thrown during Program Execution?
+- a thrown exception object needs to be set aside and stored on some sort of
+  exception data stack to be passed through unwinding of the stack
+- an object passed by value to a catch clause is
+    - initialized by value by the thrown exception object
+    - when not caught by reference, an exception will be sliced depending
+      on the relationship of the types
+    - any virtual function mechanisms are replaced by the value object
+    - the by value object is then only a local object which will be destroyed
+      at the end of the catch clause
+    - if rethrown using a standalone throw statement will rethrow the original
+      exception
+- see referenced article for size and speed comparisons with and without exception
+  handling (possibly recreate on modern architectures with current compilers)
+- exception handling implementations within compilers are the most varied
+  language feature
+
+## Runtime Type Identification
+- prior implementations did not allow arguments to conversion operators
+- const member functions changed this limitation
+- casting from a base class to a derived class is often called a downcast because
+  of the convention of drawing inheritance trees growing from the root down
+- a cast from a derived class to a base is called an upcast
+- a cast that goes from a base to a sibling class is called a crosscast
+
+### Introducing a Type-Safe Downcast
+- C++ was originally criticized for not having a type-safe downcast
+- a type-safe downcast requires a runtime query of the pointer as to the actual
+  type of the object it addresses
+- support for a type-safe downcast mechanism brings with it both space and execution
+  time overhead
+    - requires additional space to store type information, usually a pointer to some
+      type information node
+    - it requires additional time to determine the runtime type since determination
+      can be done only at runtime
+- conflict
+    1. heavy use of polymorphism causes a legitimate need for a type-safe downcast
+       mechanism
+    2. use of built-in data types and nonpolymorphic facilities causes means
+       a programmer should not to be penalized with the overhead of a mechanism
+       that is not necessary
+- C++ RTTI mechanism provides a type-safe downcast facility but only for those
+  types exhibiting polymorphism
+    - types that make use of inheritance and dynamic binding
+- done by distinguishing classes that have virtual methods (declared or inherited)
+- places address of class-specific RTTI object within the virtual table
+    - overhead is only one pointer per class and type information object itself
+    - pointer need only be set once and can be set statically by the compiler
+
+### A Type-Safe Dynamic Cast
+- the dynamic_cast operator determines at runtime the actual type being addressed
+- if the downcast is safe (if the base type pointer actually addresses an object
+  of the derived class) the operator returns the appropriately cast pointer
+- if the downcast is not safe
+    - if the cast fails and the type to which the cast was attempting is a pointer
+      type, it returns a null pointer of that type
+    - if the cast fails and new_type is a reference type, it throws an exception that
+      matches a handler of type std::bad_cast.
+- NOTE: a downcast can also be performed with static_cast, which avoids the cost of
+  the runtime check, but it's only safe if the program can guarantee (through some
+  other logic) that the downcast is actually safe
+- type_info is the name of the class defined by the Standard to hold the required
+  runtime type information
+
+### References Are Not Pointers
+- the dynamic_cast of a class pointer has two possible paths of execution
+    - a return of an actual address means the dynamic type of the object is
+      confirmed and type-dependent actions may proceed.
+    - a return of 0, the universal address of no object, means alternative
+      logic can be applied to an object of uncertain dynamic type
+- dynamic_cast when a applied to a reference works differently
+    - if the reference is actually referring to the appropriate derived class
+      or an object of a class subsequently derived from that class, the downcast
+      is performed and the program may proceed
+    - if the reference is not actually a kind of the derived class, then because
+      returning 0 is not viable, a bad_cast exception is thrown
+
+### Typeid Operator
+- can achieve pointer-like two path execution with references by checking with
+  typeid (Stroustrup suggests to just handle exception over this)
+- typeid returns const ref to a type_info object with overloaded operator ==,
+  before method to check ordering in inheritance, hash_code method, and name for
+  mangled name
+- also has related type_index wrapper object
+- minimum information required for an implementation if actual name class,
+  ordering of type_info objects, some type descriptor representing the explicit
+  class and any subtypes of the class
+- previously said that RTTI is available only for polymorphic classes
+    - in practice, type_info objects are also generated for both built-in and
+      nonpolymorphic user-defined types
+    - necessary for EH support
+    - type_info is retrieved statically for built-in and nonpolymorphic types
+
+## Efficient, Inflexible?
+- C++ generally has efficient runtime support of the object paradigm
+- the object model is inflexible in certain areas
+    - dynamically shared libraries
+    - shared memory
+    - distributed objects
+
+### Dynamic Shared Libraries
+- drop in replacement of shared libraries can cause breaking changes if object layouts
+  change
+    - size of class and offset location of each of its direct and inherited members
+      is fixed at compile time (except for virtually inherited members)
+- (there are many more modern methods for handling a variety of dynamic loading
+  approaches)
+
+### Shared Memory
+- shared memory relocation of dynamic libraries (by runtime linker) can result in
+  a number of issues with addressing (seg faults, etc)
+
+
+
+# NOTE: this book was published in 2003 and focuses on the classic C++ object model
+- many of these notes may be outdated
