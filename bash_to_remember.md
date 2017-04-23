@@ -35,6 +35,7 @@ done
 # rename files
 ```
 for file in *.cc; do mv "$file" "$(basename "$file" .cc).cpp"; done
+for file in $(find . -name *.cc); do mv "$file" "$(dirname "$file")/$(basename "$file" .cc).cpp"; done
 ```
 
 # lowercase filenames

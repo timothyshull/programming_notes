@@ -1090,6 +1090,8 @@ auto act1 = finally([&] {
 - best approach in general is to use RAII classes (smart pointers, etc) for
   all resources
 - be aware of the exceptional cases for memory allocation (new, malloc, etc)
+- (see  https://opensource.apple.com/source/libunwind/libunwind-35.3/include/mach-o/compact_unwind_encoding.h
+  for some more info about unwinding)
 
 ### Exception Handling Support
 - compilation system must do the following to handle exceptions:
