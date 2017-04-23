@@ -1,3 +1,47 @@
+# Index
+## Chapter 1. Object Lessons
+### Layout Costs for Adding Encapsulation
+### Section 1.1. The C++ Object Model
+### Section 1.2. A Keyword Distinction
+### Section 1.3. An Object Distinction
+## Chapter 2. The Semantics of Constructors
+### Section 2.1. Default Constructor Construction
+### Section 2.2. Copy Constructor Construction
+### Section 2.3. Program Transformation Semantics
+### Section 2.4. Member Initialization List
+## Chapter 3. The Semantics of Data
+### Section 3.1. The Binding of a Data Member
+### Section 3.2. Data Member Layout
+### Section 3.3. Access of a Data Member
+### Section 3.4. Inheritance and the Data Member
+### Section 3.5. Object Member Efficiency
+### Section 3.6. Pointer to Data Members
+## Chapter 4. The Semantics of Function
+### Section 4.1. Varieties of Member Invocation
+### Section 4.2. Virtual Member Functions
+### Section 4.3. Function Efficiency
+### Section 4.4. Pointer-to-Member Functions
+### Section 4.5. Inline Functions
+## Chapter 5. Semantics of Construction, Destruction, and Copy Presence of a Pure Virtual Destructor
+### Presence of a Virtual Specification
+### Presence of const within a Virtual Specification
+### A Reconsidered Class Declaration
+### Section 5.1. Object Construction without Inheritance
+### Section 5.2. Object Construction under Inheritance
+### Section 5.3. Object Copy Semantics
+### Section 5.4. Object Efficiency
+### Section 5.5. Semantics of Destruction
+## Chapter 6. Runtime Semantics
+### Section 6.1. Object Construction and Destruction
+### Section 6.2. Operators new and delete
+### Section 6.3. Temporary Objects
+## Chapter 7. On the Cusp of the Object Model
+### Section 7.1. Templates
+### Section 7.2. Exception Handling
+### Section 7.3. Runtime Type Identification
+### Section 7.4. Efficient, but Inflexible?
+
+
 # Ch. 1 Object Lessons
 - C separates data and operations
 - C++ combines data and operations into independent ADT
