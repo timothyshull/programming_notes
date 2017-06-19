@@ -546,7 +546,7 @@ pthread_detach(pthread_self());
 ```
 static pthread_mutex_t myMutex = PTHREAD_MUTEX_INITIALIZER;
 ```
-- another option for initialization is toget a chunk of memory the size of
+- another option for initialization is to get a chunk of memory the size of
   pthread_mutex_t and use pthread_mutex_init() on that memory
 ```
 int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);

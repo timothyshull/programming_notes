@@ -1550,13 +1550,151 @@ IFD(x(n), k, t) = d/dt0(w, t)
 ## 10.10 Localization and Internationalization
 
 # Ch. 11 Spectral Opcodes
-- pp 617
+- pvsanal
+- pvsytnh
+- can be used to transform signals from waveforms (in the time domain) into
+  spectra (in the frequency domain) and vice versa
+
+## 11.1 Processing Spectral Signals
+- spectral domain processing uses two separate data types
+    - wsig - hold a special, non-standard, type of logarithmic frequency analysis data
+      and is used with a few opcodes originally provided for manipulating this data type
+    - fsig - used to provide a framework for spectral processing, in what is called "streaming phase vocoder processing"
+- pp 619
+
+
+
 
 # Ch. 12 A Modular Synthesizer Simulation Program
-- pp 629
+## 12.1 Basic System Design
+- patch modules for sound modification
+- use a patch specification to generate Csound modules
+
+### Patch Specification for an Oscillator
+- waveform, frequency, LFO frequency and amplitude modulation
+
+### Designing the Interface
+- transform simple specs into Csound code
+- requires parsing so keep spec simple
+
+## 12.2 Building the Code
+### Introducing the Command-Line Interface
+## 12.3 Tightening the Structure and Making it Safer
+## 12.4 Writing the Csound Wrapper Code
+## 12.5 Enabling Oscillator Feedback
+## 12.6 Adding Noise
+## 12.7 Sample and Hold
+## 12.8 Adding the Filter
 
 # Ch. 13 Using C to Generate Scores
-- pp 655
+## 13.1 The Musical Concept
+## 13.2 The Raw Process
+## 13.3 Applying the Henon Map
+### Alternative Mapping of Henon Map
+## 13.4 Standard Map on a Torus
+### Generating Notes from Henon and Torus
+### Developing the Pieces
 
 # Ch. 14 Modeling Orchestral Composition
-- pp 677
+## 14.2 Observations on Orchestral Composition
+- combo of performers and instruments
+    - locations of performers
+    - number of each instrument per section
+    - technical proficiency of performers
+    - types and qualities of instruments
+- configurable properties of an orchestra
+    - instruments
+        - type of instrument
+        - number of each instrument
+        - quality of each instrument
+    - performers
+        - technical proficiency of performer
+        - accuracy of timing
+        - accuracy of pitch
+        - spatial location of performer
+    - performer groups
+        - number of performers per group
+        - types of performers per group
+
+### Composing for the Orchestra
+- think of specific configuration of orchestra as palette of sound
+- write for this palette
+- factors to consider
+    - compositional idea
+    - performance instructions
+    - mapping of performance instructions to performers
+
+### Performance Instructions
+- common vs uncommon practice music notation
+- generally need to clearly define system for mapping performance instructions
+  to actual performance
+- orchestra, instruments, and performance potentials present a palette of possibilities
+  for sound production
+- notation can be precise or generalized and abstract
+
+### Mapping Performance Instructions to Performers
+- end musical result is sum of all members' contributions
+- mapping of performance instructions to performers occurs in many configurations
+    - one-to-one - one musical instruction is given to one performer to perform
+        - the musical idea notated is exactly what is intended for the one performer
+          to perform
+    - one-to-many - one musical idea is given to many performers to perform
+        - a common case of this is notating music for an instrument section like
+          "violin i" to perform
+        - while the composer may notate performance instructions once and designate
+          it for the group to perform, from the performer's perspective, they each
+          receive a copy of the musical instruction to perform and thus there
+          are multiple copies of the musical instruction
+        - this is a case where the composer intent to direct a group of performers
+          with a single set of instructions maps out to be performed by many
+          performers with multiple copies of the original instructions
+    - many-to-one - multiple musical instructions are given to one performer to perform
+        - this kind of mapping may be commonly seen in music written for the piano
+          where multiple musical lines may be given to a single performer to perform
+    - many-to-many - multiple musical instructions are given to multiple performers
+        - this is a general description of the overall notated musical score given to
+          groups of performers to perform
+
+### Mapping Compositional Ideas to Performance Instructions
+- a single compositional idea may be mapped to a single or multiple sets of performance
+  instructions
+
+## 14.3 Designing the Orchestral Composition Library
+### Using Csound for Instruments and Notes
+
+## 14.4 Designing the Programming Library
+- see code for most of this
+### Note
+### Performer
+### PerformerGroup
+
+## 14.5 Using the Library for Composition
+- comparison of processes
+    - determine instrumentation (woodwinds, brass, strings, percussion, electronic)
+        - determine Csound instruments to use for the piece and place them in a Csound
+          orchestra (ORC) file
+    - specify number and layout of instruments
+        - create a C++ program to use the orchestra library and define the number and
+          layout of performers of chosen instrument, achieved by creating instances of
+          the performer class and configuring the instances, optionally grouping into
+          PerformerGroup objects
+    - notate score (includes performers, notes and timings of notes, techniques, etc)
+        - in C++ program, call performance methods on Performer and PerformerGroup objects
+          with Note data or other arguments
+        - calling different methods is equivalent to composing for different performance
+          techniques and the program being written is equivalent to the notated score for
+          live orchestra
+        - composer can define new performance techniques by adding methods to Performer or
+          PerformGroup classes
+    - perform score live
+        - run the program to generate the Csound score (SCO) file that will be the
+          performance instructions for the instruments in the ORC file
+        - run Csound with the ORC and SCO to create the end musical result
+    - code here
+
+### Initial Setup
+### Example 1: Using the Note Class Directly
+### Example 2: Using the Performer and PerformerGroup Perform Methods
+### Example 3: Four-Part Harmony
+### Example 4: Group Aleatory
+### Example 5: Surfaces (Glissandi Sound Mass)

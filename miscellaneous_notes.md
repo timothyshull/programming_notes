@@ -92,9 +92,15 @@ clang-check -p <build-path>
 - nm
 - libtool
 - otool
-- size
+    - -o - show contents of section
+    - -L <libname> - show paths for library
+    - tV - disassemble
+- size - list size of executable segments
 - leaks
 - malloc_history
+- c++filt - unmangle symbols
+- nm - display symbols in executable
+- file - list binary formats within an executable
 
 # Disassemblers
 - Hopper - https://sites.fastspring.com/hopperapp/product/hopperdisassemblerv3
