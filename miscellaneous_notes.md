@@ -92,10 +92,53 @@ clang-check -p <build-path>
 - nm
 - libtool
 - otool
-    - -o - show contents of section
-    - -L <libname> - show paths for library
     - tV - disassemble
+
+    - -f     Display the universal headers.
+    - -h     Display the Mach header.
+    - -l     Display the load commands.
+    - -L     Display the names and version numbers of the shared libraries that the object file uses, as well as the shared library ID if the file is a shared library.
+    - -D     Display just the install name of a shared library.  See install_name_tool(1) for more info.
+    - -s segname sectname
+             Display the contents of the section (segname,sectname).  If the -v flag is specified, the section is displayed as its type, unless the  type  is  zero  (the  section
+             header  flags).  Also the sections (__OBJC,__protocol), (__OBJC,__string_object) and (__OBJC,__runtime_setup) are displayed symbolically if the -v flag is specified.
+    - -t     Display the contents of the (__TEXT,__text) section.  With the -v flag, this disassembles the text.  With the -V flag, it also symbolically  disassembles  the  oper-
+             ands.
+    - -d     Display the contents of the (__DATA,__data) section.
+    - -o     Display the contents of the __OBJC segment used by the Objective-C run-time system.
+    - -r     Display the relocation entries.
+    - -c     Display the argument strings (argv[] and envp[]) from a core file.
+    - -I     Display the indirect symbol table.
+    - -T     Display the table of contents for a dynamically linked shared library.
+    - -R     Display the reference table of a dynamically linked shared library.
+    - -M     Display the module table of a dynamically linked shared library.
+    - -H     Display the two-level namespace hints table.
+    - -G     Display the data in code table.
+    - -C     Display the linker optimization hints (-v for verbose mode can also be added).
+    - -P     Print the info plist section, (__TEXT,__info_plist), as strings.
+    - -p name
+             Used with the -t and -v or -V options to start the disassembly from symbol name and continue to the end of the (__TEXT,__text) section.
+    - -v     Display verbosely (symbolically) when possible.
+    - -V     Display the disassembled operands symbolically (this implies the -v option).  This is useful with the -t option.
+    - -X     Don't print leading addresses or headers with disassembly of sections.
+    - -q     Use the llvm disassembler when doing disassembly; this is available for the x86 and arm architectures.  This is the default.
+    - -mcpu=arg
+             When doing disassembly using the llvm disassembler use the cpu arg.
+    - -function_offsets
+             When doing disassembly print the decimal offset from the last label printed.
+    - -j     When doing disassembly print the opcode bytes of the instructions.
+    - -Q     Use otool(1)'s disassembler when doing disassembly.
+    - -arch arch_type
+             Specifies  the  architecture,  arch_type,  of  the  file for otool(1) to operate on when the file is a universal file (aka a file with multiple architectures).  (See
+             arch(3) for the currently known arch_types.)  The arch_type can be "all" to operate on all architectures in the file.  The default is to display only the host archi-
+             tecture, if the file contains it; otherwise, all architectures in the file are shown.
+    - -m     The object file names are not assumed to be in the archive(member) syntax, which allows file names containing parenthesis.
+    - --version
+             Print the otool(1) version information.
+
+
 - size - list size of executable segments
+    - -x -l -m
 - leaks
 - malloc_history
 - c++filt - unmangle symbols
