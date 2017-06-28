@@ -214,6 +214,33 @@
 ## Transactional Memory
 
 
+# macOS
+## Unix Sockets and Networking
+## CFRunLoop, CFSocket and Events
+## kqueue and FSEvents
+## Bonjour (Zeroconf standard)
+## Multiprocessing
+- scheduling
+- fork
+- exec
+- Pipes
+## NSTask
+### NSProcessInfo
+### NSTask
+### NSFileHandle
+### NSPipe
+## Multithreading
+### Posix Threads
+### Cocoa and Threading
+- NSThread
+## Operations
+### NSOperationQueue
+## Grand Central Dispatch
+### Queues
+### Dispatching
+### Memory management
+
+
 # SCMSW
 - Threads and Locks
 - Functional Parallelism
