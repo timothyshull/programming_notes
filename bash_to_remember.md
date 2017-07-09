@@ -57,3 +57,10 @@ for i in $(cat tmp.txt);  do touch $i; done
 
 # may need to set IFS first to $'\n'
 ```
+
+# Find symbol in dylibs
+```
+for i in $(ls *.dylib); do
+    echo "$i"; nm -g $i | grep <text>
+done
+```
