@@ -419,6 +419,7 @@ proc.poll() # 0
 
 
 # SCMSW
+# TODO: go back and do the self-study sections and add notes here
 - concurrency - dealing with lots of things at once
 - parallelism - doing lots of things at once
 ## Threads and Locks
@@ -638,14 +639,458 @@ try {
     - weaknesses:
         - efficiency (but generally less than predominantly reported, and worth it for gain in robustness and scalability)
 
+# The Clojure Way - Separating Identity from State (Functional Concurrency, Persistent Data Structures, Software Transactional Memory)
+- certain concurrent solutions require shared mutable state
+- Clojure is impure - provides a number of types with concurrency-aware mutable variables
+- impure functional vs. imperative
+    - imperative - mutability is default and code modifies them frequently
+    - impure functional - immutable by default and code only modifies mutable variables when absolutely necessary
+- atoms - similar to atomic variables (built on Java's java.util.concurrent.atomic in Clojure)
+    - swap to set
+    - can be any type
+- persistent data structures - behave as though each modification results in a complete copy (not related to persistence
+  on disk)
+    - implemented behind the scenes with structure sharing
 
-# Functional Concurrency
-# Persistent Data Structures
-# Software Transactional Memory
+- !!! Structure sharing
+
+- all Clojure collections are persistent
+- persistent data structures can be implemented in non-functional languages but require work to ensure the contract
+- for concurrency, pds's essentially result in a copy (similar to thread local) for each thread
+- pds's separate identity from state
+- variables in imperative languages complect (interweave, interconnect) identity and state
+- retrieving the current state associated with an identity, for pds's, results in an instance of an immutable data structure
+- summary:
+    - diff between impure functional and imperative
+    - persistent data structures in functional languages allow the separation of identity and state
+
+- agents are like atoms and are modified with send
+    - takes function and optional arguments but unlike atoms send returns immediately and functions passed are serialized
+      when called by different threads so side effects can occur
+- agents vs. actors
+    - agent has a value that can be retrieved directly with deref
+    - actors encapsulate state but provide no direct means to access
+    - actors encapsulate behavior
+    - agents are passed the function that performs the behavior
+    - actors provide sophisticated support for error detection and recovery
+    - actors can be remote
+    - composed actors can deadlock
+    - composed agents cannot
+- in-memory logging can be very helpful for debugging and understanding threaded programming
+    - difficult with threads and locks
+    - trivial with agents
+- refs provide software transactional memory
+    - allows coordinated changes to multiple values at once (much like database transaction and record modifications)
+- STM transactions are atomic, consistent, and isolated
+    - atomic - all side effects (results) of transaction occur or none of them do
+    - consistent - validators for transaction must all pass or transaction will not be committed
+    - isolated - multiple transactions can execute concurrently but the effects of those transactions are
+      indiscernible from running those transactions sequentially
+- Clojure allows the isolation constraint to be relaxed
+- summary:
+    - atoms enable independent, synchronous changes to single values
+    - agents enable independent, asynchronous changes to single values
+    - refs enable coordinated synchronous changes to multiple values
+
+- skipped this section
+- summary:
+    - generally simple atom-based concurrency is enough
+    - STM-based code in which multiple refs are coordinated through transactions can be transformed into an agent
+      based solution with the refs consolidated into a single compound data structure accessed via agents
+    - make choice based on performance characteristics
+- overview:
+    - strengths
+        - builds on general functional strengths
+        - Clojure persistent data structures allow mutable variables to separate identity and state
+    - weaknesses
+        - no support for distributed programming
+        - no support for fault tolerance
+
 # Actors
+- retains mutable state but does not share it
+- objects that encapsulate state and communicate via actual messages but run concurrently with each other
+- used in many languages but associated with Erlang
+- Elixir (and Erlang) are dynamically typed impure functional languages (Elixir runs on the Erlang virtual machine)
+- actor is called a process in Elixir and Erlang
+    - process in this context is more lightweight than system threads
+- define actor, spawn instance, store process identifier to use for sending messages
+- messages are sent asynchronously by being placed in a mailbox (which is just a queue)
+- actors sit in loops waiting for messages to arrive and match the message
+    - the loop recursion does not blow up stack because Elixir uses tail-call elimination
+- actors have both a way to trigger stop and to register for notifications on stop
+- can use recursion to maintain state in actor messaging
+- common practice to wrap messaging and handling in APIs
+- can build support for replies
+- can name processes rather than work with process identifiers
+- summary:
+    - create a new process with spawn()
+    - send a message to a process with send()
+    - use pattern matching to handle messages
+    - create a link between two processes and receive a notification when one terminates
+    - implement bidirectional, synchronous messaging on top of the standard asynchronous messaging
+    - register a name for a process
+- define actors with state to cache
+- use links to propagate abnormal termination (remember that they are bidirectional)
+    - normal termination does not propagate the termination
+- system process - can trap another process' exit by setting :trap_exit flag
+- can supervise processes that monitors one or more worker processes and take appropriate action on fail
+- can use after clause to implement timeouts
+- message delivery guarantees
+    - when nothing breaks
+    - will be notified on break as long as registered via links or monitors
+- the error-kernel pattern
+    - TODO:
+- actor patterns avoid defensive programming and prescribe to "let it crash" philosophy
+    - simpler, clear separation between happy path and fault-tolerant code
+    - separate and no shared state
+    - supervisor can fix and log errors
+- summary:
+    - links are bidirectional
+    - links propagate errors
+    - system processes exit with exit message
+- actor model supports distribution
+- OTP library (Open Telecom Platform but just OTP) is a powerful library for Erlang and Elixir
+    - better restart logic
+    - debugging and logging
+    - hot code swapping
+    - more
+- provides a supervisor with different restart strategies
+    - one-for-one
+    - one-for-all
+- instance of Erlang VM is a node and can create and connect multiple nodes via IP
+    - remote execution and messaging
+    - need to pay careful attention to security and many other cluster design trade-offs
+- see section for fault tolerance info
+- summary:
+    - clusters of nodes
+    - actors can interact between nodes
+    - allows distributed systems and failure recovery
+- overview
+    - strengths
+        - messaging and encapsulation
+        - fault tolerance
+        - distributed programming
+    - weaknesses
+        - susceptible to deadlock
+        - susceptible to failure modes specific to actors
+            - mailbox overflow
+        - actors provide no direct support for parallelism
+            - needs to be built from building blocks
+        - not suitable for fine grained parallelism
+- see Akka for JVM-based actor solutions
+
 # Communicating Sequential Processes
-# GPGPU Programming
-# Lambda Architecture and MapReduce
+- similar to actors but focus is on channels over which messages are sent rather than the entities and the messages
+- channels are first class and replace mailboxes
+    - can be independently
+        - created
+        - written to
+        - read from
+        - passed between processes
+- old idea experiencing a resurgence due to Go
+- core.async in Clojure
+- channel = thread safe queue
+- senders don't have to know about receivers
+- by default channels are synchronous or unbuffered
+    - writing to a channel blocks until it is read from
+- can create a buffered channel by passing a buffer size to chan
+- channels can be closed
+- can write collections into channels with utility functions
+- dropping buffers
+- sliding buffers
+- Clojure thread macro uses a CachedThreadPool under the hood to avoid the startup costs of creating threads
+- can resolve issues of blocking buffers with event system but this leads to excess of global state and makes
+  code harder to reason about due to fragmented control flow
+- Go blocks are the alternative that allow event driven code without sacrificing structure or readability
+- Lisp-like languages have macros
+- go macro transforms block into state machine
+    - rather than blocking, thread parks, relinquishing control of current thread
+    - when next able to run, performs a state transition and continues execution, potentially on another thread
+        - reading the value from the channel
+    - allows runtime to multiplex many go blocks over a limited thread pool
+- blocking in a go block just blocks the current thread for the go block
+- go blocks are for cheap efficiency
+- summary:
+    - channels are synchronous (unbuffered) by default
+    - various buffering strategy (full buffer, sliding buffer, dropping buffer)
+    - go blocks are macros that invert control flow to generate a state machine for thread management via a thread
+      pool to execute the related block of code
+    - blocking and parking channel operations
+- alt! allows for management of multiple channels at once
+- timeout function returns a channel that closes after a certain number of milliseconds
+- using reified timeouts simplifies management of connection semantics
+- can use the timeout to implement polling (better as a macro)
+- asynchronous i/o can be challenging
+    - in Clojure, need to replace callbacks with put to fire and forget writes to channels
+- summary:
+    - channels and go blocks allow for efficient asynchronous code that reads naturally without complexity of
+      callbacks
+    - existing callback-based APIs can be utilized with a minimal callback that writes to a channel
+    - alt! allows a task to read from, write to multiple channels
+    - the timeout function returns a channel that closes after an interval - allowing timeouts to be treated as
+      first class entities
+    - parking calls should be contained within a go block
+    - Clojure macros can be used to inline code
+- ClojureScript cross compiles to JavaScript and supports core.async
+- browser UI works on single thread but ClojureScript's appearance of multithreading results in a form of
+  cooperative multitasking
+    - improves code structure and clarity
+- WebWorkers can be accessed in ClojureScript via the Servant library
+- provides means for event handling and taming callbacks
+- summary:
+    - ClojureScript cross compiles to JavaScript
+    - core.async in client-side development
+    - cooperative multitasking in single-threaded JavaScript environments
+    - relief from callback-based programming issues
+- overview:
+    - strengths:
+        - more flexble than actors (medium of communication is not tightly coupled)
+        - go macro inversion of control brings a dramatically improved programming model for traditionally callback-based
+          (multithreaded) application areas (UI, async IO, etc)
+    - weaknesses:
+        - actor model is based on awareness of distribution and fault-tolerance (not CSP)
+        - susceptible to deadlock with no direct support for parallelism
+
+# Data Parallelism (GPGPU Programming)
+- GPGPU - general purpose computing on the GPU
+- many technologies
+    - using OpenCL (Open Computing Language)
+- graphics cards are tuned to manipulate large amounts of data quickly (tuned for data parallelization)
+- many methods for data parallelization
+    - pipelining
+        - simple operations like addition are actually several machine instructions
+        - pipelining takes advantage of improvements in number of operations for multiple data
+    - multiple ALUs (Arithmetic Logic Unit)
+        - coupling multiple ALUs to a wide memory bus allows simultaneous operations on multiple data
+    - these two are combined with many other techniques to achieve the end speed-up in GPUs
+- OpenCL is C-like and targets multiple architectures by hooking into compiler
+- OpenCL operates on work-items and task as a programmer is to divide code into smallest work-items possible
+- optimizing OpenCL can be difficult and require architecture-specific considerations
+- specify OpenCL processing by writing kernels (essentially OpenCL functions)
+    - create a context and a command queue
+    - compile the kernel
+    - create buffers for input and output data
+    - enqueue a command that executes the kernel once for each work-item
+    - retrieve the results
+- OpenCL has a profiling API
+- multiple return values
+- error handling
+- summary:
+    - OpenCL parallelizes a task by dividing it into work-items
+    - specify processing for each work-item by writing a kernel
+    - follow process above for executing a kernel
+- provides a number of APIs for querying device info, platform parameters, and many other API objects
+- can target more than just GPUs (CPUs, OpenCL accelerators)
+- GPUs can have more than one compute unit
+- GPUs have specified memory
+- platform model
+    - host connected to one or more devices
+    - device has one or more compute units
+    - compute units provide a number of processing elements
+    - work-items execute within processing elements
+    - a collection of work-items within a compute unit is a work-group
+- memory model:
+    - global memory - available to all work items on a device
+    - constant memory - region of global memory that remains constant during kernel execution
+    - local memory - memory local to a work-group
+    - private memory - private to a single work-item
+- data parallel reduce
+- barriers
+    - a synchronization primitive that when executed by a single unit of execution, requires that all other grouped
+      units of execution must complete the same section of code (block, barrier, work, etc) before any can proceed
+      beyond that point
+    - commonly known as a rendezvous
+- in reduce, barrier ensures
+    - no work-item begins reducing before all have copied memory from global to local
+    - OpenCL only ensures relaxed memory consistency (local memory changes are not guaranteed to be visible to other
+      units of execution), so barriers guarantee the local memory changes will be visible to others at points like the
+      end of a loop
+- need to create local buffer to execute kernel
+- summary:
+    - work-items execute on processing elements
+    - processing elements are grouped into compute units
+    - a group of work-items executing on a single compute unit is a work-group
+    - work-items in a work-group communicate through local memory using barriers to synchronize and ensure consistency
+- Java with Lightweight Java Graphics Library (LWJGL) provide wrappers for OpenCL and OpenGL
+- OpenCL kernel on GPU can operate directly on OpenGL buffers
+- OpenGL 3D scene is constructed from a mesh of triangles
+    - vertex buffer defines a set of vertices (points in 3D space) (`[0, 0, 1,    0, 0, 2,    0, 0, 0,    1, 0, 1, ...]`)
+    - index buffer defines which of those vertices is used to draw each triangle (`[0, 3, 1,     4, 2, 5,     ...]`)
+    - each buffer has an IDa and is bound to a target
+- to access an OpenGL buffer from an OpenCL kernel
+    - acquire with clEnqueueAcquireFLObjects()
+    - set it as an argument to kernel
+    - release buffer
+    - wait for processing to finish
+- see book for example to simulate ripples
+- summary:
+    - OpenCL kernel on GPU can operate directly on OpenGL buffers
+    - create an OpenCL view of an OpenGL buffer with clCreateFromGLBuffer()
+    - acquire an OpenGL buffer before passing it to a kernel with clEnqueueAcquireGLObjects()
+    - release the buffer after the kernel has finished with clEnqueueReleaseGLObjects()
+- overview:
+    - strengths:
+        - good for processing large amounts of numerical data (fluid dynamics, finite element analysis, n-body simulation,
+          simulated annealing, ant-colony optimization, neural networks, etc)
+        - GPUs have many benefits
+            - powerful data-parallel processors
+            - power consumption (better GFLOPS/watts than traditional CPUs)
+    - weaknesses:
+        - use for nonnumerical problems (e.g. natural language processing) is not straightforward
+        - optimization of OpenCL kernels depends on a knowledge of the underlying architecture
+    - other GPGPU options
+        - CUDA
+        - DirectCompute
+        - RenderScript Computation
+
+# Lambda Architecture (and MapReduce)
+- combines large-scale batch processing of MapReduce with real-time responsiveness of stream processing
+    - scalable
+    - responsive
+    - fault-tolerant
+- Nathan Marz, many facets, focus on parallel and distributed aspects
+    - batch layer
+    - speed layer
+```
+raw data -> batch layer -> batch views    -> results
+         -> speed layer -> realtime views ->
+```
+- builds upon MapReduce
+- MapReduce
+    - name for pattern
+        - map - map over a data structure
+        - reduce - perform a reduce operation
+    - system for efficient distribution of map and reduce operations on large data sets across a cluster of computers
+- name from deep similarities between functional programming and the architecture
+- popularized at Google and then with Hadoop
+- maintaining Hadoop clusters is notoriously time consuming
+- many providers offer managed Hadoop clusters
+    - Amazon EMR - elastic MapReduce
+    - Horton Works
+    - Cloudera
+    - MapR
+- input is split into files and fed first to Mappers, joined through a single Mapper, then Reducers, then joined
+  through Reducers (all distributed across machines)
+- requires a Hadoop tool to run and can be run locally
+- Hadoop guarantees that keys will be sorted before being passed to Reducers
+- EMR reads from and to S3 by default
+- additional benefits beyond speed with distributed parallelization
+    - failure is a guarantee with large clusters and Hadoop is built with fault-tolerance in mind
+    - handles failure retries and data management to avoid loss of data using HDFS and replication
+    - manages transfer of data between memory and HDFS during execution
+- summary:
+    - splitting problems into map stage and reduce stage simplifies parallelization
+    - Hadoop
+        - splits input into distributed Mappers which output key/value pairs
+        - sends to Reducers which output final output generally as key/value pairs
+        - uses intelligent partitioning
+- current volume of data being processed pushes traditional databases beyond point at which they were designed to
+  function
+- replication, sharding and other techniques allow DBs to scale but become more difficult as it scales
+    - adds maintenance overhead
+    - complexity
+    - possibility of human error
+    - reporting and analysis difficulty (warehousing and ETL issues)
+- can divide data into raw data and derived information, and data is better raw (but clean) as it is built on immutable
+  events
+- batch views are precomputed snapshots of derived data and is the job of the batch layer
+- batch views are run to completion each time (but can hand-roll an incremental algorithm, though benefits are questionable)
+- usually a serving layer sits in front of batch view results to allow queries
+    - some specialized DBs exist that optimize for random reads and only batch update writes (Voldemort, ElephantDB)
+- summary:
+    - raw data is immutable
+    - derived data
+    - resulting systems are
+        - highly parallel and can handle TBs of data and more
+        - simple and less error prone
+        - tolerant to technical and human error
+        - handle day-to-day ops and historical reporting and analysis
+    - drawback is latency (accounted for by Lambda Architecture with speed layer)
+- speed layer generates real-time views that, when combined with batch views, allow for up-to-date queries
+- uses Storm to create the speed layer
+- speed layer is more difficult to build than batch layer
+    - however only needs to handle unprocessed portion of data
+- can think of traditional DB as degenerate form of Lambda Architecture without running batch layer
+    - synchronous (blocking) reads and writes
+- better to use async approach with message queues
+    - Kafka
+    - Kestrel
+    - Google Cloud Pub/Sub
+    - Amazon Kinesis
+- adds decoupling of clients
+    - fewer clients can handle higher volume
+    - spikes in demand would lead to timeouts etc in synchronous systems whereas async system falls behind and
+      catches up when possible
+    - stream processor can exploit parallelism, taking advantage of multiple compute elements to provide fault
+      tolerance and improved performance
+- need to consider expiring data
+- Storm attempts to simplify real-time processing in the same way as MapReduce simplifies batch processing
+- Storm processes named tuples
+    - created in spouts
+    - processed in bolts
+    - spouts and bolts are connected in streams to create a topology
+- run internally parallel using workers which are distributed and tuples and can be sent and processed to any in
+  parallel
+    - used for fault tolerance
+- summary:
+    - Storm is one means for implementing the speed layer in the Lambda Architecture
+        - processes streams of tuples in real time
+        - spouts and bolts in a topology
+        - spouts and bolts have multiple workers that run in parallel and are distributed across the nodes of a cluster
+        - Storm provides "at least once" semantics
+- overview:
+    - Lambda Architecture
+        - raw data immutability (source of truth forever) is similar to separation of identity and state
+        - MapReduce is like parallel functional programming
+        - distributes processing over a cluster (like Actors) for performance and fault tolerance
+        - streams of tuples is similar to message passing in CSP
+    - strengths:
+        - large quantities of data
+        - reporting
+        - analytics
+        - (substitute for data warehousing)
+    - weaknesses:
+        - overhead of system is not worth it unless working with large amounts of data
+    - alternatives
+        - many batch layers aside from MapReduce
+            - Spark - both batch and speed (streaming) layer
+
+# Future
+- immutability
+    - persistent data structures
+    - raw data
+    - pure and impure functional languages
+    - messages (Actors and CSP)
+    - threads and locks (simplifies code and logic)
+- distributed
+    - cores
+    - clusters
+- additional considerations
+    - fork/join and work-stealing
+        - Cilk
+    - dataflow
+        - poor general-purpose dataflow languages but still important
+        - VHDL and Verilog
+    - reactive programming
+        - closely related to dataflow
+        - programs automatically react to propagated changes
+        - Microsoft Rx (Reactive Extensions) library + more
+        - parallels Storm, Actors, and CSP
+    - functional reactive programming
+        - Elm + more
+    - grid computing
+        - loosely coupled distributed cluster
+        - heterogeneous with fluid modification to cluster
+        - SETI@Home
+    - tuple spaces
+        - can be used for IPC
+        - first introduced to Linda coordination language
+
+
+
+John 616116
+
+studentloans.gov
 
 
 # Actors
