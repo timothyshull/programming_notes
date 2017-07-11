@@ -282,3 +282,138 @@ adder = lambda x, y: x + y
 - creates an anonymous function that returns the value of the expression
 
 # MRO
+
+
+
+# The Python Data Model
+## Overview of Special Methods
+- string/bytes representation
+    - `__repr__`
+    - `__str__`
+    - `__format__`
+    - `__bytes__`
+- conversion to number
+    - `__abs__`
+    - `__bool__`
+    - `__complex__`
+    - `__int__`
+    - `__float__`
+    - `__hash__`
+    - `__index__`
+- collection-like functionality
+    - `__len__`
+    - `__getitem__`
+    - `__setitem__`
+    - `__delitem__`
+    - `__contains__`
+- iteration
+    - `__iter__`
+    - `__reversed__`
+    - `__next__`
+- making an object callable
+    - `__call__`
+- context management
+    - `__enter__`
+    - `__exit__`
+- instance creation and destruction
+    - `__new__`
+    - `__init__`
+    - `__del__`
+- attribute management
+    - `__getattr__`
+    - `__getattribute__`
+    - `__setattr__`
+    - `__delattr__`
+    - `__dir__`
+- attribute descriptors
+    - `__get__`
+    - `__set__`
+    - `__delete__`
+- class services
+    - `__prepare__`
+    - `__instancecheck__`
+    - `__subclasscheck__`
+
+### Operators
+- unary numeric operators
+    - `__neg__`
+        - `-`
+    - `__pos__`
+        - `+`
+    - `__abs__`
+        - `abs()`
+- rich comparison operators
+    - `__lt__`
+        - `<`
+    - `__le__`
+        - `<=`
+    - `__eq__`
+        - `==`
+    - `__ne__`
+        - `!=`
+    - `__gt__`
+        - `>`
+    - `__ge__`
+        - `>=`
+- arithmetic operators
+    - `__add__`
+        - `+`
+    - `__sub__`
+        - `-`
+    - `__mul__`
+        - `*`
+    - `__truediv__`
+        - `/`
+        - from 2.2 - 2.*, 5 / 2 and 5 // 2 (integer) are equivalent unless adding `from __future__ import division` (with integers)
+        - for 3 and with the future import above, returns 2.5
+    - `__floordiv__`
+        - always returns 2.0 (float) for 5 // 2
+        - `//`
+    - `__divmod__`
+        - `%`
+    - `__pow__`
+        - `** or pow()`
+    - `__round__`
+        - `round()`
+- reversed arithmetic operators
+    - `__radd__`
+    - `__rsub__`
+    - `__rmul__`
+    - `__rtruediv__`
+    - `__rfloordiv__`
+    - `__rmod__`
+    - `__rdivmod__`
+    - `__rpow__`
+- augmented
+    - `__iadd__`
+    - `__isub__`
+    - `__imul__`
+    - `__itruediv__`
+    - `__ifloordiv__`
+    - `__imod__`
+    - `__ipow__`
+- bitwise operators
+    - `__invert__`
+        - `~`
+    - `__lshift__`
+        - `<<`
+    - `__rshift__`
+        - `>>`
+    - `__and__`
+        - `&`
+    - `__or__`
+        - `|`
+    - `__xor__`
+        - `^`
+- reversed bitwise operators
+    - `__rlshift__`
+    - `__rrshift__`
+    - `__rand__`
+    - `__ror__`
+    - `__rxor__`
+- augmented bitwise operators
+    - `__ilshift__`
+    - `__irshift__`
+    - `__iand__`
+    - `__ior__`
+    - `__ixor__`
