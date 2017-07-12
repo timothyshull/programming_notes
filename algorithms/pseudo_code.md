@@ -372,13 +372,182 @@ print_tree(root)
 
 # Priority Queues
 ## Heap Priority Queue
+- PQ - an array of keys with a size that is set on construction
+```
+class MaxPriorityQueue
+    PQ
+    size
+
+    insert(key)
+        PQ[++size] = key
+        swim(size)
+
+    pop() // delete max
+        max = PQ[1]
+        swap(PQ[1], PQ[size--])
+        PQ[size + 1] = null
+        sink(1)
+        return max
+
+    sink(k)
+        while k > 1 and PQ[k / 2] < PQ[k]
+            swap(PQ[k / 2], PQ[k])
+            k = k / 2
+
+    swim(k)
+        while 2 * k <= size
+            j = 2 * k
+            if j < size and PQ[j] < PQ[j + 1]
+                ++j
+            if PQ[j] <= PQ[k]
+                break
+            swap(PQ[k], PQ[j])
+            k = j
+```
+
 
 # Symbol Tables
 ## Red-Black BST
+```
+class Node
+    key
+    value
+    left
+    right
+    size
+    color
+
+
+class RedBlackBST
+    Node root
+
+    is_red(node)
+        if node == null
+            return false
+        return node.color == red
+
+
+    rotate_left(node)
+        x = node.right
+        node.right = x.left
+        x.left = node
+        x.color = node.color
+        node.color = red
+        x.size = node.size
+        node.size = 1 + size(node.left) + size(node.right)
+        return x
+
+
+    rotate_right(node)
+        x = node.left
+        node.left = x.right
+        x.right = node
+        x.color = node.color
+        node.color = red
+        x.size = node.size
+        node.size = 1 + size(node.left) + size(node.right)
+        return x
+
+
+    flip_colors(node)
+        node.color = red
+        node.left.color = black
+        node.right.color = black
+
+
+    put(key, value)
+        root = put(root, key, value)
+        root.color = black
+        
+
+    put(node, key, value)
+        if node == null
+            return Node(key, value, 1, red)
+        if key < node.key
+            node.left = put(node.left, key, value)
+        else if node.key < key
+            node.right = put(node.right, key, value)
+        else
+            node.value = value
+            
+        if !is_red(node.left) and is_red(node.right) 
+            node = rotate_left(node)
+        if is_red(node.left) and is_red(node.left.left) 
+            node = rotate_right(node)
+        if is_red(node.left) and is_red(node.right)
+            flip_colors(node)
+        
+        node.size = size(node.left) + size(node.right) + 1
+        return node
+            
+```
 
 ## Hash Table (Separate Chaining)
+- ST is an array of LinkedLists
+- NOTE: need to handle resizing and re-hashing, etc
+```
+class HashTable
+    ST
+    size
+
+
+    hash(key)
+        return (hash_code(key) & 0x7FFFFFFF) % M
+
+
+    get(key)
+        return ST[hash(key)].get(key)  // get scans linked list for key
+
+
+    put(key, value)
+        ST[hash(key)].pu(key, value)  // put adds key, value node to linked list
+```
 
 ## Hash Table (Linear Probing)
+- Keys and Values are arrays with capacity
+```
+class HashTable
+    Keys
+    Values
+    capacity
+    size
+
+
+    hash(key)
+        return (hash_code(key) & 0x7FFFFFFF) % M
+
+
+    resize(n)
+        t = HashTable(n)
+        for i in [0:capacity]
+            if Keys[i] != null
+                t.put(Keys[i], Values[i])
+        Keys = t.Keys
+        Values = t.Values
+        capacity = t.capacity
+
+
+    put(key, value)
+        if size >= capacity / 2
+            resize(2 * capacity)
+        i = hash(key)
+        while Keys[i] != null
+            if Keys[i] == key
+                return Values[i]
+            i = (i + 1) % capacity
+        Keys[i] = key
+        Values[i] = value
+        ++size
+
+
+    get(key)
+        i = hash(key)
+        while Keys[i] != null
+            if Keys[i] == key
+                return Values[i]
+            i = (i + 1) % capacity
+        return null
+```
 
 
 # Graph Algorithms
@@ -558,40 +727,818 @@ class TopologicalSort
 ```
 
 ## Strong Components (Kosaraju-Sharir)
+- Graph - directed graph
+- Marked - boolean array
+- Id - component identifiers
+- count - number of strong components
+```
+class StrongComponents
+    Graph
+    Marked
+    Id
+    count
+
+
+    StrongComponents(Graph)
+        for s in DepthFirstOrder(Graph.reverse()).reverse_post()
+            if !Marked(s)
+                dfs(s)
+                ++count
+
+
+    dfs(v)
+        Marked[v] = true
+        Id[v] = count
+        for each w adjacent to v in Graph
+            if !Marked[w]
+                dfs(w)
+
+
+    strongly_connected(v, w)
+        return Id[v] == Id[w]
+```
 
 ## Minimum Spanning Tree (Prim)
+- Graph - edge weighted graph
+- PQ - Index min priority queue
+```
+class MST
+    Graph
+    EdgeTo
+    DistanceTo
+    Marked
+    PQ
+
+
+    MST(Graph)
+        PQ.insert(0, 0.0)
+        while !PQ.empty()
+            visit(PQ.pop())
+
+
+    visit(v)
+        Marked[v] = true
+        for each e adjacent to v in Graph  // uses an Edge object
+            w = e.other(v)
+            if Marked[w]
+                continue
+            if e.weight() < DistanceTo[w]
+                EdgeTo[w] = e
+                DistanceTo[w] = e.weight()
+                if PQ.contains(w)
+                    PQ.change_key(w, DistanceTo[w])
+                else
+                    PQ.insert(w, DistanceTo[w])
+```
 
 ## Minimum Spanning Tree (Kruskal)
+- Graph - edge weighted graph
+- Queue - a queue of Edge objects
+```
+class MST
+    Graph
+    Queue
+
+
+    MST(Graph)
+        PQ // min priority queue
+        for e in Graph
+            PQ.push(e)
+        uf = UnionFind(Graph)
+        while Queue != 0 and Queue.size < Graph.num_vertices() - 1
+            e = PQ.pop()
+            v, w = vertices in e
+            if uf.connected(v, w)
+                continue
+            uf.create_union(v, w)
+            Queue.enqueue(e)
+```
 
 ## Shortest Paths (Djikstra)
+- Graph - an edge-weighted directed graph
+- EdgeTo - array of directed edge objects
+- DistanceTo - the weighted distance to an edge from the source, initialized
+  to infinity and 0.0 for the source
+- PQ - index min priority queue
+```
+class ShortestPaths
+    Graph
+    EdgeTo
+    PQ
 
-## Shortest Paths (DAGs)
+
+    ShortestPaths(Graph, s)
+        PQ.push(s, 0.0)
+        while PQ != 0
+            relax(PQ.pop())
+
+
+    relax(v)
+        for each e adjacent to v in Graph  // uses a DirectedEdge object
+            w = e.destination()
+            if DistanceTo[v] + e.weight() < DistanceTo[w]
+                DistanceTo[w] = DistanceTo[v] + e.weight()
+                EdgeTo[w] = e
+                if PQ.contains(w)
+                    PQ[w] = DistanceTo[w]
+                else
+                    PQ.push(w, DistanceTo[w])
+
+
+    path_to(v)
+        if !has_path_to(w)
+            return null
+        Path // Stack of DirectedEdges
+        for e = EdgeTo[v]; e != null; e = EdgeTo[e.from()]
+            Path.push(e)
+        return Path
+```
 
 ## Shortest Paths (Bellman-Ford)
+```
+class ShortestPaths
+    Graph
+    DistanceTo
+    EdgeTo
+    InQueue
+    Queue
+    Cycle
+    cost
 
+
+    ShortestPaths(Graph, s)
+        Queue.enqueue(s)
+        OnQueue[s] = true
+        while Queue != 0 and !has_negative_cycle()
+            v = Queue.dequeue()
+            OnQueue[v] = false
+            relax(v)
+
+
+    relax(v)
+        for each e adjacent to v in Graph  // uses a DirectedEdge object
+            w = e.destination()
+            if DistanceTo[v] + e.weight() < DistanceTo[w]
+                DistanceTo[w] = DistanceTo[v] + e.weight()
+                EdgeTo[w] = e
+                if !OnQueue[w]
+                    Queue.enqueue(w)
+                    OnQueue[w] = true
+            if cost++ % Graph.num_vertices() == 0
+                find_negative_cycle()
+
+
+    find_negative_cycle()
+        Spt // EdgeWeightedDigraph of size EdgeTo.length
+        for v in [0:EdgeTo.length]
+            if EdgeTo[v] != null
+                Spt.add_edge(EdgeTo[v])
+        CF // EdgeWeightedCycleFinder from Spt
+        cycle = CF.cycle()
+
+
+    has_negative_cycle()
+        return Cycle != 0
+
+```
+
+## Dijkstra All-Pairs Shortest Paths
+- AllShortestPaths - an array of Dijkstra shortest paths objects
+```
+class AllPairsShortestPaths
+    Graph
+    AllShortestPaths
+
+
+    AllPairsShortestPaths(Graph)
+        for v in [0:Graph.num_vertices()]
+            AllShortestPaths[v] = ShortestPaths(G, v)
+
+
+    path(s, t)
+        return AllShortestPaths[s].path_to( t)
+
+
+    distance_to(s, t)
+        return AllShortestPaths[s].distance_to(t)
+
+```
 
 
 # String Algorithms
 
 ## LSD String Sort
+- A is an array of strings
+- radix - 256 for 8-bit char
+- very similar to counting sort
+```
+sort(A, w) // sort A on leading w characters
+    n = A.length
+    Aux // size of n
+    for d = w - 1; d >= 0; --d
+        Counts // size of radix + 1
+        for i in [0:n]
+            ++Counts[A[i][d] + 1];
+        for r in [0:radix]
+            Counts[r + 1] += Counts[r]
+        for i in [0:n]
+            Aux[Counts[A[i][d]++] = A[i]
+        for i in [0:n]
+            A[i] = Aux[i]
+```
+
 ## MSD String Sort
-## 3-way String Quicksort
+- uses same technique as above but in reverse and calculates the character at a position
+  of a string by first checking the length and otherwise returning -1
+
 ## Trie Symbol Table
+- radix - 256 for 8-bit chars
+- root - Node
+- keys are strings
+```
+class Node
+    value
+    Subtries // an array of Nodes of size radix
+
+
+class Trie
+    root
+
+    get(key)
+        x = get(root, key, 0)
+        if x == null
+            return null
+        return x.value
+
+
+    get(node, key, d)  // dth key character for subtrie
+        if node == null
+            return null
+        if d == key.length
+            return x
+        return get(x.Subtries[key[c]], key, d + 1)
+
+
+    put(key, value)
+        root = put(root, key, value, 0)
+
+
+    put(node, key, value, d)
+        if x == null
+            x = Node
+        if d == key.length
+            x.value = value
+            return x
+        x.Subtries[key[d]] = put(x.Subtries[key[d]], key, value, d + 1)
+        return x
+```
+
 ## TST
+```
+class Node
+    char
+    left
+    mid
+    right
+    value
+
+
+class TST
+    root
+
+
+    get(Key)
+        x = get(root, Key, 0)
+        if x == null
+            return null
+        return x.value
+
+
+    get(node, Key, d)
+        if node == null
+            return null
+        c = Key[d]
+        if c < node.char
+            return get(node.left, Key, d)
+        else if node.char < c
+            return get(node.right, Key, d)
+        else if d < Key.length - 1
+            return get(node.mid, Key, d + 1)
+        return node
+
+
+    put(Key, value)
+        root = put(root, Key, value, 0)
+
+
+    put(node, Key, value, d)
+        c = Key[d]
+        if node == null
+            node = Node
+            node.char = c
+        if c < node.char
+            node.left = put(node.left, Key, value, d)
+        else if node.char < c
+            node.right = put(node.right, Key, value, d)
+        else if d < Key.length - 1
+            node.mid = put(node.mid, Key, value, d + 1)
+        else
+            node.value = value
+        return node
+
+```
+
 ## Substring Search (Knuth-Morris-Pratt)
+- String - the pattern to search for
+- DFA - two-dimensional array of integers (representing characters) of size radix X String.length
+- radix - 256 for 8-bit chars
+```
+class SubstringSearch
+    Pattern
+    DFA
+
+
+    SubstringSearch(String)
+        DFA[Pattern[0]][0] = 1
+        x = 0
+        for j in [1:Pattern.length]
+            for c in [0:radix]
+                DFA[c][j] = DFA[c][x]
+            DFA[Pattern[j]][j] = j + 1
+            x = DFA[Pattern[j]][x]
+
+
+    search(Text)
+        m = Pattern.length
+        n = Text.length
+        i = 0
+        j = 0
+        while i < n and j < m
+            j = DFA[Text[i]][j]
+            ++i
+        if j == m
+            return i - m  // found - hit end of pattern
+        else
+            return n  // not found - hit end of text
+```
+
 ## Substring Search (Boyer-Moore)
+- RightOccurence - integer (represents chars) of size radix, initialized to -1
+- radix - 256 for 8-bit chars
+```
+class SubstringSearch
+    RightOccurence
+    Pattern
+
+
+    SubstringSearch(String)
+        for i in [0:Pattern.length]
+            RightOccurrence[Pattern[j]] = j
+
+
+    search(Text)
+        m = Pattern.length
+        n = Text.length
+        skip = 0
+        i = 0
+        for i = 0; i <= n - m; i += skip
+            skip = 0
+            for j = m - 1; j >= 0; --j
+                if Pattern[j] != Text[i + j]
+                    skip = j - RightOccurrence[Text[i + j]]
+                    if skip < 1
+                        skip = 1
+                    break
+                if skip == 0
+                    return i
+        return n
+```
+
 ## Substring Search (Rabin-Karp)
+- radix - 256 for 8-bit char
+- rm - radix ^ (pattern_length - 1) % large_prime
+```
+class SubstringSearch
+    pattern_hash
+    pattern_length
+    large_prime
+    rm
+
+
+    SubstringSearch(String)
+        for i in [1:pattern_length - 1]
+            rm = (radix * rm) % large_prime
+        pattern_hash = hash(Pattern, pattern_length)
+
+
+    hash(key, m)
+        h = 0
+        for j in [0:pattern_length]
+            h = (radix * h + key[j]] % large_prime
+        return h
+
+
+    search(Text)
+        n = Text.length
+        text_hash = hash(Text, m)
+        if pattern_hash == text_hash
+            return 0
+        for i in [pattern_length:n]
+            text_hash = (text_hash + large_prime - rm * Text[i - m] % large_prime) % large_prime
+            text_hash = (text_hash * radix + Text[i]) % large_prime
+            if text_hash == pattern_hash
+                return i - pattern_length + 1
+        return n
+```
+
 ## Regular Expression Pattern Matching
+- Regex - char array matching input regular expression
+- Digraph - epsilon transitions
+- num_states - length of the regular expression
+```
+class NFA
+    Regex
+    Digraph
+    num_states
+
+
+    NFA(String)
+        Ops // stack
+        for i in [0:num_states]
+            lp = i
+            if Regex[i] == '(' or Regex[i] == '|'
+                Ops.push(i)
+            else if Regex[i] == ')'
+                or = Ops.pop()
+                if re[or] == '|'
+                    lp = Ops.pop()
+                    Digraph.add_edge(lp, or + 1)
+                    Digraph.add_edge(or, i)
+                else
+                    lp = or
+            if i < num_states - 1 and Regex[i + 1] == '*' // lookahead
+                Digraph.add_edge(lp, i + 1)
+                Digraph.add_edge(i + 1, lp)
+            if Regex[i] == '(' or Regex[i] == '*' or Regex[i] == ')'
+                Digraph.add_edge(i, i + 1)
+
+
+    recognizes(Text)
+        PC // bag of integers
+        dfs // directed DFS of the Digraph from 0
+        for v in [0:Digraph.num_vertices()]
+            if dfs.marked(v)
+                PC.add(v)
+        for i in [0:Text.length]
+            Match // bag of integers
+            for v in PC
+                if v < num_states
+                    if Regex[v] == Text[i] or Regex[v] == '.'
+                        Match.add(v + 1)
+            PC // re-initialize
+            dfs // directed DFS of the Digraph for all vertices in Match
+            for v in [0:Digraph.num_vertices()]
+                if dfs.marked(v)
+                    PC.add(v)
+        for v in PC
+            if v == num_states
+                return true
+        return false
+```
+
 ## Huffman Compression
+- radix - 256 for 8-bit char
+```
+class Node
+    char
+    frequency
+    left
+    right
+
+
+compress(String)
+    Input // char array of String
+    Frequency
+    for i in [0:Inpute.length]
+        ++Frequency[Input[i]]
+    root = build_trie(Frequency)
+    ST // array of strings of size radix
+    build_code(ST, root, "")
+    Encoded = ""
+    for i in [0:Input.length]
+        Code = ST[Input[i]]
+        for j in Code
+            Encoded += j
+    return Encoded
+
+
+build_code(ST, node, String)
+    if node.is_leaf()
+        ST[node.char] = String
+        return
+    build_code(ST, node.left, s + '0')
+    build_code(ST, node.right, s + '1')
+
+
+build_trie(Frequency)
+    PQ // min priority queue of trie nodes
+    for c in [0:radix]
+        if Frequency[c] > 0
+            PQ.insert(Node(c, Frequency[c], null, null)
+    while PQ.size() > 1
+        x = PQ.pop()
+        y = PQ.pop
+        parent = Node('\0', x.frequency + y.frequency, x, y)
+        PQ.insert(parent)
+    return PQ.pop()
+```
+
 ## LZW Compression
+- radix - 256 for 8-bit char
+- num_codewords - 4096 (number of codewords or 2^12)
+- width - 12 (codeword width)
+```
+compress(String)
+    ST // TST integer
+    for i in [0:radix]
+        ST.put("" + i, i)
+    code = radix + 1
+    Encoded = ""
+    while String.length
+        S = ST.longest_prefix_of(String) // maximum prefix match
+        Encoded += ST.get(S)
+        t = S.length
+        if t < String.length and code < num_codewords
+            ST.put(String[0:t + 1], code++)
+        String = String[t:]
+    return Encoded
+```
 
 # General Algorithms
+
+## Longest Common Subsequence
+
 ## Divide-and-Conquer
 ### Maximum Subarray
-### Matrix Multiplication
+### Levenshtein Distance
+
 ## Permutations
+### Standard 1
+```
+permutations(A)
+    permutations({}, A)
+
+
+permutations(P, S)
+    n = S.length
+    if n == 0
+        Out.push(P)
+    else
+        for i in [0:n]
+            permutations(P + S[i], S[0:i] + S[i + 1:])
+```
+
+### Standard 2
+```
+permutations(A)
+    permutations(A, A.length)
+
+
+permutations(A, n)
+    if n == 1
+        Out.push(A)
+        return
+    for i in [0:n]
+        swap(A[i], A[n - 1])
+        permutations(A, n - 1)
+        swap(A[i], A[n - 1])
+```
+
+### K
+```
+permutations(A, k)
+    permutations(A, A.length, k)
+
+
+permutations(A, n, k)
+    if k == 0
+        Out.push(A)
+        return
+    for i in [0:n]
+        swap(A[i], A[n - 1])
+        permutations(A, n - 1, k - 1)
+        swap(A[i], A[n - 1])
+```
+
+### Lexicographical
+```
+has_next(A)
+    n = A.length
+    k = 0
+    for k = n - 2; k >= 0; --k
+        if A[k] < A[k + 1]
+            break
+    if k == -1
+        return false
+    j = n - 1
+    while A[j] < A[k]
+        --j
+    r = n - 1
+    s = k + 1
+    while r > s
+        swap(A[r], A[s]
+        --r
+        ++s
+    return true
+
+permutations(A)
+    Out.push(A)
+    while has_next(A)
+        Out.push(A)
+```
+
+
 ## Combinations
+### Standard 1
+```
+combinations(A)
+    combinations({}, A)
+
+
+combinations(P, S)
+    if S.length <= 0
+        return
+    Out.push(P + S[0])
+    combinations(P + S[0], S[1:])
+    combinations(P, S[1:])
+```
+
+### Standard 2
+```
+combinations(A)
+    combinations({}, A)
+
+
+combinations(P, S)
+    Out.push(P)
+    for i in [0:S.length]
+        combinations(P + S[i], S[i + 1:])
+```
+
+### K on n elements
+```
+combinations(A, pos, next, k, n)
+    if pos == k
+        Out.push(A)
+        return
+    for i in [next:n]
+        s[pos] = i
+        combinations(A, pos + 1, i + 1, k, n)
+```
+
+### K Lexicographic 1
+```
+combinations(A, k)
+    combinations({}, A, k)
+
+
+combinations(P, S, k)
+    if S.length < k
+        return
+    else if k == 0
+        Out.push(P)
+    else
+        combinations(P + S[0], S[1:], k - 1)
+        combinations(P, S[1:], k)
+```
+
+### K Lexicographic 2
+```
+combinations(A, k)
+    combinations({}, A, k)
+
+
+combinations(P, S, k)
+    if k == 0
+        Out.push(P)
+    else
+        for i in [0:S.length]
+            combinations(P + S[i], S[i + 1:], k - 1)
+```
+
 ## Partitions
+```
+partition(n)
+    partition({}, n, n)
+
+
+partition(P, n, max)
+    if n == 0
+        Out.push(P)
+        return
+    for i = min(n, max); i >= 1; --i
+        partition(P + i, n - i, i)
+```
+
+
 ## Backtracking
 ### n-Queens
+- call to Out.push(A) assumes the results can be one-dimensional arrays with index of queen
+  for each row
+```
+is_consistent(A, n)
+    for i in [0:n]
+        if A[i] == A[n]  // same column
+            return false
+        if A[i] - A[n] == n - i  // same major diagonal
+            return false
+        if A[n] - A[i] == n - i  // same minor diagonal
+            return false
+    return true
+
+
+enumerate(n)
+    A // size of n
+    enumerate(A, 0)
+
+
+enumerate(A, k)
+    n = A.length
+    if k == n
+        Out.push(A)
+    else
+        for i in [0:n]
+            A[k] = i
+            if is_consistent(A, k)
+                enumerate(A, k + 1)
+```
+
 ### Sudoku
+- see http://introcs.cs.princeton.edu/java/14array/MagicSquare.java.html for a
+  generalization
+- TODO: fix this
+```
+can_backtrack(A, k)
+    for i in [0:k]
+        if A[i] > 81
+            return true
+    return false
+
+
+enumerate(A, k)
+    if k == 81
+        Out.push(A)
+        return
+    if A[k] != 0
+        enumerate(A, k + 1)
+        return
+    for r in [1:10]
+        A[k] = r
+        if !can_backtrack(A, k)
+            enumerate(A, k + 1)
+    A[k] = 0
+```
+
+
+## Lexicographical Compare
+```
+compare(A, B)
+    i = 0
+    j = 0
+    while i < A.length && j < B.length
+        if A[i] < B[j]
+            return true
+        if B[j] < A[i]
+            return false
+        ++i
+        ++j
+    return i == A.length and j < B.length
+```
+
+## Horner's Method
+```
+horners_method(Coefficients, x)
+    result = 0
+    for i = Coefficients.length - 1; i >= 0; --i
+        result = result * x + Coefficients[i]
+    return result
+```
+
+
+## Matrix Operations
+### Matrix x Matrix
+```
+multiply(A, B)
+    m1 = A.length
+    n1 = A[0].length
+    m2 = b.length
+    n2 = b[0].length
+    if n1 != m2
+        throw
+    C // m1 x n2
+    for i in [0:m1]
+        for j in [0:n2]
+            for k in [0:n1]
+                C[i][j] += A[i][k] * B[k][j]
+    return C
+```

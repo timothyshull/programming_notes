@@ -422,6 +422,213 @@ from sklearn.multiclass import OneVsOneClassifier
     - can have a system that outputs multiple labels per instance, including both class labels and value labels
 
 
+# 4. Training Models
+- can do a lot without knowing what is under the hood
+    - optimized a regression system
+    - improved a digit image classifier
+    - built a spam classifier from scratch
+
+## Linear Regression
+- linear model makes a prediction by simply computing a weighted sum of the input features, plus a constant called the
+  bias term (also called the intercept term)
+- linear regression model prediction
+```
+^y = O0 + O1x1 + ... Onxn
+^y - predicted value
+n - number of features
+xi - ith feature value
+0j - jth model parameter (including bias term O0 and feature weights O1 ... On)
+```
+- linear regression model - vectorized form
+```
+^y = h0(x) = O^T * x   // * = dot
+O - model's parameter vector containing the bias term O0 and the feature weights O1 to On
+x - instance's feature vector containing x0 to xn, with x0 always 1
+O^T*x - dot product of O^T and x
+h0 - hypothesis function using model parameters O
+```
+- training a model means setting its parameters so that the model best fits the training
+  set
+- to measure performance, find the values of the parameters that results in a minimal RMSE
+  (root mean square error)
+- in practice it is simpler to minimize the MSE (mean square error) and it leads to the same
+  result
+```
+MSE(X, h0) = 1 / m Sum from i = 1 to m (O^T * x^(i) - y ^(i))^2
+```
+- the normal equation
+    - used to find the value of θ that minimizes the cost function in a closed-form solution
+    - e.g. an equation that gives the result directly
+```
+^O = (X^T * X)^-1 * X^T * y
+^O - value O that minimizes the cost function
+y - vector of target values containing y1 to ym
+```
+- np.linalg -> inv() (inverse of matrix) and dot() (dot product)
+- using y = 4 + 3x + Gaussian noise
+```
+# using numpy
+X_b = np.c_[np.ones((100, 1)), X]  # add x0 = 1 to each instance
+theta_best = np.linalg.inv(X_b.T.dot(X_b)).dot(X_b.T).dot(y)
+
+# using sklearn
+from sklearn.linear_model import LinearRegression 
+lin_reg = LinearRegression() 
+lin_reg.fit(X, y)
+lin_reg.intercept_, lin_reg.coef_
+# (array([ 4.21509616]), array([[ 2.77011339]]))
+```
+- the Normal Equation computes the inverse of XT · X, which is an n × n matrix (where n is the number of features)
+- the computational complexity of inverting such a matrix is typically about O(n^2.4) to O(n^3) (depending on the
+  implementation)
+- WARNING: the normal equation gets very slow when the number of features grows very large
+- linear with the regards to the number of instances in the training set O(m)
+
+## Gradient Descent
+- idea of gradient descent is to tweak parameters iteratively to minimize a cost function
+- fill O (parameter vector) with random values and then make minor changes at each step
+  to decrease the cost function (MSE) until the algorithm converges to a minimum
+- learning rate hyperparameter determines the size of the steps
+- small = long time and many iterations
+- large - may overshoot the target
+- not all cost functions are regular and smooth
+    - may converge to local minimum rather than global minimum
+- the MSE cost function for a Linear Regression model happens to be a convex function
+    - if you pick any two points on the curve, the line segment joining them never crosses the curve
+    - implies that there are no local minima, just one global minimum
+    - also a continuous function with a slope that never changes abruptly
+    - Gradient Descent is guaranteed to approach arbitrarily close the global minimum
+        - learning rate can't be too high
+        - must run adequate number of iterations
+- WARNING: when using Gradient Descent, ensure that all features have a similar scale (e.g., using
+  Scikit-Learn’s StandardScaler class), or else it will take much longer to converge
+
+### Batch Gradient Descent
+- compute the gradient of the cost function with regards to each model parameter θj to implement Gradient Descent
+    - e.g. calculate how much the cost function will change if change θj just a small amount
+    - e.g. partial derivative.
+```
+Partial derivatives of the cost function here
+```
+- can use another equation to compute all at once
+```
+Gradient vector of the cost function
+```
+- WARNING: this formula involves calculations over the full training set X, at each Gradient Descent step
+    - reason for name Batch Gradient Descent
+    - uses the whole batch of training data at every step
+    - very slow on very large training sets
+    - Gradient Descent scales well with the number of features
+    - training a Linear Regression model when there are hundreds of thousands of features
+      is much faster using Gradient Descent than using the Normal Equation
+- once the gradient vector is set, reverse the direction of calculations by subtracting V0MSE(O)
+```
+Gradient descent step
+```
+- implementation
+```
+eta = 0.1 # learning rate
+n_iterations = 1000
+m = 100
+theta = np.random.randn(2,1) # random initialization
+for iteration in range(n_iterations):
+    gradients = 2 / m * X_b.T.dot(X_b.dot(theta) - y)
+    theta = theta - eta * gradients
+```
+- can use grid search to find a good learning rate
+    - limit the number of iterations so that grid search can eliminate models that take too long to converge
+- to set the number of iterations (and avoid a value too low or high)
+    - set a very large number of iterations
+    - interrupt the algorithm when the gradient vector becomes very small
+        - e.g. when its norm becomes smaller than a tiny number ϵ (called the tolerance)
+        - happens when Gradient Descent has (almost) reached the minimum
+- the convergence rate
+    - when the cost function is convex and its slope does not change abruptly (as is the case for the
+      MSE cost function), it can be shown that Batch Gradient Descent with a fixed learning rate has a convergence
+      rate of O(1/iterations)
+    - e.g. if you divide the tolerance ϵ by 10 (to have a more precise solution), then the algorithm will have to run
+      about 10 times more iterations
+
+### Stochastic Gradient Descent
+- picks a random instance in the training set at every step and computes the gradients based only on that single instance
+    - makes the algorithm much faster since it has very little data to manipulate at every iteration
+    - makes possible to train on huge data sets
+- much less regular than Batch Gradient Descent
+    - over time ends up very close to minimum
+    - final parameter values are good but not optimal
+- randomness helps escape from local optima but keeps algorithm from settling at the minimum
+- simulated annealing
+- learning schedule - learning rate at each iteration
+```
+n_epochs = 50
+t0, t1 = 5, 50 # learning schedule hyperparameters
+
+def learning_schedule(t):
+    return t0 / (t + t1)
+
+theta = np.random.randn(2,1) # random initialization
+
+for epoch in range(n_epochs):
+    for i in range(m):
+        random_index = np.random.randint(m)
+        xi = X_b[random_index:random_index + 1]
+        yi = y[random_index:random_index + 1]
+        gradients = 2 * xi.T.dot(xi.dot( theta) - yi)
+        eta = learning_schedule(epoch * m + i)
+        theta = theta - eta * gradients
+```
+- using sklearn
+```
+from sklearn.linear_model import SGDRegressor
+sgd_reg = SGDRegressor(n_iter = 50, penalty = None, eta0 = 0.1)
+sgd_reg.fit(X, y.ravel())
+```
+
+### Mini Batch Gradient Descent
+- at each step, instead of computing the gradients based on the full training set (as in Batch GD)
+  or based on just one instance (as in Stochastic GD), Mini-batch GD computes the gradients on
+  small random sets of instances called mini-batches
+- advantage over Stochastic GD is a performance boost from hardware optimization of matrix operations
+  especially when using GPUs
+- the algorithm’s progress in parameter space is less erratic than with SGD
+- Mini-batch GD will end up walking around a bit closer to the minimum than SGD
+    - may be harder for it to escape from local minima
+
+```
+Algorithm       Large m     Out-of-core support     Large n     Hyperparams     Scaling required    Scikit-Learn
+Normal Eqn      Fast        No                      Slow        0               No                  LinearRegression
+Batch GD        Slow        No                      Fast        2               Yes                 n/a
+Stochastic GD   Fast        Yes                     Fast        ≥ 2             Yes                 SGDRegressor
+Mini-batch GD   Fast        Yes                     Fast        ≥ 2             Yes                 n/a
+```
+
+## Polynomial Regression
+- can use a linear model to fit nonlinear data
+- simple way to do this is to add powers of each feature as new features, then train a linear model on this extended
+  set of features
+```
+from sklearn.preprocessing import PolynomialFeatures 
+poly_features = PolynomialFeatures(degree = 2, include_bias = False)
+X_poly = poly_features.fit_transform(X)
+lin_reg = LinearRegression() 
+lin_reg.fit(X_poly, y)
+lin_reg.intercept_, lin_reg.coef_
+```
+- when there are multiple features, Polynomial Regression is capable of finding relationships between features
+  (which is something a plain Linear Regression model cannot do)
+    - PolynomialFeatures adds all combinations of features up to the given degree
+    - e.g. if there were two features a and b, PolynomialFeatures with degree = 3 would not only add the features a2,
+      a3, b2, and b3, but also the combinations ab, a2b, and ab2
+- WARNING: PolynomialFeatures(degree = d) transforms an array containing n features into an
+  array containing (n + d)! / d!n! features, where n! is the factorial of n
+
+
+
+
+
+
+
+
 # Machine Learning Project Checklist
 ## process summary
 1. get an overview of project
@@ -429,7 +636,7 @@ from sklearn.multiclass import OneVsOneClassifier
 3. discover and visualize the data to gain insights
 4. prepare the data for ML algorithms
 5. select a model and train it
-6. fine-tune model
+6. fine-tune the system
 7. present solution
 8. launch, monitor, and maintain system
 
@@ -465,9 +672,25 @@ from sklearn.multiclass import OneVsOneClassifier
 
 
 ## 3. discover and visualize the data to gain insights
-- prepare the data for ML algorithms
-- select a model and train it
-- fine-tune model
-- present solution
-- launch, monitor, and maintain system
+Note: try to get insights from a field expert for these steps. Create a copy of the data for exploration (sampling it down to a manageable size if necessary). Create a Jupyter notebook to keep a record of your data exploration. Study each attribute and its characteristics: Name Type (categorical, int/ float, bounded/ unbounded, text, structured, etc.) % of missing values Noisiness and type of noise (stochastic, outliers, rounding errors, etc.) Possibly useful for the task? Type of distribution (Gaussian, uniform, logarithmic, etc.) For supervised learning tasks, identify the target attribute( s). Visualize the data. Study the correlations between attributes. Study how you would solve the problem manually.
+Identify the promising transformations you may want to apply. Identify extra data that would be useful (go back to “Get the Data”). Document what you have learned.
 
+
+## 4. prepare the data for ML algorithms
+Work on copies of the data (keep the original dataset intact). Write functions for all data transformations you apply, for five reasons: So you can easily prepare the data the next time you get a fresh dataset So you can apply these transformations in future projects To clean and prepare the test set To clean and prepare new data instances once your solution is live To make it easy to treat your preparation choices as hyperparameters Data cleaning: Fix or remove outliers (optional). Fill in missing values (e.g., with zero, mean, median…) or drop their rows (or columns). Feature selection (optional): Drop the attributes that provide no useful information for the task. Feature engineering, where appropriate: Discretize continuous features. Decompose features (e.g., categorical, date/ time, etc.). Add promising transformations of features (e.g.,   log( x), sqrt( x), x ^ 2, etc.). Aggregate features into promising new features. Feature scaling: standardize or normalize features.
+
+
+
+## 5. select a model and train it
+If the data is huge, you may want to sample smaller training sets so you can train many different models in a reasonable time (be aware that this penalizes complex models such as large neural nets or Random Forests).
+Once again, try to automate these steps as much as possible. Train many quick and dirty models from different categories (e.g.,   linear, naive Bayes, SVM, Random Forests, neural net, etc.) using standard parameters. Measure and compare their performance. For each model, use N-fold cross-validation and compute the mean and standard deviation of the performance measure on the N folds. Analyze the most significant variables for each algorithm. Analyze the types of errors the models make. What data would a human have used to avoid these errors? Have a quick round of feature selection and engineering. Have one or two more quick iterations of the five previous steps. Short-list the top three to five most promising models, preferring models that make different types of errors.
+
+## 6. fine-tune the system
+You will want to use as much data as possible for this step, especially as you move toward the end of fine-tuning. As always automate what you can. Fine-tune the hyperparameters using cross-validation. Treat your data transformation choices as hyperparameters, especially when you are not sure about them (e.g.,   should I replace missing values with zero or with the median value? Or just drop the rows?). Unless there are very few hyperparameter values to explore, prefer random search over grid search. If training is very long, you may prefer a Bayesian optimization approach (e.g., using Gaussian process priors, as described by Jasper Snoek, Hugo Larochelle, and Ryan Adams). 1 Try Ensemble methods. Combining your best models will often perform better than running them individually. Once you are confident about your final model, measure its performance on the test set to estimate the generalization error.
+Warning Don’t tweak your model after measuring the generalization error: you would just start overfitting the test
+
+## 7. present solution
+Document what you have done. Create a nice presentation. Make sure you highlight the big picture first. Explain why your solution achieves the business objective. Don’t forget to present interesting points you noticed along the way. Describe what worked and what did not. List your assumptions and your system’s limitations. Ensure your key findings are communicated through beautiful visualizations or easy-to-remember statements (e.g., “the median income is the number-one predictor of housing prices”).
+
+## 8. launch, monitor, and maintain system
+Get your solution ready for production (plug into production data inputs, write unit tests, etc.). Write monitoring code to check your system’s live performance at regular intervals and trigger alerts when it drops. Beware of slow degradation too: models tend to “rot” as data evolves. Measuring performance may require a human pipeline (e.g., via a crowdsourcing service). Also monitor your inputs’ quality (e.g., a malfunctioning sensor sending random values, or another team’s output becoming stale). This is particularly important for online learning systems. Retrain your models on a regular basis on fresh data (automate as much as possible).

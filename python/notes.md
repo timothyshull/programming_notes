@@ -1,0 +1,1 @@
+- remember ord, chr, unichr
