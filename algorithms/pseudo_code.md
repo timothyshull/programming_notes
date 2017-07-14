@@ -115,6 +115,15 @@ partition(A, lo, hi)
 ## Heapsort
 - NOTE: uses elements from 1 to n - 1 (rather than 0 to n - 1) to simplify index arithmetic
 ```
+sort(A)
+    n = A.length
+    for k = n / 2; k >= 1; --k
+        sink(A, k, n)
+    while n > 1
+        swap(A[1], A[n--])
+        sink(A, 1, n)
+
+
 sink(A, k, n)
     while 2 * k <= n
         j = 2 * k
@@ -124,15 +133,6 @@ sink(A, k, n)
             break
         swap(A[k], A[j])
         k = j
-
-
-sort(A)
-    n = A.length
-    for k = n / 2; k >= 1; --k
-        sink(A, k, n)
-    while n > 1
-        swap(A[1], A[n--])
-        sink(A, 1, n)
 ```
 
 ## Bucket Sort
@@ -482,7 +482,8 @@ class RedBlackBST
             
 ```
 
-## Hash Table (Separate Chaining)
+## Hash Tables
+### Hash Table (Separate Chaining)
 - ST is an array of LinkedLists
 - NOTE: need to handle resizing and re-hashing, etc
 ```
@@ -503,7 +504,7 @@ class HashTable
         ST[hash(key)].pu(key, value)  // put adds key, value node to linked list
 ```
 
-## Hash Table (Linear Probing)
+### Hash Table (Linear Probing)
 - Keys and Values are arrays with capacity
 ```
 class HashTable
@@ -589,12 +590,129 @@ class BreadthFirstSearch
                     Queue.enqueue(w)
 ```
 
-## Connected Components (& Union Find)
+## Connected Components
+```
+class ConnectedComponents
+    Graph
+    Marked
+    Ids
+    ComponentSize
+    count
+
+
+    ConnectedComponents(Graph)
+        for v in [0:Graph.num_vertices()]
+            if !Marked[v]
+                dfs(v)
+                ++count
+
+
+    dfs(v)
+        Marked[v] = true
+        Ids[v] = count
+        ++ComponentSize[count]
+        for each w adjacent to v in Graph
+            if !Marked[w]
+                dfs(w)
+
+
+    id(v)
+        return Ids[v]
+
+
+    size(v)
+        return ComponentSize[Ids[v]]
+
+
+    connected(v, w)
+        return id(v) == id(w)
+```
 
 ## Reachability
 ### Depth First Paths
+```
+class DepthFirstPaths
+    Graph
+    Marked
+    EdgeTo
+    source
+
+
+    DepthFirstPaths(Graph, source)
+        dfs(source)
+
+
+    dfs(v)
+        Marked[v] = true
+        for each w adjacent to v in Graph
+            if !Marked[w]
+                EdgeTo[w] = v
+                dfs(w)
+
+
+    has_path_to(v)
+        return Marked[v]
+
+
+    path_to(v)
+        if !Marked[v]
+            return null
+        Path // stack
+        for x = v; x != source; x = EdgeTo[x]
+            Path.push(x)
+        path.push(s)
+        return path
+```
 
 ### Breadth First Paths
+- before running bfs, init DistanceTo to -1, infinity, etc
+```
+class BreadthFirstPaths
+    Graph
+    Marked
+    EdgeTo
+    DistanceTo
+    source
+
+
+    BreadthFirstPaths(Graph, source)
+        bfs(source)
+
+
+    bfs(s)
+        Queue
+        DistanceTo[s] = 0
+        Marked[s] = true
+        Queue.enqueue(s)
+
+        while Queue != 0
+            v = Queue.dequeue()
+            for each w adjacent to v in Graph
+                if !Marked[w]
+                    EdgeTo[w] = v
+                    DistanceTo[w] = DistanceTo[v] + 1
+                    Marked[w] = true
+                    Queue.enqueue(w)
+
+
+    has_path_to(v)
+        return Marked[v]
+
+
+    distance_to(v)
+        return DistanceTo[v]
+
+
+    path_to(v)
+        if !Marked[v]
+            return null
+        Path // stack
+        for x = v; DistanceTo[x] != 0; x = EdgeTo[x]
+            Path.push(x)
+        path.push(v)
+        return path
+```
+
 
 ## Cycle (Undirected)
 - Graph - undirected graph
@@ -1310,6 +1428,58 @@ class LCS
 
 
 ### Knapsack
+- Options - 2D array of ints, num_items + 1 x max_weight + 1
+- Solution - 2D array of bools, num_items + 1 x max_weight + 1
+- num_items - Profits.length (or Weights.length)
+- max_weight - constraint on weight allowed in knapsack
+- NOTE: also assumes a reference to Profits and Weights is maintained
+- NOTE: would also memoize get_max_profit and get_total_weight
+```
+class Knapsack
+    Options
+    Solution
+    num_items
+    max_weight
+
+
+    Knapsack(Profits, Weights)
+        for i in [1:num_items + 1]
+            option1 = Options[i - 1][j]
+            option2 = Int.min()
+            if Weights[i - 1] <= j
+                option2 = Profits[i - 1] + Options[i - 1][j - Weights[i - 1]]
+            Options[i][j] = max(option1, option2)
+            Solution[i][j] = option1 < option2;
+
+
+    get_items_to_take()
+        ItemsToTake  // set of integers
+        n = num_items
+        w = max_weight
+        while n > 0
+            if Solution[n][w]
+                ItemsToTake.push(n)
+                w = w - Weights[n - 1]
+            --n
+        return ItemsToTake
+
+
+    get_max_profit()
+        return Options[num_items][max_weight]
+
+
+    get_total_weight()
+        ItemsToTake  // set of integers
+        n = num_items
+        w = max_weight
+        total_weight = 0
+        while n > 0
+            if Solution[n][w]
+                total_weight += Weights[n - 1]
+                w = w - Weights[n - 1]
+            --n
+        return total_weight
+```
 
 
 ### Maximum Subarray
