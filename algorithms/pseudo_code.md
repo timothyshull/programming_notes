@@ -27,8 +27,9 @@ sort(A)
     for i in [0:n]
         exchanges = 0
         for j = n - 1; j > i; --j
-            swap(A[j], A[j - 1])
-            ++exchanges
+            if a[j] < a[j - 1]
+                swap(A[j], A[j - 1])
+                ++exchanges
         if exchanges == 0
             break
 ```
@@ -112,8 +113,7 @@ partition(A, lo, hi)
 ```
 
 ## Heapsort
-- NOTE: uses elements from 1 to n - 1 (rather than 0 to n - 1) to simplify
-  index arithmetic
+- NOTE: uses elements from 1 to n - 1 (rather than 0 to n - 1) to simplify index arithmetic
 ```
 sink(A, k, n)
     while 2 * k <= n
@@ -1277,10 +1277,81 @@ compress(String)
 # General Algorithms
 
 ## Longest Common Subsequence
+- MaxLengths - 2D array, Str1.length x Str2.length, initialized to -1
+```
+class LCS
+    MaxLengths
+    Str1
+    Str2
+
+
+    LCS(Str1, Str2)
+
+
+    lcs()
+        return lcs(Str1.length - 1, Str2.length - 1)
+
+
+    lcs(i, j)
+        if i == 0 or j == 0
+            return 0
+        if MaxLengths[i][j] != -1
+            return MaxLengths[i][j]
+        if Str1[i] == Str2[j]
+            result = 1 + lcs(i - 1, j - 1)
+        else
+            result = max(lcs(i - 1, j), lcs(i, j - 1))
+        MaxLengths[i][j] = result
+        return result
+```
+
+### Suffix Arrays
+- good for actually returning value of longest common subsequence, longest common prefix, and longest repeated substring
+
+
+### Knapsack
+
+
+### Maximum Subarray
+```
+max_subarray(A)
+    max = 0
+    local_max = 0
+    for e in A
+        local_max = max(0, local_max + e)
+        max = max(max, local_max)
+    return max
+```
 
 ## Divide-and-Conquer
-### Maximum Subarray
 ### Levenshtein Distance
+- Distances - prefix distances, 2D array size of Str1 x size of Str2 initialized to -1
+```
+class Levenshtein
+    Distances
+    Str1
+    Str2
+
+
+    Levenshtein(Str1, Str2)
+        distances(Str1.length - 1, Str2.length - 1)
+
+
+    get_edit_distances(i, j)
+        if i < 0
+            return j + 1
+        if j < 0
+            i + 1
+        if Distances[i][j] == -1
+            if Str1[i] == Str2[i]
+                Distances[i][j] = get_edit_distances(i - 1, j - 1)
+            else
+                a = get_edit_distances(i - 1, j - 1)
+                b = get_edit_distances(i - 1, j)
+                c = get_edit_distances(i, j - 1)
+                Distances[i][j] = min(a, b, c)
+        return Distances[i][j]
+```
 
 ## Permutations
 ### Standard 1
@@ -1293,9 +1364,9 @@ permutations(P, S)
     n = S.length
     if n == 0
         Out.push(P)
-    else
-        for i in [0:n]
-            permutations(P + S[i], S[0:i] + S[i + 1:])
+        return
+    for i in [0:n]
+        permutations(P + S[i], S[0:i] + S[i + 1:])
 ```
 
 ### Standard 2
@@ -1357,7 +1428,6 @@ permutations(A)
         Out.push(A)
 ```
 
-
 ## Combinations
 ### Standard 1
 ```
@@ -1405,11 +1475,11 @@ combinations(A, k)
 combinations(P, S, k)
     if S.length < k
         return
-    else if k == 0
+    if k == 0
         Out.push(P)
-    else
-        combinations(P + S[0], S[1:], k - 1)
-        combinations(P, S[1:], k)
+        return
+    combinations(P + S[0], S[1:], k - 1)
+    combinations(P, S[1:], k)
 ```
 
 ### K Lexicographic 2
@@ -1421,9 +1491,9 @@ combinations(A, k)
 combinations(P, S, k)
     if k == 0
         Out.push(P)
-    else
-        for i in [0:S.length]
-            combinations(P + S[i], S[i + 1:], k - 1)
+        return
+    for i in [0:S.length]
+        combinations(P + S[i], S[i + 1:], k - 1)
 ```
 
 ## Partitions
@@ -1439,7 +1509,6 @@ partition(P, n, max)
     for i = min(n, max); i >= 1; --i
         partition(P + i, n - i, i)
 ```
-
 
 ## Backtracking
 ### n-Queens
@@ -1466,39 +1535,51 @@ enumerate(A, k)
     n = A.length
     if k == n
         Out.push(A)
-    else
-        for i in [0:n]
-            A[k] = i
-            if is_consistent(A, k)
-                enumerate(A, k + 1)
+        return
+    for i in [0:n]
+        A[k] = i
+        if is_consistent(A, k)
+            enumerate(A, k + 1)
 ```
 
 ### Sudoku
-- see http://introcs.cs.princeton.edu/java/14array/MagicSquare.java.html for a
-  generalization
-- TODO: fix this
+- Board - 9 x 9 board of values with 0's in unspecified spots
 ```
-can_backtrack(A, k)
-    for i in [0:k]
-        if A[i] > 81
-            return true
+solve(Board)
+    return solve(Board, 0, 0)
+
+
+solve(Board, i, j)
+    if i == Board.length and j + 1 == Board[i].length  // reached solution
+        return true
+    if i == Board.length  // move to next row
+        i = 0
+        ++j
+    if Board[i][j] != 0
+        return solve(Board, i + 1, j)
+    for val in [1:Board.size + 1]
+        if is_valid(Board, i, j, val)
+            Board[i][j] = val
+            if solve(Board, i + 1, j)
+                return true
+    Board[i][j] = 0
     return false
 
 
-enumerate(A, k)
-    if k == 81
-        Out.push(A)
-        return
-    if A[k] != 0
-        enumerate(A, k + 1)
-        return
-    for r in [1:10]
-        A[k] = r
-        if !can_backtrack(A, k)
-            enumerate(A, k + 1)
-    A[k] = 0
+is_valid(Board, row, column, val)
+    for A in Board  // check same column
+        if A[column] == val
+            return false
+    for e in Board[row]  // check same row
+        if e == val
+            return false
+    r_sz = 3
+    for a in [0:r_sz]
+        for b in [0:r_sz]
+            if Board[r_sz * (row / r_sz) + a][r_sz * (column / r_sz) + b] == val
+                return false
+    return true
 ```
-
 
 ## Lexicographical Compare
 ```
@@ -1523,7 +1604,6 @@ horners_method(Coefficients, x)
         result = result * x + Coefficients[i]
     return result
 ```
-
 
 ## Matrix Operations
 ### Matrix x Matrix
