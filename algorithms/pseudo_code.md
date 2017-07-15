@@ -483,6 +483,78 @@ class RedBlackBST
 ```
 
 ## Hash Tables
+### Hashing
+- REMEMBER:
+    - hash is a template class in C++ that is overloaded for operator()
+    - libcxx uses Murmur2 and CityHash
+- radix
+```
+std::numeric_limits<Type>::max() - std::numeric_limits<Type>::min() + 1
+```
+- floating point numbers
+- sign
+```
+std::numeric_limits<Type>::is_signed
+```
+- exponent
+```
+sizeof(type) * std::numeric_limits<unsigned char>::digits - std::numeric_limits<type>::is_signed - std::numeric_limits<float>::digits
+```
+- mantissa
+```
+std::numeric_limits<float>::digits
+```
+
+- floating point types in libcxx
+    - can use a union of the float type and size_t or reinterpret_cast (better to use reinterpret cast)
+```
+return bits ^ (bits >> 32)
+
+// or
+return bits & ~(~0 >> digits) // where digits is numeric_limits<Float_type>::digits
+```
+
+- Sedgewick hashing
+```
+return (hash(x) & 0x7FFFFFFF) % modulo_divisor
+
+// or
+return (hash(x) & (~(0UL) >> 1) % modulo_divisor
+
+// or
+return hash(x) % modulo_divisor // the masking is not needed because C++ uses std::size_t
+```
+
+- Sedgewick string hashing
+```
+hash(Str)
+    h = 0
+    for c in Str
+        h = (radix * h + c) % modulo_divisor
+    return h
+```
+
+- Java-style hashing
+```
+class Example
+    c // char
+    s // short
+    i // int
+    l // long
+    f // float
+    d // double
+
+hash(object)
+    h = 17
+    h = 31 * h + hash(object.c)
+    h = 31 * h + hash(object.s)
+    h = 31 * h + hash(object.i)
+    h = 31 * h + hash(object.l)
+    h = 31 * h + hash(object.f)
+    h = 31 * h + hash(object.d)
+    return h
+```
+
 ### Hash Table (Separate Chaining)
 - ST is an array of LinkedLists
 - NOTE: need to handle resizing and re-hashing, etc
