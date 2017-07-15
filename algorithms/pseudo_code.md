@@ -1,3 +1,64 @@
+# Performance Characteristics
+## Sorting
+| ALGORITHM | IN PLACE | STABLE | BEST | AVERAGE | WORST | REMARKS |
+| --- | --- | --- | --- | --- | --- | --- |
+| selection sort | ✔ |  | ½ n^2 | ½ n^2 | ½ n^2 | n exchanges; quadratic in best case |
+| insertion sort | Insertion.java | ✔ | ✔ | n | ¼ n^2 | ½ n^2 | use for small or partially-sorted arrays |
+| bubble sort | ✔ | ✔ | n | ½ n^2 | ½ n^2 | rarely useful; use insertion sort instead |
+| shellsort | ✔ |  | n log3 n | unknown | c n^3/2 | tight code; subquadratic |
+| mergesort |  | ✔ | ½ n lg n | n lg n | n lg n | n log n guarantee; stable |
+| quicksort | ✔ |  | n lg n | 2 n ln n | ½ n^2 | n log n probabilistic guarantee; fastest in practice |
+| heapsort | ✔ |  | n † | 2 n lg n | 2 n lg n | n log n guarantee; in place |
+
+
+## Priority Queues
+| DATA STRUCTURE | INSERT | DEL-MIN | MIN | DEC-KEY | DELETE | MERGE |
+| --- | --- | --- | --- | --- | --- | --- |
+| array | 1 | n | n | 1 | 1 | n |
+| binary heap | log n | log n | 1 | log n | log n | n |
+| d-way heap | logd n | d logd n | 1 | logd n | d logd n | n |
+| binomial heap | 1 | log n | 1 | log n | log n | log n |
+| Fibonacci heap | 1 | log n † | 1 | 1 † | log n † | log n |
+- † n lg n if all keys are distinct
+
+
+## Symbol Tables
+| DATA STRUCTURE | SEARCH | INSERT | DELETE | SEARCH | INSERT | DELETE |
+| --- | --- | --- | --- | --- | --- | --- |
+| sequential search (in an unordered array) | n | n | n | n | n | n |
+| binary search (in a sorted array) | log n | n | n | log n | n | n |
+| binary search tree (unbalanced) | n | n | n | log n | log n | sqrt(n) |
+| red-black BST (left-leaning) | log n | log n | log n | log n | log n | log n |
+| hash table (separate-chaining) | n | n | n | 1 † | 1 † | 1 † |
+| hash table (linear-probing) | n | n | n | 1 † | 1 † | 1 † |
+- † uniform hashing assumption
+
+
+## Graph Processing
+| PROBLEM | ALGORITHM | TIME | SPACE |
+| --- | --- | --- | --- |
+| path | DFS | E + V | V |
+| cycle | DFS | E + V | V |
+| directed cycle | DFS | E + V | V |
+| topological sort | DFS | E + V | V |
+| bipartiteness / odd cycle | DFS | E + V | V |
+| connected components | DFS | E + V | V |
+| strong components | Kosaraju–Sharir | E + V | V |
+| Eulerian cycle | DFS | E + V | E + V |
+| directed Eulerian cycle | DFS | E + V | V |
+| transitive closure | DFS | V (E + V) | V 2 |
+| minimum spanning tree | Kruskal | E log E | E + V |
+| minimum spanning tree | Prim | E log V | V |
+| minimum spanning tree | Boruvka | E log V | V |
+| shortest paths (unit weights) | BFS | E + V | V |
+| shortest paths (nonnegative weights) | Dijkstra | E log V | V |
+| shortest paths (negative weights) | Bellman–Ford | V (V + E) | V |
+| all-pairs shortest paths | Floyd–Warshall | V 3 | V 2 |
+| maxflow–mincut | Ford–Fulkerson | E V (E + V) | V |
+| bipartite matching | Hopcroft–Karp | V ½ (E + V) | V |
+| assignment problem | successive shortest paths | n^3 log n | n^2 |
+
+
 # Sorting
 ## Selection Sort
 ```
