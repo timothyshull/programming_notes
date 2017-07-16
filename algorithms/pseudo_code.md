@@ -3,7 +3,7 @@
 | ALGORITHM | IN PLACE | STABLE | BEST | AVERAGE | WORST | REMARKS |
 | --- | --- | --- | --- | --- | --- | --- |
 | selection sort | ✔ |  | ½ n^2 | ½ n^2 | ½ n^2 | n exchanges; quadratic in best case |
-| insertion sort | Insertion.java | ✔ | ✔ | n | ¼ n^2 | ½ n^2 | use for small or partially-sorted arrays |
+| insertion sort | ✔ | ✔ | n | ¼ n^2 | ½ n^2 | use for small or partially-sorted arrays |
 | bubble sort | ✔ | ✔ | n | ½ n^2 | ½ n^2 | rarely useful; use insertion sort instead |
 | shellsort | ✔ |  | n log3 n | unknown | c n^3/2 | tight code; subquadratic |
 | mergesort |  | ✔ | ½ n lg n | n lg n | n lg n | n log n guarantee; stable |
@@ -64,9 +64,9 @@
 ```
 sort(A)
     n = A.length
-    for i in [0:n]
+    for i in [0:n)
         min = i
-        for j in [i + 1:n]
+        for j in [i + 1:n)
             if A[j] < A[min]
                 min = j
          swap(A[i], A[min])
@@ -76,7 +76,7 @@ sort(A)
 ```
 sort(A)
     n = A.length
-    for i in [0:n]
+    for i in [0:n)
         for j = i; j > 0 and A[j] < A[j - 1]; --j
             swap(A[j], A[j - 1])
 ```
@@ -85,7 +85,7 @@ sort(A)
 ```
 sort(A)
     n = A.length
-    for i in [0:n]
+    for i in [0:n)
         exchanges = 0
         for j = n - 1; j > i; --j
             if a[j] < a[j - 1]
@@ -103,7 +103,7 @@ sort(A)
     while h < n / 3
         h = 3 * h + 1
     while h >= 1
-        for i in [h:n]
+        for i in [h:n)
             for j = i; j >= h and A[j] < A[j - h]; j -= h
                 swap(A[j], A[j - h])
         h = h / 3
@@ -126,11 +126,11 @@ sort(A, Aux, lo, hi)
 
 
 merge(A, Aux, lo, mid, hi)
-    for k in [lo:hi + 1]
+    for k in [lo:hi]  // closed-interval, includes hi
         Aux[k] = A[k]
     i = lo
     j = mid + 1
-    for k in [lo:hi + 1]
+    for k in [lo:hi]  // closed-interval, includes hi
         if mid < i
             A[k] = Aux[j++]
         else if hi < j
@@ -221,7 +221,7 @@ sort(A)
     Counts // size of range, initialized to 0's
     for e in A
         ++Counts[e - A.min]
-    for i in [1:range]
+    for i in [1:range)
         Counts[i] += Counts[i - 1]
     Aux // size of A
     for a in A
@@ -394,7 +394,7 @@ traverse(root)
 ## Inorder Recursive
 ```
 print_node(item, h)
-    for i in [0:h]
+    for i in [0:h)
         print(" ")
     print(item)
     print("\n")
@@ -653,7 +653,7 @@ class HashTable
 
     resize(n)
         t = HashTable(n)
-        for i in [0:capacity]
+        for i in [0:capacity)
             if Keys[i] != null
                 t.put(Keys[i], Values[i])
         Keys = t.Keys
@@ -734,7 +734,7 @@ class ConnectedComponents
 
 
     ConnectedComponents(Graph)
-        for v in [0:Graph.num_vertices()]
+        for v in [0:Graph.num_vertices())
             if !Marked[v]
                 dfs(v)
                 ++count
@@ -1141,7 +1141,7 @@ class ShortestPaths
 
     find_negative_cycle()
         Spt // EdgeWeightedDigraph of size EdgeTo.length
-        for v in [0:EdgeTo.length]
+        for v in [0:EdgeTo.length)
             if EdgeTo[v] != null
                 Spt.add_edge(EdgeTo[v])
         CF // EdgeWeightedCycleFinder from Spt
@@ -1162,7 +1162,7 @@ class AllPairsShortestPaths
 
 
     AllPairsShortestPaths(Graph)
-        for v in [0:Graph.num_vertices()]
+        for v in [0:Graph.num_vertices())
             AllShortestPaths[v] = ShortestPaths(G, v)
 
 
@@ -1188,13 +1188,13 @@ sort(A, w) // sort A on leading w characters
     Aux // size of n
     for d = w - 1; d >= 0; --d
         Counts // size of radix + 1
-        for i in [0:n]
+        for i in [0:n)
             ++Counts[A[i][d] + 1];
-        for r in [0:radix]
+        for r in [0:radix)
             Counts[r + 1] += Counts[r]
-        for i in [0:n]
+        for i in [0:n)
             Aux[Counts[A[i][d]++] = A[i]
-        for i in [0:n]
+        for i in [0:n)
             A[i] = Aux[i]
 ```
 
@@ -1312,8 +1312,8 @@ class SubstringSearch
     SubstringSearch(String)
         DFA[Pattern[0]][0] = 1
         x = 0
-        for j in [1:Pattern.length]
-            for c in [0:radix]
+        for j in [1:Pattern.length)
+            for c in [0:radix)
                 DFA[c][j] = DFA[c][x]
             DFA[Pattern[j]][j] = j + 1
             x = DFA[Pattern[j]][x]
@@ -1343,7 +1343,7 @@ class SubstringSearch
 
 
     SubstringSearch(String)
-        for i in [0:Pattern.length]
+        for i in [0:Pattern.length)
             RightOccurrence[Pattern[j]] = j
 
 
@@ -1377,14 +1377,14 @@ class SubstringSearch
 
 
     SubstringSearch(String)
-        for i in [1:pattern_length - 1]
+        for i in [1:pattern_length - 1)
             rm = (radix * rm) % large_prime
         pattern_hash = hash(Pattern, pattern_length)
 
 
     hash(key, m)
         h = 0
-        for j in [0:pattern_length]
+        for j in [0:pattern_length)
             h = (radix * h + key[j]] % large_prime
         return h
 
@@ -1394,7 +1394,7 @@ class SubstringSearch
         text_hash = hash(Text, m)
         if pattern_hash == text_hash
             return 0
-        for i in [pattern_length:n]
+        for i in [pattern_length:n)
             text_hash = (text_hash + large_prime - rm * Text[i - m] % large_prime) % large_prime
             text_hash = (text_hash * radix + Text[i]) % large_prime
             if text_hash == pattern_hash
@@ -1415,7 +1415,7 @@ class NFA
 
     NFA(String)
         Ops // stack
-        for i in [0:num_states]
+        for i in [0:num_states)
             lp = i
             if Regex[i] == '(' or Regex[i] == '|'
                 Ops.push(i)
@@ -1437,10 +1437,10 @@ class NFA
     recognizes(Text)
         PC // bag of integers
         dfs // directed DFS of the Digraph from 0
-        for v in [0:Digraph.num_vertices()]
+        for v in [0:Digraph.num_vertices())
             if dfs.marked(v)
                 PC.add(v)
-        for i in [0:Text.length]
+        for i in [0:Text.length)
             Match // bag of integers
             for v in PC
                 if v < num_states
@@ -1448,7 +1448,7 @@ class NFA
                         Match.add(v + 1)
             PC // re-initialize
             dfs // directed DFS of the Digraph for all vertices in Match
-            for v in [0:Digraph.num_vertices()]
+            for v in [0:Digraph.num_vertices())
                 if dfs.marked(v)
                     PC.add(v)
         for v in PC
@@ -1470,13 +1470,13 @@ class Node
 compress(String)
     Input // char array of String
     Frequency
-    for i in [0:Inpute.length]
+    for i in [0:Inpute.length)
         ++Frequency[Input[i]]
     root = build_trie(Frequency)
     ST // array of strings of size radix
     build_code(ST, root, "")
     Encoded = ""
-    for i in [0:Input.length]
+    for i in [0:Input.length)
         Code = ST[Input[i]]
         for j in Code
             Encoded += j
@@ -1493,7 +1493,7 @@ build_code(ST, node, String)
 
 build_trie(Frequency)
     PQ // min priority queue of trie nodes
-    for c in [0:radix]
+    for c in [0:radix)
         if Frequency[c] > 0
             PQ.insert(Node(c, Frequency[c], null, null)
     while PQ.size() > 1
@@ -1511,7 +1511,7 @@ build_trie(Frequency)
 ```
 compress(String)
     ST // TST integer
-    for i in [0:radix]
+    for i in [0:radix)
         ST.put("" + i, i)
     code = radix + 1
     Encoded = ""
@@ -1520,8 +1520,8 @@ compress(String)
         Encoded += ST.get(S)
         t = S.length
         if t < String.length and code < num_codewords
-            ST.put(String[0:t + 1], code++)
-        String = String[t:]
+            ST.put(String[0:t], code++)  // closed-interval, includes t
+        String = String[t:)
     return Encoded
 ```
 
@@ -1576,7 +1576,7 @@ class Knapsack
 
 
     Knapsack(Profits, Weights)
-        for i in [1:num_items + 1]
+        for i in [1:num_items]  // closed-interval, includes num_items
             option1 = Options[i - 1][j]
             option2 = Int.min()
             if Weights[i - 1] <= j
@@ -1668,8 +1668,8 @@ permutations(P, S)
     if n == 0
         Out.push(P)
         return
-    for i in [0:n]
-        permutations(P + S[i], S[0:i] + S[i + 1:])
+    for i in [0:n)
+        permutations(P + S[i], S[0:i) + S[i + 1:))
 ```
 
 ### Standard 2
@@ -1682,7 +1682,7 @@ permutations(A, n)
     if n == 1
         Out.push(A)
         return
-    for i in [0:n]
+    for i in [0:n)
         swap(A[i], A[n - 1])
         permutations(A, n - 1)
         swap(A[i], A[n - 1])
@@ -1698,7 +1698,7 @@ permutations(A, n, k)
     if k == 0
         Out.push(A)
         return
-    for i in [0:n]
+    for i in [0:n)
         swap(A[i], A[n - 1])
         permutations(A, n - 1, k - 1)
         swap(A[i], A[n - 1])
@@ -1742,8 +1742,8 @@ combinations(P, S)
     if S.length <= 0
         return
     Out.push(P + S[0])
-    combinations(P + S[0], S[1:])
-    combinations(P, S[1:])
+    combinations(P + S[0], S[1:))
+    combinations(P, S[1:))
 ```
 
 ### Standard 2
@@ -1754,8 +1754,8 @@ combinations(A)
 
 combinations(P, S)
     Out.push(P)
-    for i in [0:S.length]
-        combinations(P + S[i], S[i + 1:])
+    for i in [0:S.length)
+        combinations(P + S[i], S[i + 1:))
 ```
 
 ### K on n elements
@@ -1764,7 +1764,7 @@ combinations(A, pos, next, k, n)
     if pos == k
         Out.push(A)
         return
-    for i in [next:n]
+    for i in [next:n)
         s[pos] = i
         combinations(A, pos + 1, i + 1, k, n)
 ```
@@ -1781,8 +1781,8 @@ combinations(P, S, k)
     if k == 0
         Out.push(P)
         return
-    combinations(P + S[0], S[1:], k - 1)
-    combinations(P, S[1:], k)
+    combinations(P + S[0], S[1:), k - 1)
+    combinations(P, S[1:), k)
 ```
 
 ### K Lexicographic 2
@@ -1795,8 +1795,8 @@ combinations(P, S, k)
     if k == 0
         Out.push(P)
         return
-    for i in [0:S.length]
-        combinations(P + S[i], S[i + 1:], k - 1)
+    for i in [0:S.length)
+        combinations(P + S[i], S[i + 1:), k - 1)
 ```
 
 ## Partitions
@@ -1819,7 +1819,7 @@ partition(P, n, max)
   for each row
 ```
 is_consistent(A, n)
-    for i in [0:n]
+    for i in [0:n)
         if A[i] == A[n]  // same column
             return false
         if A[i] - A[n] == n - i  // same major diagonal
@@ -1839,7 +1839,7 @@ enumerate(A, k)
     if k == n
         Out.push(A)
         return
-    for i in [0:n]
+    for i in [0:n)
         A[k] = i
         if is_consistent(A, k)
             enumerate(A, k + 1)
@@ -1860,7 +1860,7 @@ solve(Board, i, j)
         ++j
     if Board[i][j] != 0
         return solve(Board, i + 1, j)
-    for val in [1:Board.size + 1]
+    for val in [1:Board.size]  // closed-interval, includes Board.size
         if is_valid(Board, i, j, val)
             Board[i][j] = val
             if solve(Board, i + 1, j)
@@ -1877,8 +1877,8 @@ is_valid(Board, row, column, val)
         if e == val
             return false
     r_sz = 3
-    for a in [0:r_sz]
-        for b in [0:r_sz]
+    for a in [0:r_sz)
+        for b in [0:r_sz)
             if Board[r_sz * (row / r_sz) + a][r_sz * (column / r_sz) + b] == val
                 return false
     return true
@@ -1919,9 +1919,9 @@ multiply(A, B)
     if n1 != m2
         throw
     C // m1 x n2
-    for i in [0:m1]
-        for j in [0:n2]
-            for k in [0:n1]
+    for i in [0:m1)
+        for j in [0:n2)
+            for k in [0:n1)
                 C[i][j] += A[i][k] * B[k][j]
     return C
 ```
