@@ -87,6 +87,10 @@
 6. Distinguish between prefix and postfix forms of increment and decrement operators
 7. Never overload &&, ||, or ,
 8. Understand the different meanings of new and delete
+    - new operator - the language keyword/operator that is used in code
+    - operator new - the underlying function called by the new operator
+    - placement new - `new(location) T` constructs an object of type, T, in memory location
+        - NOTE: this functionality is encapsulated by Allocators
 
 ## Exceptions
 9. Use destructors to prevent resource leaks
