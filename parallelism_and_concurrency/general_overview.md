@@ -1123,3 +1123,293 @@ studentloans.gov
 - high resolution clock
 - threading and synchronization primitives
 
+
+# Clean Code
+## 13. Concurrency
+### Why Concurrency?
+- decoupling strategy
+    - separate what gets done from when it gets done
+- this decoupling can improve throughput and structure
+- structure
+    - units of execution resemble microcosmic instances of computers
+    - not all tied to single main loop
+- many cases are required due to response time and throughput constraints of systems
+
+#### Myths and Misconceptions
+- difficult to do correctly
+- common myths
+    - concurrency always improves performance
+    - design does not change when writing concurrent programs
+    - understanding concurrency issues is not important when working with a container
+      such as a web container
+- improvements
+    - concurrency incurs some overhead (performance and development time)
+    - correct concurrency is complex
+    - concurrency bugs are not usually repeatable
+    - concurrency often requires a fundamental change in design strategy
+
+### Challenges
+- need to understand
+    - compiler/JIT compiler
+    - compiled output (e.g. byte code, etc)
+    - language's memory model
+- many possible paths of execution through even the simplest threaded systems
+    - many may generate valid results
+    - problem is that some don't
+
+### Concurrency Defense Principles
+#### Single Responsibility Principle
+- given class or method should have a single reason to change
+- separate concurrency design from the rest of the code
+    - strictly remove reliance on implementation details
+- considerations
+    - concurrency-related code has its own life cycle of development, change, and timing
+    - concurrency-related code has its own challenges which are different from and more
+      difficult than those of nonconcurrent code
+    - the number of ways in which miswritten concurrency-based code can fail makes it challenging enough without the
+      added burden of surrounding application code
+- recommendation
+    - keep your concurrency-related code separate from other code
+
+#### Corollary: Limit the Scope of Data
+- use mutual exclusion (e.g. synchronized and ReentrantLock in Java) to protect critical sections
+  that access any shared objects
+- it is important to restrict the number of shared objects and related critical sections
+- more shared data increases the likelihood that
+    - users of that data will forget to protect one or more accesses to that data, breaking other code that modifies
+      that shared data
+    - there will be duplication of effort required to make sure everything is effectively
+      guarded (violation of DRY)
+    - it will be difficult to determine the source of failures, which are already hard
+      enough to find
+- recommendation
+    - take data encapsulation to heart and severely limit the access of any data that may be shared
+
+#### Corollary: Use Copies of Data
+- avoid sharing data by copying objects and either
+    - treat them as read-only
+    - modify copies in individual threads and merge results after use
+- best to benchmark to determine cost of copying objects
+    - avoidance of synchronization overhead might make up for costs
+
+#### Corollary: Threads Should Be as Independent as Possible
+- write threaded code such that each thread exists in its own world, sharing no data with any other thread
+    - each thread processes one client request, with all of its required data coming from
+      an unshared source and stored as local variables
+- makes each thread behave as if it were the only thread in the world and there are no
+  synchronization requirements
+- recommendation
+    - attempt to partition data into independent subsets than can be operated on by independent
+      threads, possibly in different processors
+
+### Know Your Library
+- use the provided thread-safe collections
+- use the executor framework for executing unrelated tasks
+- use non-blocking solutions when possible.
+- several library classes are not thread safe
+- in Java
+    - java.util.concurrent
+        - ConcurrentHashMap
+        - ReentrantLock
+            - can be acquired in one method and released elsewhere
+        - Semaphore
+            - a lock with a count
+        - CountDownLatch
+            - waits for events before releasing
+            - allows all threads to have a fair chance of starting at about the same time
+- recommendation
+    - review the classes available to you
+    - in Java
+        - java.util.concurrent
+        - java.util.concurrent.atomic
+        - java.util.concurrent.locks
+
+### Know Your Execution Models
+- different methods for partitioning behavior in concurrent applications
+- most concurrent problems encountered will likely be some variation of these three problems
+- recommendation
+    - learn these basic algorithms and understand their solutions
+
+#### Definitions
+- bound resources
+    - resources of a fixed size or number used in a concurrent environment
+    - e.g. database connections, fixed-size read/write buffers
+- mutual exclusion
+    - method to ensure only one thread can access shared data or a shared resource at a time
+- starvation
+    - situation in which one thread or a group of threads is prohibited from proceeding for
+      possibly forever
+    - e.g. always allowing fast threads to run first may keep slower threads from running
+- deadlock
+    - two or more thread waiting on each other where each has a resource that the other
+      requires and neither can progress until it gains access to that resource
+- livelock
+    - threads actively competing with each other to make progress but being delayed (possibly forever)
+      due to the other thread impeding that progress
+
+#### Producer-Consumer
+- one or more producer threads create some work and place it in a buffer or queue
+- one or more consumer threads acquire that work from the queue and complete it
+- queue between the producers and consumers is a bound resource
+    - producers must wait for free space in the queue before writing
+    - consumers must wait until there is something in the queue to consume
+- coordination between the producers and consumers via the queue involves producers and consumers
+  signaling each other
+- producers write to the queue and signal that the queue is no longer empty
+- consumers read from the queue and signal that the queue is no longer full
+- both potentially wait to be notified when they can continue
+
+#### Readers-Writers
+- involves a shared resource that primarily serves as a source of information for readers
+  but occasionally updated by writers
+    - throughput is an issue
+- emphasizing throughput can cause starvation and the accumulation of stale information
+- allowing updates can impact throughput
+- coordinating readers so they do not read something a writer is updating and vice versa
+  requires coordination
+    - writers tend to block many readers for a long period of time
+    - need to balance the needs of both readers and writers to
+        - satisfy correct operation
+        - provide reasonable throughput
+        - avoid starvation
+- simple strategy
+    - writers wait until there are no readers before allowing the writer to perform an
+      update
+    - if there are continuous readers writers will be starved
+    - if there are frequent writers and they are given priority throughput will suffer
+    - must find balance and avoid concurrent update issues
+
+#### Dining Philosophers
+- n actors (e.g. philosophers) in circular configuration
+    - n means for accessing a resource (e.g. fork for food)
+    - actors mostly wait (busy wait)
+    - must possess 2 of the n means for accessing resource to access
+    - when ready to access resource, actor takes control of 2 of the n means for
+      accessing resource
+    - if actor to right or left is already using one of n means, ready actor must wait
+    - when done accessing resource, releases both of the reserved n means and waits
+- actors ~= threads
+- n means for accessing resource ~= locks/data/resources
+- similar to many enterprise applications in which processes compete for resources
+- systems that compete in this way can experience deadlock, livelock, throughput, and efficiency
+  degradation
+
+### Beware Dependencies Between Synchronized Methods
+- if there is more than one synchronized method on the same shared class
+  then system may be written incorrectly
+- recommendation
+    - avoid using more than one method on a shared object
+
+- there will be times when must use more than one method on a shared object
+    - client-based locking
+        - have the client lock the server before calling the first method and make sure the
+          lock’s extent includes code calling the last method
+    - server-based locking
+        - within the server create a method that locks the server, calls all the methods, and
+          then unlocks
+        - have the client call the new method
+    - adapted server
+        - create an intermediary that performs the locking
+        - this is an example of server-based locking where the original server cannot be
+          changed
+
+### Keep Synchronized Sections Small
+- the synchronized keyword introduces an intrinsic lock
+- all sections of code guarded by the same lock are guaranteed to have only one thread
+  executing through them at any given time
+    - locks are expensive because they create delays and add overhead
+    - critical sections must be guarded
+    - design code with as few critical sections as possible
+- a critical section is any section of code that must be protected from simultaneous
+  use for the program to be correct
+- some naive programmers try to achieve this by making their critical sections very large
+- extending synchronization beyond the minimal critical section increases contention and degrades performance
+- recommendation
+    - keep your synchronized sections as small as possible
+
+### Writing Correct Shut-Down Code Is Hard
+- graceful shutdown can be hard to get correct
+- common problems involve deadlock, with threads waiting for a signal to continue that
+  never comes
+    - parent waiting for child threads to shut down
+    - dependent children waiting for each other (e.g. producer/consumer)
+- recommendation
+    - think about shut-down early and get it working early (takes longer than expected)
+    - review existing algorithms because this is harder than expected
+
+### Testing Threaded Code
+- proving correctness is impractical and testing does not guarantee it
+- testing can minimize risk
+- recommendations
+    - write tests that have the potential to expose problems and then run them frequently
+    - run with different programmatic configurations and system configurations and load
+    - track down all test failures (don't ignore failures when there are subsequent successes)
+    - treat spurious failures as candidate threading issues.
+    - get nonthreaded code working first.
+    - make threaded code pluggable
+    - make threaded code tunable
+    - run with more threads than processors
+    - run on different platforms
+    - instrument code to try and force failures
+
+#### Treat Spurious Failures as Candidate Threading Issues 
+- threaded code causes things to fail that simply cannot fail 
+- most developers do not have an intuitive feel for how threading interacts with other code 
+  (authors included). 
+- bugs in threaded code might exhibit their symptoms once in a thousand, or a million, executions. 
+- best to assume that one-offs do not exist
+The longer these “one-offs” are ignored, the more code is built on top of a potentially faulty approach
+- recommendation
+    - do not ignore system failures as one-offs. 
+    
+#### Get Your Nonthreaded Code Working First 
+- make sure code works outside of its use in threads 
+- recommendation
+    - do not try to chase down nonthreading bugs and threading bugs at the same time
+    - make sure code works outside of threads
+    
+#### Make Your Threaded Code Pluggable 
+- write concurrency-supporting code such that it can be run in several configurations
+    - one thread, several threads, varied as it executes
+    - threaded code interacts with something that can be both real or a test double
+    - execute with test doubles that run quickly, slowly, variable
+    - configure tests so they can run for a number of iterations
+- recommendation
+    - make thread-based code especially pluggable so that can be run in various configurations
+
+#### Make Your Threaded Code Tunable
+- getting the right balance of threads typically requires trial an error
+- find ways (early on) to time the performance of your system under different configurations
+. Allow the number of threads to be easily tuned. Consider allowing it to change while the system is running. Consider allowing self-tuning based on throughput and system utilization.
+
+#### Run with More Threads Than Processors
+- context switches cause unexpected behavior
+- run with more threads than processors or cores to encourage task swapping
+- more frequently tasks swap, the more likely to encounter code that is missing a critical section
+  or causes deadlock
+
+#### Run on Different Platforms
+- recommendation
+    - run your threaded code on all target platforms early and often
+
+#### Instrument Your Code to Try and Force Failures
+- normal for bugs in concurrent code to hide indefinitely
+- instrument code and force it to run in different orderings by adding calls to methods
+  like Object.wait(), Object.sleep(), Object.yield() and Object.priority()
+
+- hand-coded
+    - may be only option
+    - many problems with approach
+        - manually located
+        - difficult to find location to put calls to wait, sleep, etc
+        - leaving such code in slows down production code
+        - may or may not find results
+- automated
+    - many tools for doing this
+
+- jiggle the code so that threads run in different orderings at different times
+- the combination of well-written tests and jiggling can dramatically increase the chance
+  of finding errors
+- recommendation
+    - use jiggling strategies to ferret out errors
+
