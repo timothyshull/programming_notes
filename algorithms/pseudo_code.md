@@ -2,13 +2,13 @@
 ## Sorting
 | ALGORITHM | IN PLACE | STABLE | BEST | AVERAGE | WORST | REMARKS |
 | --- | --- | --- | --- | --- | --- | --- |
-| selection sort | ✔ |  | ½ n^2 | ½ n^2 | ½ n^2 | n exchanges; quadratic in best case |
-| insertion sort | ✔ | ✔ | n | ¼ n^2 | ½ n^2 | use for small or partially-sorted arrays |
-| bubble sort | ✔ | ✔ | n | ½ n^2 | ½ n^2 | rarely useful; use insertion sort instead |
-| shellsort | ✔ |  | n log3 n | unknown | c n^3/2 | tight code; subquadratic |
-| mergesort |  | ✔ | ½ n lg n | n lg n | n lg n | n log n guarantee; stable |
-| quicksort | ✔ |  | n lg n | 2 n ln n | ½ n^2 | n log n probabilistic guarantee; fastest in practice |
-| heapsort | ✔ |  | n † | 2 n lg n | 2 n lg n | n log n guarantee; in place |
+| selection sort | X |  | ½ n^2 | ½ n^2 | ½ n^2 | n exchanges; quadratic in best case |
+| insertion sort | X | X | n | ¼ n^2 | ½ n^2 | use for small or partially-sorted arrays |
+| bubble sort | X | X | n | ½ n^2 | ½ n^2 | rarely useful; use insertion sort instead |
+| shellsort | X |  | n log3 n | unknown | c n^3/2 | tight code; subquadratic |
+| mergesort |  | X | ½ n lg n | n lg n | n lg n | n log n guarantee; stable |
+| quicksort | X |  | n lg n | 2 n ln n | ½ n^2 | n log n probabilistic guarantee; fastest in practice |
+| heapsort | X |  | n † | 2 n lg n | 2 n lg n | n log n guarantee; in place |
 
 
 ## Priority Queues
