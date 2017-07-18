@@ -159,7 +159,17 @@ llvm-dis -c .o file
 ```
 
 
-# Misc Networking
+# Networking Commands
+- nmap
+- fping
+- dig
+- netstat
+- nslookup
+- ifconfig
+- iperf
+- whowatch
+
+## Misc Networking
 - sample output of ifconfig
 ```
 eno16777736: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>
