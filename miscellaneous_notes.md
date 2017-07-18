@@ -208,28 +208,6 @@ status: active
     - for each network interface, there is a corresponding interface configuration script
     - each of these files provide information specific to a particular network interface
 
-# Parallel Libs/Frameworks
-- cilk plus -> install with custom gcc branch or custom llvm branch
-    - https://gcc.gnu.org/git/gcc.git/
-    - https://cilkplus.github.io/
-- threading building blocks - brew install tbb
-- openmp - brew install gcc —-without-multilib
-- cuda - download installer from nvidia
-- opencl - https://developer.apple.com/opencl/
-    - included on mac OS after 10.7, integrates with GCD
-    - https://developer.apple.com/library/content/documentation/Performance/Conceptual/OpenCL_MacProgGuide/Introduction/Introduction.html
-- opengl - https://developer.apple.com/opengl/
-- macOS Frameworks
-    - Accelerate
-    - Metal
-    - OpenCL
-    - OpenGL
-
-    - NetFS
-    - GLUT
-    - GlKit
-
-
 # Essential Tests for a System
 - rebooting host (bare minimum)
 - max out CPU

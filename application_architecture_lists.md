@@ -40,6 +40,8 @@
 - brokerage
 - reflection
 - (middleware)
+- monolith
+- microservices
 
 # Communication
 - socket -> (tcp or udp)
