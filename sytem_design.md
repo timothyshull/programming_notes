@@ -313,68 +313,58 @@
 - CDNs require changing URLs for static content to point to the CDN
 
 ## Load balancer
+- distribute incoming client requests to computing resources such as application servers and databases
+- returns the response from the computing resource to the appropriate client
+- effective at:
+    - preventing requests from going to unhealthy servers
+    - preventing overloading resources
+    - helping eliminate single points of failure
+- hardware (expensive) or with software such as HAProxy
+- additional benefits include:
+    - **SSL termination**
+        - decrypt incoming requests and encrypt server responses so backend servers do not have to perform these
+          potentially expensive operations
+        - removes the need to install x.509 certificates on each server
+    - **session persistence**
+        - Issue cookies and route a specific client's requests to same instance if the web apps do not keep track of sessions
+- common to set up multiple load balancers to protect against failures
+    - active-passive
+    - active-active
+- can route traffic based on various metrics
+    - random
+    - least loaded
+    - session/cookies
+    - round robin or weighted round robin
+    - layer 4
+        - monitor info at the transport layer to decide how to distribute requests
+        - involves the source, destination IP addresses, and ports in the header, but not the contents of the packet
+        - forward network packets to and from the upstream server, performing Network Address Translation (NAT)
+    - layer 7
+        - monitor the application layer to decide how to distribute requests
+        - can involve contents of the header, message, and cookies
+        - terminates network traffic, reads the message, makes a load-balancing decision, then opens a connection to
+          the selected server
+        - layer 4 load balancing requires less time and computing resources than Layer 7
+            - sacrifices flexibility
+            - the performance impact can be minimal on modern commodity hardware
+- can also help with horizontal scaling
+    - scaling out using commodity machines is more cost efficient and results in higher availability than scaling up
+      a single server on more expensive hardware (**vertical scaling**)
+    - easier to hire for talent working on commodity hardware than it is for specialized enterprise systems
 
-Load balancers distribute incoming client requests to computing resources such as application servers and databases.  In each case, the load balancer returns the response from the computing resource to the appropriate client.  Load balancers are effective at:
+#### Disadvantages of horizontal scaling
+- scaling horizontally introduces complexity and involves cloning servers
+    - servers should be stateless
+        - should not contain any user-related data like sessions or profile pictures
+    - sessions can be stored in a centralized data store such as a database] (SQL, NoSQL) or a persistent cache] (Redis, Memcached)
+- downstream servers such as caches and databases need to handle more simultaneous connections as upstream servers scale out
 
-- Preventing requests from going to unhealthy servers
-- Preventing overloading resources
-- Helping eliminate single points of failure
-
-Load balancers can be implemented with hardware (expensive) or with software such as HAProxy.
-
-Additional benefits include:
-
-- **SSL termination** - Decrypt incoming requests and encrypt server responses so backend servers do not have to perform these potentially expensive operations
-    * Removes the need to install [X.509 certificates](https://en.wikipedia.org/wiki/X.509) on each server
-- **Session persistence** - Issue cookies and route a specific client's requests to same instance if the web apps do not keep track of sessions
-
-To protect against failures, it's common to set up multiple load balancers, either in [active-passive](#active-passive) or [active-active](#active-active) mode.
-
-Load balancers can route traffic based on various metrics, including:
-
-- Random
-- Least loaded
-- Session/cookies
-- [Round robin or weighted round robin](http://g33kinfo.com/info/archives/2657)
-- [Layer 4](#layer-4-load-balancing)
-- [Layer 7](#layer-7-load-balancing)
-
-### Layer 4 load balancing
-
-Layer 4 load balancers look at info at the [transport layer](#communication) to decide how to distribute requests.  Generally, this involves the source, destination IP addresses, and ports in the header, but not the contents of the packet.  Layer 4 load balancers forward network packets to and from the upstream server, performing [Network Address Translation (NAT)](https://www.nginx.com/resources/glossary/layer-4-load-balancing/).
-
-### Layer 7 load balancing
-
-Layer 7 load balancers look at the [application layer](#communication) to decide how to distribute requests.  This can involve contents of the header, message, and cookies.  Layer 7 load balancers terminates network traffic, reads the message, makes a load-balancing decision, then opens a connection to the selected server.  For example, a layer 7 load balancer can direct video traffic to servers that host videos while directing more sensitive user billing traffic to security-hardened servers.
-
-At the cost of flexibility, layer 4 load balancing requires less time and computing resources than Layer 7, although the performance impact can be minimal on modern commodity hardware.
-
-### Horizontal scaling
-
-Load balancers can also help with horizontal scaling, improving performance and availability.  Scaling out using commodity machines is more cost efficient and results in higher availability than scaling up a single server on more expensive hardware, called **Vertical Scaling**.  It is also easier to hire for talent working on commodity hardware than it is for specialized enterprise systems.
-
-#### Disadvantage(s): horizontal scaling
-
-- Scaling horizontally introduces complexity and involves cloning servers
-    * Servers should be stateless: they should not contain any user-related data like sessions or profile pictures
-    * Sessions can be stored in a centralized data store such as a [database](#database) (SQL, NoSQL) or a persistent [cache](#cache) (Redis, Memcached)
-- Downstream servers such as caches and databases need to handle more simultaneous connections as upstream servers scale out
-
-### Disadvantage(s): load balancer
-
-- The load balancer can become a performance bottleneck if it does not have enough resources or if it is not configured properly.
-- Introducing a load balancer to help eliminate single points of failure results in increased complexity.
-- A single load balancer is a single point of failure, configuring multiple load balancers further increases complexity.
-
-### Source(s) and further reading
-
-- [NGINX architecture](https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/)
-- [HAProxy architecture guide](http://www.haproxy.org/download/1.2/doc/architecture.txt)
-- [Scalability](http://www.lecloud.net/post/7295452622/scalability-for-dummies-part-1-clones)
-- [Wikipedia](https://en.wikipedia.org/wiki/Load_balancing_(computing))
-- [Layer 4 load balancing](https://www.nginx.com/resources/glossary/layer-4-load-balancing/)
-- [Layer 7 load balancing](https://www.nginx.com/resources/glossary/layer-7-load-balancing/)
-- [ELB listener config](http://docs.aws.amazon.com/elasticloadbalancing/latest/classic/elb-listener-config.html)
+### Disadvantages of load balancers
+- the load balancer can become a performance bottleneck if it does not have enough resources or if it is not configured
+  properly
+- introducing a load balancer to help eliminate single points of failure results in increased complexity
+- a single load balancer is a single point of failure
+- configuring multiple load balancers further increases complexity
 
 ## Reverse proxy (web server)
 
@@ -382,124 +372,136 @@ A reverse proxy is a web server that centralizes internal services and provides 
 
 Additional benefits include:
 
-- **Increased security** - Hide information about backend servers, blacklist IPs, limit number of connections per client
-- **Increased scalability and flexibility** - Clients only see the reverse proxy's IP, allowing you to scale servers or change their configuration
-- **SSL termination** - Decrypt incoming requests and encrypt server responses so backend servers do not have to perform these potentially expensive operations
-    * Removes the need to install [X.509 certificates](https://en.wikipedia.org/wiki/X.509) on each server
-- **Compression** - Compress server responses
-- **Caching** - Return the response for cached requests
-- **Static content** - Serve static content directly
-    * HTML/CSS/JS
-    * Photos
-    * Videos
-    * Etc
+- **increased security**
+    - hide information about backend servers, blacklist ips, limit number of connections per client
+- **increased scalability and flexibility**
+    - clients only see the reverse proxy's ip, allowing you to scale servers or change their configuration
+- **ssl termination**
+    - decrypt incoming requests and encrypt server responses so backend servers do not have to perform these potentially expensive operations
+    - removes the need to install x.509 certificates on each server
+- **compression**
+    - compress server responses
+- **caching**
+    - return the response for cached requests
+- **static content**
+    - serve static content directly
+    - HTML/CSS/JS
+    - photos
+    - videos
+    - etc
 
 ### Load balancer vs reverse proxy
+- load balancer - useful with multiple servers
+    - often route traffic to a set of servers serving the same function
+- reverse proxies can be useful even with just one web server or application server
+- NGINX and HAProxy can support both layer 7 reverse proxying and load balancing.
 
-- Deploying a load balancer is useful when you have multiple servers.  Often, load balancers  route traffic to a set of servers serving the same function.
-- Reverse proxies can be useful even with just one web server or application server, opening up the benefits described in the previous section.
-- Solutions such as NGINX and HAProxy can support both layer 7 reverse proxying and load balancing.
-
-### Disadvantage(s): reverse proxy
-
-- Introducing a reverse proxy results in increased complexity.
-- A single reverse proxy is a single point of failure, configuring multiple reverse proxies (ie a [failover](https://en.wikipedia.org/wiki/Failover)) further increases complexity.
-
-### Source(s) and further reading
-
-- [Reverse proxy vs load balancer](https://www.nginx.com/resources/glossary/reverse-proxy-vs-load-balancer/)
-- [NGINX architecture](https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/)
-- [HAProxy architecture guide](http://www.haproxy.org/download/1.2/doc/architecture.txt)
-- [Wikipedia](https://en.wikipedia.org/wiki/Reverse_proxy)
+### Disadvantages of a reverse proxy
+- results in increased complexity
+- single point of failure
+- configuring multiple reverse proxies (i.e. HA pair for failover) further increases complexity
 
 ## Application layer
-Separating out the web layer from the application layer (also known as platform layer) allows you to scale and configure both layers independently.  Adding a new API results in adding application servers without necessarily adding additional web servers.
-
-The **single responsibility principle** advocates for small and autonomous services that work together.  Small teams with small services can plan more aggressively for rapid growth.
-
-Workers in the application layer also help enable [asynchronism](#asynchronism).
+- separating out the web layer from the application layer (also known as platform layer) allows independent scaling and
+  configuration
+    - modifying APIs results in adding application servers without necessarily adding additional web servers
+- **single responsibility principle** advocates for small and autonomous services that work together
+    - small teams with small services can plan more aggressively for rapid growth.
+- workers in the application layer also help enable asynchronism
 
 ### Microservices
-
-Related to this discussion are [microservices](https://en.wikipedia.org/wiki/Microservices), which can be described as a suite of independently deployable, small, modular services.  Each service runs a unique process and communicates through a well-defined, lightweight mechanism to serve a business goal. <sup><a href=https://smartbear.com/learn/api-design/what-are-microservices>1</a></sup>
-
-Pinterest, for example, could have the following microservices: user profile, follower, feed, search, photo upload, etc.
+- a collection of independently deployable, small, modular services
+- each service runs a unique process and communicates through a well-defined, lightweight mechanism to serve a business goal
+- e.g. Pinterest
+    - user profile
+    - follower
+    - feed
+    - search
+    - photo upload
+    - etc.
 
 ### Service Discovery
+- systems/services that can help other services find each other by keeping track of registered names, addresses, and ports
+    - Consul
+    - etcd
+    - Zookeeper
+- use health checks to help verify service integrity
+    - often done using an HTTP endpoint
+- both Consul and etcd have a built in key-value store that can be useful for storing config values and other shared data
 
-Systems such as [Consul](https://www.consul.io/docs/index.html), [Etcd](https://coreos.com/etcd/docs/latest), and [Zookeeper](http://www.slideshare.net/sauravhaloi/introduction-to-apache-zookeeper) can help services find each other by keeping track of registered names, addresses, and ports.  [Health checks](https://www.consul.io/intro/getting-started/checks.html) help verify service integrity and are often done using an [HTTP](#hypertext-transfer-protocol-http) endpoint.  Both Consul and Etcd have a built in [key-value store](#key-value-store) that can be useful for storing config values and other shared data.
-
-### Disadvantage(s): application layer
-
-- Adding an application layer with loosely coupled services requires a different approach from an architectural, operations, and process viewpoint (vs a monolithic system).
-- Microservices can add complexity in terms of deployments and operations.
+### Disadvantages of decoupling the application layer
+- adding an application layer with loosely coupled services requires a different approach from an architectural,
+  operations, and process viewpoint (vs a monolithic system)
+- microservices can add complexity in terms of deployments and operations
 
 ## Database
 ### Relational database management system (RDBMS)
+- collection of data records organized in tables
 
-A relational database like SQL is a collection of data items organized in tables.
+- **ACID** is a set of properties of relational database transactions
+    - **atomicity**
+        - each transaction is all or nothing
+    - **consistency**
+        - any transaction will bring the database from one valid state to another
+    - **isolation**
+        - executing transactions concurrently has the same results as if the transactions were executed serially
+    - **durability**
+        - once a transaction has been committed, it will remain so
 
-**ACID** is a set of properties of relational database [transactions](https://en.wikipedia.org/wiki/Database_transaction).
-
-- **Atomicity** - Each transaction is all or nothing
-- **Consistency** - Any transaction will bring the database from one valid state to another
-- **Isolation** - Executing transactions concurrently has the same results as if the transactions were executed serially
-- **Durability** - Once a transaction has been committed, it will remain so
-
-There are many techniques to scale a relational database: **master-slave replication**, **master-master replication**, **federation**, **sharding**, **denormalization**, and **SQL tuning**.
+- many techniques to scale
+    - **master-slave replication**
+    - **master-master replication**
+    - **federation**
+    - **sharding**
+    - **denormalization**
+    - **SQL tuning**
 
 #### Master-slave replication
+- master serves reads and writes, replicating writes to one or more slaves
+- slaves serve only reads
+- slaves can also replicate to additional slaves in a tree-like fashion
+- the system can continue to operate in read-only mode until a slave is promoted to a master or a new master is
+  provisioned if the master goes offline
 
-The master serves reads and writes, replicating writes to one or more slaves, which serve only reads.  Slaves can also replicate to additional slaves in a tree-like fashion.  If the master goes offline, the system can continue to operate in read-only mode until a slave is promoted to a master or a new master is provisioned.
-
-<p align="center">
-  <img src="http://i.imgur.com/C9ioGtn.png">
-  <br/>
-  <i><a href=http://www.slideshare.net/jboner/scalability-availability-stability-patterns/>Source: Scalability, availability, stability, patterns</a></i>
-</p>
-
-##### Disadvantage(s): master-slave replication
-
-- Additional logic is needed to promote a slave to a master.
-- See [Disadvantage(s): replication](#disadvantages-replication) for points related to **both** master-slave and master-master.
+##### Disadvantages of master-slave replication
+- additional logic is needed to promote a slave to a master
 
 #### Master-master replication
+- both masters serve reads and writes and coordinate with each other on writes
+- the system can continue to operate with both reads and writes if either master goes down
 
-Both masters serve reads and writes and coordinate with each other on writes.  If either master goes down, the system can continue to operate with both reads and writes.
+##### Disadvantages of master-master replication
+- need a load balancer or need to make changes to application logic to determine where to write
+- most master-master systems are either loosely consistent (violating ACID) or have increased write latency due to
+  synchronization
+- conflict resolution comes more into play as more write nodes are added and as latency increases
 
-##### Disadvantage(s): master-master replication
-
-- You'll need a load balancer or you'll need to make changes to your application logic to determine where to write.
-- Most master-master systems are either loosely consistent (violating ACID) or have increased write latency due to synchronization.
-- Conflict resolution comes more into play as more write nodes are added and as latency increases.
-- See [Disadvantage(s): replication](#disadvantages-replication) for points related to **both** master-slave and master-master.
-
-##### Disadvantage(s): replication
-
-- There is a potential for loss of data if the master fails before any newly written data can be replicated to other nodes.
-- Writes are replayed to the read replicas.  If there are a lot of writes, the read replicas can get bogged down with replaying writes and can't do as many reads.
-- The more read slaves, the more you have to replicate, which leads to greater replication lag.
-- On some systems, writing to the master can spawn multiple threads to write in parallel, whereas read replicas only support writing sequentially with a single thread.
-- Replication adds more hardware and additional complexity.
-
-##### Source(s) and further reading: replication
-
-- [Scalability, availability, stability, patterns](http://www.slideshare.net/jboner/scalability-availability-stability-patterns/)
-- [Multi-master replication](https://en.wikipedia.org/wiki/Multi-master_replication)
+##### Disadvantages of replication
+- there is a potential for loss of data if the master fails before any newly written data can be replicated to other
+  nodes
+- writes are replayed to the read replicas
+    - if there are a lot of writes, the read replicas can get bogged down with replaying writes and can't do as many
+      reads
+- the more read slaves, the more you have to replicate, which leads to greater replication lag
+- on some systems, writing to the master can spawn multiple threads to write in parallel
+    - read replicas only support writing sequentially with a single thread.
+- replication adds more hardware and additional complexity
 
 #### Federation
+- (functional partitioning) splits up databases by function
+    - e.g. instead of a single, monolithic database could have three databases: **forums**, **users**, and **products**
+    - results in less read and write traffic to each database and therefore less replication lag
+- smaller databases result in more data that can fit in memory, which in turn results in more cache hits due
+  to improved cache locality
+- with no single central master serializing writes can write in parallel, increasing throughput
 
-Federation (or functional partitioning) splits up databases by function.  For example, instead of a single, monolithic database, you could have three databases: **forums**, **users**, and **products**, resulting in less read and write traffic to each database and therefore less replication lag.  Smaller databases result in more data that can fit in memory, which in turn results in more cache hits due to improved cache locality.  With no single central master serializing writes you can write in parallel, increasing throughput.
-
-##### Disadvantage(s): federation
-
-- Federation is not effective if your schema requires huge functions or tables.
-- You'll need to update your application logic to determine which database to read and write.
-- Joining data from two databases is more complex with a [server link](http://stackoverflow.com/questions/5145637/querying-data-by-joining-two-tables-in-two-database-on-different-servers).
-- Federation adds more hardware and additional complexity.
+##### Disadvantages of federation
+- federation is not effective if schema requires huge functions or tables
+- need to update your application logic to determine which database to read and write
+- Joining data from two databases is more complex with a server link
+- federation adds more hardware and additional complexity
 
 #### Sharding
-
 Sharding distributes data across different databases such that each database can only manage a subset of the data.  Taking a users database as an example, as the number of users increases, more shards are added to the cluster.
 
 Similar to the advantages of [federation](#federation), sharding results in less read and write traffic, less replication, and more cache hits.  Index size is also reduced, which generally improves performance with faster queries.  If one shard goes down, the other shards are still operational, although you'll want to add some form of replication to avoid data loss.  Like federation, there is no single central master serializing writes, allowing you to write in parallel with increased throughput.
@@ -510,7 +512,7 @@ Common ways to shard a table of users is either through the user's last name ini
 
 - You'll need to update your application logic to work with shards, which could result in complex SQL queries.
 - Data distribution can become lopsided in a shard.  For example, a set of power users on a shard could result in increased load to that shard compared to others.
-    * Rebalancing adds additional complexity.  A sharding function based on [consistent hashing](http://www.paperplanes.de/2011/12/9/the-magic-of-consistent-hashing.html) can reduce the amount of transferred data.
+    - Rebalancing adds additional complexity.  A sharding function based on [consistent hashing](http://www.paperplanes.de/2011/12/9/the-magic-of-consistent-hashing.html) can reduce the amount of transferred data.
 - Joining data from multiple shards is more complex.
 - Sharding adds more hardware and additional complexity.
 
@@ -543,7 +545,7 @@ Benchmarking and profiling might point you to the following optimizations.
 
 - MySQL dumps to disk in contiguous blocks for fast access.
 - Use `CHAR` instead of `VARCHAR` for fixed-length fields.
-    * `CHAR` effectively allows for fast, random access, whereas with `VARCHAR`, you must find the end of a string before moving onto the next one.
+    - `CHAR` effectively allows for fast, random access, whereas with `VARCHAR`, you must find the end of a string before moving onto the next one.
 - Use `TEXT` for large blocks of text such as blog posts.  `TEXT` also allows for boolean searches.  Using a `TEXT` field results in storing a pointer on disk that is used to locate the text block.
 - Use `INT` for larger numbers up to 2^32 or 4 billion.
 - Use `DECIMAL` for currency to avoid floating point representation errors.
