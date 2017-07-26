@@ -616,7 +616,7 @@ db_get () {
     - location within a document
     - edit distance
     - other linguistic analysis features
-- Lucense uses a structure similar to a trie (FSA over characters of keys)
+- Lucene uses a structure similar to a trie (FSA over characters of keys)
     - can be transformed into a Levenshtein automaton
 - others use document classification and machine learning
     - see information retrieval textbook for more info
@@ -696,7 +696,7 @@ db_get () {
     - ParAccel
 - open source SQL-on-Hadoop solutions to compete
     - Apache Hive,
-    - AMPLab's SHark
+    - AMPLab's Shark
     - Cloudera Impala
     - Hortonworks Stinger
     - Facebook Presto
@@ -1091,7 +1091,10 @@ db_get () {
     - HornetMQ
     - NATS
     - Kafka
-    - (ZeroMQ)
+    - Google Cloud Pub/Sub
+    - Amazon Kinesis
+    - Simple Queueing Service
+    - (ZeroMQ allows broker, no broker, distributed broker, directory service, distributed directory service)
 - delivery semantics varies by implementation
     - send to queue or topic
     - delivered to consumer or subscriber (potentially many to on topic)
@@ -1115,6 +1118,7 @@ db_get () {
     - Orleans -> custom data encoding but no support for rolling upgrades (plug-ins
       for other serializers)
     - Erlang OTP -> difficult to change schemas
+    - (CAF)
 
 ## Summary
 - explored methods of encoding/decoding
