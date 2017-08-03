@@ -2045,3 +2045,1836 @@ Execution Time = (# instructions)(cycles/instruction)(seconds/cycle)
         - data is read from the data memory onto the ReadData bus, then written back to the destination register in the
           register file at the end of the cycle
         - port 3 of the register file is the write port
+    - destination register for the lw instruction is specified in the rt field, Instr20:16
+        - connected to the port 3 address input, A3, of the register file
+    - ReadData bus is connected to the port 3 write data input, WD3, of the register file
+    - control signal called RegWrite is connected to the port 3 write enable input, WE3, and is asserted during a
+      lw instruction so that the data value is written into the register file
+    - write takes place on the rising edge of the clock at the end of the cycle
+    - processor must compute the address of the next instruction, PC', while the instruction is being executed
+    - next instruction is at PC + 4 (32 bits = 4 bytes)
+        - use another adder to increment the PC by 4
+    - new address is written into the program counter on the next rising edge of the clock
+    - completes the datapath for the lw instruction
+- extend the datapath to also handle the sw instruction
+    - reads a base address from port 1 of the register file and sign-extends an immediate (like lw)
+    - ALU adds the base address to the immediate to find the memory address
+        - all of these functions are already supported by the datapath described above
+    - also reads a second register from the register file and writes it to the data memory
+        - register is specified in the rt field, Instr20:16
+        - bits of the instruction are connected to the second register file read port, A2
+        - register value is read onto the RD2 port
+        - connected to the write data port of the data memory
+        - write enable port of the data memory, WE, is controlled by MemWrite
+        - MemWrite = 1 to write the data to memory
+        - ALUControl = 010 to add the base address and offset
+        - RegWrite = 0, because nothing should be written to the register file
+        - NOTE: data is still read from the address given to the data memory but that this ReadData is ignored because RegWrite = 0
+- extend the datapath to handle the R-type instructions add, sub, and, or, and slt
+    - read two registers from the register file, perform some ALU operation on them, and write the result back to a
+      third register file
+    - differ only in the specific ALU operation
+    - can all be handled with the same hardware, using different ALUControl signals
+    - register file reads two registers
+    - ALU performs an operation on these two registers
+    - ALU always received its SrcB operand from the sign-extended immediate (SignImm)
+    - add a multiplexer to choose SrcB from either the register file RD2 port or SignImm
+    - multiplexer is controlled by a new signal, ALUSrc
+    - ALUSrc is
+        - 0 for R-type instructions to choose SrcB from the register file
+        - 1 for lw and sw to choose SignImm
+    - useful to enhance the datapath’s capabilities by adding a multiplexer to choose inputs from several possibilities
+    - add another multiplexer to choose between ReadData and ALUResult because R-type instructions write the ALUResult to the register file
+        - output Result
+        - controlled by another new signal, MemtoReg
+            - 0 for R-type instructions to choose Result from the ALUResult
+            - 1 for lw to choose ReadData
+            - don’t care about the value for sw because sw does not write to the register file
+    - add a third multiplexer to choose WriteReg from the appropriate field of the instruction because the register is
+      specified by the rd field, Instr15:11, for R-type instructions
+        - multiplexer is controlled by RegDst
+            - 1 for R-type instructions to choose WriteReg from the rd field, Instr15:11
+            - 0 for lw to choose the rt field, Instr20:16
+            - don’t care about the value of RegDst for sw because sw does not write to the register file
+- extend the datapath to handle beq
+    - beq compares two registers
+        - if equal it takes the branch by adding the branch offset to the program counter
+            - offset is a positive or negative number, stored in the imm field of the instruction, Instr15:0
+            - offset indicates the number of instructions to branch past
+            - immediate must be sign-extended and multiplied by 4 to get the new program counter value: PC'=PC+4+SignImm x 4
+    - next PC value for a taken branch, PCBranch, is computed by shifting SignImm left by 2 bits, then adding it to
+      PCPlus4
+        - left shift by 2 is an easy way to multiply by 4, because a shift by a constant amount involves just wires
+    - two registers are compared by computing SrcA–SrcB using the ALU
+        - if ALUResult is 0, as indicated by the Zero flag from the ALU, the registers are equal
+    - add a multiplexer to choose PC' from either PCPlus4 or PCBranch
+        - PCBranch is selected if the instruction is a branch and the Zero flag is asserted
+        - Branch is 1 for beq and 0 for other instructions
+    - ALUControl = 110 so the ALU performs a subtraction
+    - ALUSrc=0 to choose SrcB from the register file
+    - RegWrite and MemWrite are 0, because a branch does not write to the register file or memory
+    - don’t care about the values of RegDst and MemtoReg because the register file is not written
+
+### Single-Cycle Control
+- computes the control signals based on the opcode and funct fields of the instruction, Instr31:26 and Instr5:0
+- most of the control information comes from the opcode
+    - R-type instructions also use the funct field to determine the ALU operation
+- simplify design by factoring the control unit into two blocks of combinational logic
+- main decoder computes most of the outputs from the opcode
+    - also determines a 2-bit ALUOp signal
+- ALU decoder uses this ALUOp signal in conjunction with the funct field to compute ALUControl
+```
+ALUOp encoding
+ALUOp   Meaning
+00      add
+01      subtract
+10      look at funct field
+11      n/a
+```
+- truth table can use don’t care’s X1 and 1X instead of 01 and 10 to simplify the logic because ALUOp is never 11
+- ALU should add or subtract when ALUOp is 00 or 01
+- decoder examines the funct field to determine the ALUControl when ALUOp is 10
+- for the implemented R-type instructions
+    - first two bits of the funct field are always 10
+    - may ignore them to simplify the decoder
+- control signals for each instruction were described as we built the datapath
+
+```
+ALU decoder truth table
+fill in
+```
+- all R-type instructions use the same main decoder values
+    - differ only in the ALU decoder output
+- for instructions that do not write to the register file (e.g., sw and beq), the RegDst and MemtoReg control signals
+  are don’t cares (X)
+    - address and data to the register write port do not matter because RegWrite is not asserted
+    - logic for the decoder can be designed using your favorite techniques for combinational logic design
+
+- TODO: more here
+
+
+## 7.6 HDL Representation
+### Single-Cycle Processor
+#### Single-Cycle MIPS Processor
+#### Controller
+#### Main Decoder
+#### ALU Decoder
+#### Datapath
+### Generic Building Blocks
+#### Register File
+#### Adder
+#### Left Shift
+#### Sign Extension
+#### Resettable Flip-Flop
+#### 2:1 Multiplexer
+### Testbench
+#### MIPS Testbench
+#### MIPS Top-Level Module
+#### MIPS Data Memory
+#### MIPS Instruction Memory
+
+## 7.7 Exceptions
+- unexpected (exceptional) changes in the control flow of a program
+- two types considered
+    - undefined instructions
+    - arithmetic overflow
+- when an exception takes place the processor copies the PC to the EPC register and stores a code in the Cause register
+  indicating the source of the exception
+    - causes include 0x28 for undefined instructions and 0x30 for overflow
+- processor jumps to the exception handler at memory address 0x80000180
+- exception handler is code that responds to the exception (part of the operating system)
+- exception registers are part of Coprocessor 0, a portion of the MIPS processor that is used for system functions
+    - Coprocessor 0 defines up to 32 special-purpose registers, including Cause and EPC
+- exception handler may use the mfc0 (move from coprocessor 0) instruction to copy these special-purpose registers
+  into a general-purpose register in the register file
+    - Cause register is Coprocessor 0 register 13, and EPC is register 14
+- must add EPC and Cause registers to the datapath and extend the PCSrc multiplexer to accept the exception handler
+  address to handle exceptions
+    - two new registers have write enables, EPCWrite and CauseWrite, to store the PC and exception cause when an
+      exception takes place
+    - cause is generated by a multiplexer that selects the appropriate code for the exception
+- ALU must also generate an overflow signal
+- must add a way to select the Coprocessor 0 registers and write them to the register file to support the mfc0
+  instruction
+- mfc0 instruction specifies the Coprocessor 0 register by Instr15:11
+- add another input to the MemtoReg multiplexer to select the value from Coprocessor 0
+- controller receives the overflow flag from the ALU
+- generates three new control signals
+    - one to write the EPC
+    - second to write the Cause register
+    - third to select the Cause
+- also includes two new states to support the two exceptions and another state to handle mfc0
+- if the controller receives an undefined instruction (one that it does not know how to handle),
+  it proceeds to S12, saves the PC in EPC, writes 0x28 to the Cause register, and jumps to the exception handler
+- if the controller detects arithmetic overflow on an add or sub instruction, it proceeds to S13, saves the PC in EPC,
+  writes 0x30 in the Cause register, and jumps to the exception handler
+- NOTE: when an exception occurs, the instruction is discarded and the register file is not written
+- when an mfc0 instruction is decoded, the processor goes to S14 and writes the appropriate Coprocessor 0 register to
+  the main register file
+
+## 7.8 Advanced Microarchitecture
+- high-performance microprocessors use a wide variety of techniques to run programs faster
+- time required to run a program is proportional to the period of the clock and to the number of clock cycles per
+  instruction (CPI)
+    - to increase performance need to speed up the clock and/or reduce the CPI
+- many existing speedup techniques
+    - focus on the concepts
+    - see Computer Architecture - Hennessy & Patterson for details
+- advances in CMOS manufacturing reduce transistor dimensions by 30% in each direction every 2 to 3 years
+    - doubles the number of transistors that can fit on a chip
+- smaller transistors are faster and generally consume less power.
+- even if the microarchitecture does not change, the clock frequency can increase because all the gates are faster
+- smaller transistors enable placing more transistors on a chip
+- microarchitects use the additional transistors to build more complicated processors or to put more processors on a
+chip
+- power consumption increases with the number of transistors and the speed at which they operate
+    - now an essential concern
+- designers have must juggle trade-offs among speed, power, and cost for chips with billions of transistors in some
+  of the most complex systems that humans have ever built
+
+### Deep Pipelines
+Aside from advances in manufacturing, the
+- easiest way to speed up the clock is to chop the pipeline into more stages
+    - each stage can run faster because it contains less logic
+- consider a classic five-stage pipeline (10 to 20 stages are now commonly used, more?)
+- maximum number of pipeline stages is limited by
+    - pipeline hazards
+    - sequencing overhead
+    - cost
+- longer pipelines introduce more dependencies
+    - solved by
+        - forwarding
+        - stalls, which increase the CPI
+- pipeline registers between each stage have sequencing overhead from their setup time and clk-to-Q delay
+  (as well as clock skew)
+- sequencing overhead makes adding more pipeline stages give diminishing returns
+- adding more stages increases the cost because of the extra pipeline registers and hardware required to handle hazards
+
+### Branch Prediction
+- ideal pipelined processor would have a CPI of 1
+- branch misprediction penalty is a major reason for increased CPI
+- pipelines get deeper = branches are resolved later in the pipeline
+    - branch misprediction penalty gets larger
+    - all the instructions issued after the mispredicted branch must be flushed
+- most pipelined processors use a branch predictor to guess whether the branch should be taken
+- some branches occur when a program reaches the end of a loop (e.g., a for or while statement) and branches back to
+  repeat the loop
+- loops tend to be executed many times, so these backward branches are usually taken
+- static branch prediction
+    - simplest form of branch prediction checks the direction of the branch and predicts that backward branches should be
+      taken
+    - called static because it does not depend on the history of the program
+- forward branches are difficult to predict without knowing more about the specific program
+    - most processors use dynamic branch predictors, which use the history of program execution to guess whether a
+      branch should be taken
+    - maintain a table of the last several hundred (or thousand) branch instructions that the processor has executed
+    - table, sometimes called a branch target buffer, includes the destination of the branch and a history of whether
+      the branch was taken
+- one-bit dynamic branch predictor
+    - remembers whether the branch was taken the last time and predicts that it will do the same thing the next time
+    - while the loop is repeating, it remembers that the beq was not taken last time and predicts that it should not
+      be taken next time
+    - correct prediction until the last branch of the loop, when the branch does get taken
+    - if the loop is run again, the branch predictor remembers that the last branch was taken
+        - incorrectly predicts that the branch should be taken when the loop is first run again
+    - mispredicts the first and last branches of a loop
+- 2-bit dynamic branch predictor
+    - solves 1-bit problem by having four states
+        - strongly taken
+        - weakly taken
+        - weakly not taken
+        - strongly not taken
+    - when the loop is repeating, it enters the "strongly not taken" state and predicts that the branch should not be
+      taken next time
+    - correct until the last branch of the loop, which is taken and moves the predictor to the "weakly not taken" state
+    - when the loop is first run again, the branch predictor correctly predicts that the branch should not be taken and
+      reenters the "strongly not taken" state
+    - mispredicts only the last branch of a loop
+- branch predictors may be used to track even more history of the program to increase the accuracy of predictions
+- good branch predictors achieve better than 90% accuracy on typical programs
+- branch predictor operates in the Fetch stage of the pipeline so that it can determine which instruction to execute
+  on the next cycle
+    - when it predicts that the branch should be taken, the processor fetches the next instruction from the branch
+      destination stored in the branch target buffer
+    - by keeping track of both branch and jump destinations in the branch target buffer, the processor can also avoid
+      flushing the pipeline during jump instructions
+
+### Superscalar Processor
+- multiple copies of the datapath hardware to execute multiple instructions simultaneously
+- two-way superscalar processor
+    - fetches and executes two instructions per cycle
+- datapath fetches two instructions at a time from the instruction memory
+- has a six-ported register file to read four source operands and write two results back in each cycle
+- also contains two ALUs and a two-ported data memory to execute the two instructions at the same time
+- designers commonly refer to the reciprocal of the CPI as the instructions per cycle, or IPC
+- executing many instructions simultaneously is difficult because of dependencies
+- parallelism comes in temporal and spatial forms
+    - pipelining is a case of temporal parallelism
+    - multiple execution units is a case of spatial parallelism
+    - superscalar processors exploit both forms of parallelism to squeeze out performance far exceeding that of our
+      single-cycle and multicycle processors
+- commercial processors may be three-, four-, or even six-way super-scalar
+    - must handle control hazards such as branches as well as data hazards
+    - real programs have many dependencies, so wide superscalar processors rarely fully utilize all of the execution
+      units
+    - large number of execution units and complex forwarding networks consume vast amounts of circuitry and power
+
+### Out-of-Order Processor
+- looks ahead across many instructions to issue, or begin executing, independent instructions as rapidly as possible
+  to cope with the problem of dependencies
+- instructions can be issued in a different order than that written by the programmer
+  as long as dependencies are honored so that the program produces the intended result
+- two-way superscalar out-of-order processor
+    - processor can issue up to two instructions per cycle from anywhere in the program, as long as dependencies are
+- dependence of add on lw by way of $t0 is a read after write (RAW) hazard
+    - add must not read $t0 until after lw has written it
+    - type of dependency we are accustomed to handling in the pipelined processor
+    - inherently limits the speed at which the program can run, even if infinitely many execution units are available
+- dependence of sw on or by way of $t3 and of and on sub by way of $t0 are RAW dependencies
+- dependence between sub and add by way of $t0 is called a write after read (WAR) hazard or an antidependence
+    - sub must not write $t0 before add reads $t0, so that add receives the correct value according to the original
+      order of the program
+    - WAR hazards could not occur in the simple MIPS pipeline, but they may happen in an out-of-order processor if the
+      dependent instruction (in this case, sub) is moved too early
+    - a WAR hazard is not essential to the operation of the program
+        - merely an artifact of the programmer’s choice to use the same register for two unrelated instructions
+        - MIPS architecture only has 32 registers, so sometimes the programmer is forced to reuse a register and
+          introduce a hazard just because all the other registers are in use
+- a third type of hazard is called write after write (WAW) or an output dependence
+    - occurs if an instruction attempts to write a register after a subsequent instruction has already written it
+    - results in the wrong value being written to the register
+    - WAW hazards are not essential either
+        - artifacts caused by the programmer’s using the same register for two unrelated instructions
+     - squashing the add - program could eliminate a WAW hazard by discarding the result of the add instead of writing
+       it to $t0
+- out-of-order processors use a table to keep track of instructions waiting to issue
+    - table, sometimes called a scoreboard, contains information about the dependencies
+    - size of the table determines how many instructions can be considered for issue
+    - on each cycle, the processor examines the table and issues as many instructions as it can, limited by the
+      dependencies and by the number of execution units (e.g., ALUs, memory ports) that are available
+- instruction level parallelism (ILP) is the number of instructions that can be executed simultaneously for a
+  particular program and microarchitecture
+    - theoretical studies have shown that the ILP can be quite large for out-of-order microarchitectures with perfect
+      branch predictors and enormous numbers of execution units
+    - practical processors seldom achieve an ILP greater than 2 or 3, even with six-way superscalar datapaths with
+      out-of-order execution
+
+### Register Renaming
+- out-of-order processors use a technique called register renaming to eliminate WAR hazards
+    - adds some nonarchitectural renaming registers to the processor
+    - a MIPS processor might add 20 renaming registers, called $r0-$r19
+    - programmer cannot use these registers directly, because they are not part of the architecture
+    - processor is free to use them to eliminate hazards
+
+### Single Instruction Multiple Data
+- (SIMD) a single instruction acts on multiple pieces of data in parallel
+- common application of SIMD is to perform many short arithmetic operations at once, especially for graphics processing
+    - also called packed arithmetic
+- performing packed arithmetic requires modifying the ALU to eliminate carries between the smaller data elements
+- short data elements often appear in graphics processing
+    - when the components from four adjacent pixels are packed into a 32-bit word, the processing can be performed
+      four times faster
+- SIMD instructions are even more helpful for 64-bit architectures, which can pack eight 8-bit elements, four 16-bit
+  elements, or two 32-bit elements into a single 64-bit word
+- also used for floating-point computations
+    - four 32-bit single-precision floating-point values can be packed into a single 128-bit word
+
+### Multithreading
+- adding more execution units to a superscalar or out-of-order processor gives diminishing returns
+- memory is much slower than the processor
+    - most loads and stores access a smaller and faster memory, called a cache
+    - when the instructions or data are not available in the cache, the processor may stall for 100 or more cycles
+      while retrieving the information from the main memory
+- multithreading is a technique that helps keep a processor with many execution units busy even if the ILP of a program
+  is low or the program is stalled waiting for memory
+- computers can run multiple processes simultaneously
+    - each process consists of one or more threads that also run simultaneously
+    - degree to which a process can be split into multiple threads that can run simultaneously defines its level of
+      thread level parallelism (TLP)
+- in a conventional processor, the threads only give the illusion of running simultaneously
+    - threads actually take turns being executed on the processor under control of the OS
+    - when one thread’s turn ends, the OS saves its architectural state, loads the architectural state of the next
+      thread, and starts executing that next thread
+    - called context switching
+    - as long as the processor switches through all the threads fast enough, the user perceives all of the threads as
+      running at the same time
+- a multithreaded processor contains more than one copy of its architectural state, so that more than one thread can be
+  active at a time
+    - if we extended a MIPS processor to have four program counters and 128 registers, four threads could be available
+      at one time
+    - if one thread stalls while waiting for data from main memory, the processor could context switch to another
+      thread without any delay, because the program counter and registers are already available
+    - if one thread lacks sufficient parallelism to keep all the execution units busy, another thread could issue
+      instructions to the idle units
+- multithreading does not improve the performance of an individual thread, because it does not increase the ILP
+    - it does improve the overall throughput of the processor, because multiple threads can use processor resources
+      that would have been idle when executing a single thread
+    - relatively inexpensive to implement, because it replicates only the PC and register file, not the execution units
+      and memories
+
+### Homogeneous Multiprocessors
+- multiprocessor system consists of multiple processors and a method for communication between the processors
+- homogeneous multiprocessing (symmetric multiprocessing (SMP))
+    - two or more identical processors share a single main memory
+    - may be separate chips or multiple cores on the same chip
+- modern processors have enormous numbers of transistors available
+    - using them to increase the pipeline depth or to add more execution units to a superscalar processor gives little
+    performance benefit and is wasteful of power
+- around 2005, computer architects made a major shift to building multiple copies of the processor on the same chip
+    - copies are called cores
+- can be used to run more threads simultaneously or to run a particular thread faster
+    - threads are divided up among the processors
+    - running a particular thread faster is much more challenging
+        - programmer must divide the existing thread into multiple threads to execute on each processor
+        - difficult when the processors need to communicate with each other
+- one of the major challenges for computer designers and programmers is to effectively use large numbers of processor
+  cores
+- other forms of multiprocessing
+    - heterogeneous multiprocessing
+        - (asymmetric multiprocessors) use separate specialized microprocessors for separate tasks
+    - clusters
+        - each processor has its own local memory system
+        - can also refer to a group of PCs connected together on the network running software to jointly solve a large
+          problem
+
+### Heterogeneous Multiprocessors
+- advantages of homogeneous multiprocessors
+    - relatively simple to design because the processor can be designed once and then replicated multiple times to
+      increase performance
+    - programming for and executing code on a homogeneous multiprocessor is relatively straightforward because any
+      program can run on any processor in the system and achieve approximately the same performance
+- continuing to add more and more cores is not guaranteed to provide continued performance improvement
+- as of 2012, consumer applications employed only 2–3 threads on average at any given time
+    - enough to keep dual- and quad-core systems busy
+    - programs need start incorporating significantly more parallelism
+    - continuing to add more cores beyond this point will provide diminishing benefits
+- general purpose processors are generally not the most power efficient option for performing a given operation because
+  they are designed to provide good average performance they
+- energy inefficiency is especially important in highly power-constrained portable environments
+- heterogeneous multiprocessors aim to address these issues by incorporating different types of cores and/or
+  specialized hardware in a single system
+    - each application uses those resources that provide the best performance, or power-performance ratio
+- heterogeneous systems can take a number of forms
+    - can incorporate cores with different microarchitectures that have different power, performance, and area tradeoffs
+        - could include both simple single-issue in-order cores and more complex superscalar out-of-order cores
+        - cores may all use the same ISA, which allows an application to run on any of the cores, or may employ
+          different ISAs, which can allow further tailoring of a core to a given task
+- other heterogeneous systems can include a mix of traditional cores and specialized hardware
+    - floating-point coprocessors are an early example of this
+    - early microprocessors did not have space for floating-point hardware on the main chip
+    - today’s microprocessors include one or more floating-point units on chip and are now beginning to include other
+      types of specialized hardware
+        - AMD and Intel both have processors that incorporate a graphics processing unit (GPU) or FPGA and one or more
+          traditional x86 cores on the same chip
+- heterogeneous systems
+    - add complexity, both in terms of designing the different heterogeneous elements and in terms of the additional
+      programming effort to decide when and how to make use of the varying resources
+- homogeneous multiprocessors are good for situations, like large data centers, that have lots of thread level
+  parallelism available
+- heterogeneous systems are good for cases that have more varying workloads and limited parallelism
+
+## 7.9 Real-World Perspective: x86 Microarchitecture
+- x86 processors evolved through progressively faster and more complicated microarchitectures
+- Intel invented the first single-chip microprocessor, the 4-bit 4004, in 1971 as a flexible controller for a line of
+  calculators
+    - contained 2300 transistors manufactured on a 12-mm2 sliver of silicon in a process with a 10-μm feature size and
+      operated at 750 kHz
+- 4004 inspired the 8-bit 8008, then the 8080, which eventually evolved into the 16-bit 8086 in 1978 and the 80286 in
+  1982
+- in 1985, Intel introduced the 80386, which extended the 8086 architecture to 32 bits and defined the x86 architecture
+- 80386 is a multicycle processor with a 32-bit datapath
+    - some of the control signals are generated using a microcode PLA that steps through the various states of the
+      control FSM
+    - memory management unit in the upper right controls access to the external memory
+- the 80486 dramatically improved performance using pipelining
+    - added an on-chip floating-point unit
+        - previous Intel processors either sent floating-point instructions to a separate coprocessor or emulated them
+          in software
+    - too fast for external memory to keep up, so it incorporated an 8-KB cache onto the chip to hold the most commonly
+      used instructions and data
+      Chapter 8 describes caches in more detail and revisits the cache systems on Intel x86 processors.
+- Pentium processor is a superscalar processor capable of executing two instructions simultaneously
+    - Intel switched to the name Pentium instead of 80586 because AMD was becoming a serious competitor selling
+      interchangeable 80486 chips, and part numbers cannot be trademarked
+    - uses separate instruction and data caches
+    - uses a branch predictor to reduce the performance penalty for branches
+- Pentium Pro, Pentium II, and Pentium III processors all share a common out-of-order microarchitecture, code-named P6
+    - complex x86 instructions are broken down into one or more micro-ops similar to MIPS instructions
+    - micro-ops are then executed on a fast out-of-order execution core with an 11-stage pipeline
+    - The 32-bit datapath is called the Integer Execution Unit (IEU)
+    - floating-point datapath is called the Floating Point Unit (FPU)
+    - processor also has a SIMD unit to perform packed operations on short integer and floating-point data
+    - a larger portion of the chip is dedicated to issuing instructions out-of-order than to actually executing the
+      instructions
+    - the instruction and data caches grew to 16 KB each
+    - Pentium III also has a larger but slower 256-KB second-level cache on the same chip
+- by the late 1990s, processors were marketed largely on clock speed
+- Pentium 4 is another out-of-order processor with a very deep pipeline to achieve extremely high clock frequencies
+    - started with 20 stages, and later versions adopted 31 stages to achieve frequencies greater than 3 GHz
+    - the chip packs in 42 to 178 million transistors (depending on the cache size), so even the major execution units
+    - decoding three x86 instructions per cycle is impossible at such high clock frequencies because the instruction
+      encodings are so complex and irregular
+        - the processor predecodes the instructions into simpler micro-ops, then stores the micro-ops in a memory
+          called a trace cache
+    - later versions of the Pentium 4 also perform multithreading to increase the throughput of multiple threads
+    - reliance on deep pipelines and high clock speed led to extremely high power consumption,
+      sometimes more than 100 W
+    - unacceptable in laptops and makes cooling of desktops expensive
+- Intel discovered that the older P6 architecture could achieve comparable performance at much lower clock speed and
+  power
+- Pentium M uses an enhanced version of the P6 out-of-order microarchitecture with 32-KB instruction and data caches
+  and a 1- to 2-MB second-level cache
+- Core Duo is a multicore processor based on two Pentium M cores connected to a shared 2-MB second-level cache
+- in 2009 Intel introduced a new microarchitecture code-named Nehalem that streamlines the initial Core
+  microarchitecture
+    - includes the Core i3, i5, and i7 series
+    - extend the instruction set to 64 bits
+    - offer from 2 to 6 cores
+    - 3–15 MB of third-level cache
+    - built-in memory controller
+    - some models include built-in graphics processors, also called graphics accelerators
+    - some support "Turbo- Boost" to improve the performance of single-threaded code by turning off the unused cores
+      and raising the voltage and clock frequency of the boosted core
+    - some offer "hyperthreading" Intel’s term for 2-way multi-threading that doubles the number of cores from the
+      user’s perspective
+
+
+# Ch. 8 - Memory and I/O Systems
+- computer’s ability to solve problems requires memory system and the input/output (I/O) devices
+    - monitors
+    - keyboards
+    - printers
+- permits manipulation and observation of results of its computations
+- performance depends on the memory system as well as the processor microarchitecture
+- early processors were relatively slow, so memory was able to keep up
+- processor speed has increased at a faster rate than memory speeds
+    - DRAM memories are currently 10 to 100 times slower than processors
+- increasing gap between processor and DRAM memory speeds demands increasingly ingenious memory systems to try to
+  approximate a memory that is as fast as the processor
+- processor communicates with the memory system over a memory interface
+- simple memory interface used in our multicycle MIPS processor
+    - processor sends an address over the Address bus to the memory system
+    - for a read, MemWrite is 0 and the memory returns the data on the ReadData bus
+    - for a write, MemWrite is 1 and the processor sends data to memory on the WriteData bus
+- memory systems use a hierarchy of storage to quickly access the most commonly used data while still having the
+  capacity to store large amounts of data
+- computer memories are primarily built from dynamic RAM (DRAM) and static RAM (SRAM)
+    - ideally fast, large, and cheap
+    - in practice, a single memory only has two of these three attributes
+    - systems can approximate the ideal by combining a fast small cheap memory and a slow large cheap memory
+    - fast memory stores the most commonly used data and instructions, so on average the memory system appears fast
+    - large memory stores the remainder of the data and instructions, so the overall capacity is large
+    - combination of two cheap memories is much less expensive than a single large fast memory
+    - principles extend to using an entire hierarchy of memories of increasing capacity and decreasing speed
+- computer memory is generally built from DRAM chips
+- in 2012, a typical PC had a main memory consisting of 4 to 8 GB of DRAM, and DRAM cost about $10 per gigabyte (GB)
+    - prices have declined at about 25% per year for the last three decades
+    - memory capacity has grown at the same rate, so the total cost of the memory in a PC has remained roughly constant
+    - DRAM speed has improved by only about 7% per year, whereas processor performance has improved at a rate of 25 to
+      50% per year
+    - DRAM access time is one to two orders of magnitude longer than the processor cycle time (tens of nanoseconds,
+      compared to less than one nanosecond)
+- to counteract this trend, computers store the most commonly used instructions and data in a faster but smaller
+  memory, called a cache
+    - cache is usually built out of SRAM on the same chip as the processor
+    - cache speed is comparable to the processor speed, because SRAM is inherently faster than DRAM, and because the
+      on-chip memory eliminates lengthy delays caused by traveling to and from a separate chip
+    - in 2012, on-chip SRAM costs were on the order of $10,000/GB, but the cache is relatively small (kilobytes to
+      several megabytes), so the overall cost is low
+    - can store both instructions and data
+    - if the processor requests data that is available in the cache, it is returned quickly
+        - called a cache hit
+    - otherwise, the processor retrieves the data from main memory (DRAM)
+        - called a cache miss
+    - if the cache hits most of the time, then the processor seldom has to wait for the slow main memory, and the
+      average access time is low
+- third level in the memory hierarchy is the hard drive
+    - computer systems use the hard drive to store data that does not fit in main memory
+    - in 2012, a hard disk drive (HDD), built using magnetic storage, cost less than $0.10/GB and had an access time of
+      about 10 ms
+    - hard disk costs have decreased at 60%/year but access times scarcely improved
+    - solid state drives (SSDs), built using flash memory technology, are an increasingly common alternative to HDDs
+    - SSDs have been used by niche markets for over two decades, and they were introduced into the mainstream market in
+      2007
+    - SSDs overcome some of the mechanical failures of HDDs, but they cost ten times as much at $1/GB (old)
+    - hard drive provides an illusion of more capacity than actually exists in the main memory
+        - called virtual memory
+    - main memory, also called physical memory, holds a subset of the virtual memory
+    - main memory can be viewed as a cache for the most commonly used data from the hard drive
+- process
+    - processor first seeks data in a small but fast cache that is usually located on the same chip
+    - if the data is not available in the cache, the processor then looks in main memory
+    - if the data is not there either, the processor fetches the data from virtual memory on the large but slow hard
+      disk
+
+## 8.2 Memory System Performance Analysis
+- need quantitative ways to measure the performance of memory systems to evaluate the cost-benefit trade-offs of
+  various alternatives
+- memory system performance metrics are miss rate or hit rate and average memory access time
+```
+miss rate = number of misses / number of total memory accesses = 1 - hit rate
+hit rate = number of hits / number of total memory accesses = 1 - miss rate
+```
+
+- average memory access time (AMAT) is the average time a processor must wait for memory per load or store instruction
+    - processor first looks for the data in the cache
+    - if the cache misses, the processor then looks in main memory
+    - if the main memory misses, the processor accesses virtual memory on the hard disk
+```
+AMAT = tcache + MRcache (tMM + MRmm*tVM)
+```
+- tcache - access time of the cache
+- tMM - access time of main memory
+- tVM - access time of virtual memory
+- MRcache - cache miss rate
+- MRMM - main memory miss rate
+- Amdahl’s Law - says that the effort spent on increasing the performance of a subsystem is worthwhile only if the
+  subsystem affects a large percentage of the overall performance
+    - making the memory system ten times faster will not necessarily make a computer program run ten times as fast
+    - if 50% of a program’s instructions are loads and stores, a tenfold memory system improvement only means a 1.82-fold
+      improvement in program performance
+
+## Caches
+- holds commonly used memory data
+- the number of data words that it can hold is called the capacity, C
+- designer must choose what subset of the main memory is kept in the cache
+- cache is checked first for data access
+- if the cache hits, the data is available immediately
+- if the cache misses, the processor fetches the data from main memory and places it in the cache for future use
+- cache must replace old data
+
+### What Data is Held in the Cache?
+- ideal cache would anticipate all of the data needed by the processor and fetch it from main memory ahead of time so
+  that the cache has a zero miss rate
+    - impossible to predict with perfect accuracy
+    - cache must guess what data will be needed based on the past pattern of memory accesses
+    - cache exploits temporal and spatial locality to achieve a low miss rate
+        - temporal locality means that the processor is likely to access a piece of data again soon if it has accessed
+          that data recently
+            - when the processor loads or stores data that is not in the cache, the data is copied from main memory into
+              the cache
+            - subsequent requests for that data hit in the cache
+        - spatial locality means that when the processor accesses a piece of data it is also likely to access data in
+          nearby memory locations
+            - when the cache fetches one word from memory, it may also fetch several adjacent words
+            - group of words is called a cache block or cache line
+            - number of words in the cache block, b, is called the block size
+    - cache of capacity C contains B = C/b blocks.
+- if a variable is used in a program, the same variable is likely to be used again, creating temporal locality
+- if an element in an array is used, other elements in the same array are also likely to be used, creating spatial
+  locality
+
+### How is Data Found?
+- cache is organized into S sets, each of which holds one or more blocks of data
+- relationship between the address of data in main memory and the location of that data in the cache is called the
+  mapping
+    - each memory address maps to exactly one set in the cache
+    - some of the address bits are used to determine which cache set contains the data
+    - if the set contains more than one block, the data may be kept in any of the blocks in the set
+- caches are categorized based on the number of blocks in a set
+    - direct mapped cache
+        - each set contains exactly one block, so the cache has S = B sets
+        - a particular main memory address maps to a unique block in the cache
+    - N-way set associative cache
+        - each set contains N blocks
+        - address still maps to a unique set, with S = B/N sets
+        - data from that address can go in any of the N blocks in that set
+    - fully associative cache
+        - has only S = 1 set
+        - data can go in any of the B blocks in the set
+        - another name for a B-way set associative cache
+
+#### Direct Mapped Cache
+- one block in each set, so it is organized into S = B sets
+- hypothetical mapping
+    - address in block 0 of main memory maps to set 0 of the cache
+    - address in block 1 of main memory maps to set 1 of the cache, and so forth until an address in block B − 1 of main
+      memory maps to block B − 1 of the cache
+    - no more blocks of the cache, so the mapping wraps around, such that block B of main memory maps to
+      block 0 of the cache
+- each main memory address maps to exactly one set in the cache
+- because many addresses map to a single set, the cache must also keep track of the address of the data actually
+  contained in each set
+    - least significant bits of the address specify which set holds the data
+    - remaining most significant bits are called the tag and indicate which of the many possible addresses is held in
+      that set
+- sometimes (e.g. when the computer first starts up) the cache sets contain no data at all
+    - cache uses a valid bit for each set to indicate whether the set holds meaningful data
+    - if the valid bit is 0, the contents are meaningless.
+- cache is constructed as an eight-entry SRAM
+    - each entry, or set, contains one line consisting of 32 bits of data, 27 bits of tag, and 1 valid bit
+    - cache is accessed using the 32-bit address
+    - two least significant bits, the byte offset bits, are ignored for word accesses
+    - next three bits, the set bits, specify the entry or set in the cache
+    - load instruction reads the specified entry from the cache and checks the tag and valid bits
+    - if the tag matches the most significant 27 bits of the address and the valid bit is 1, the cache hits and the
+      data is returned to the processor
+    - otherwise cache misses and the memory system must fetch the data from main memory
+    - when two recently accessed addresses map to the same cache block, a conflict occurs, and the most recently
+      accessed address evicts the previous one from the block
+    - direct mapped caches have only one block in each set, so two addresses that map to the same set always cause a
+      conflict
+
+#### Multi-way Set Associative Cache
+- reduces conflicts by providing N blocks in each set where data mapping to that set might be found
+- each memory address still maps to a specific set, but it can map to any one of the N blocks in the set
+- direct mapped cache is another name for a one-way set associative cache
+- N is also called the degree of associativity of the cache
+- each set contains two ways or degrees of associativity
+- each way consists of a data block and the valid and tag bits
+- cache reads blocks from both ways in the selected set and checks the tags and valid bits for a hit
+- if a hit occurs in one of the ways, a multiplexer selects data from that way
+- generally have lower miss rates than direct mapped caches of the same capacity, because they have fewer conflicts
+- set associative caches are usually slower and somewhat more expensive to build because of the output multiplexer and
+  additional comparators
+- raises the question of which way to replace when both ways are full
+- most commercial systems use set associative caches
+
+#### Fully Associative Cache
+- contains a single set with B ways, where B is the number of blocks
+- memory address can map to a block in any of these ways
+- another name for a B-way set associative cache with one set
+- tend to have the fewest conflict misses for a given cache capacity, but they require more hardware for additional
+  tag comparisons
+- best suited to relatively small caches because of the large number of comparators
+
+#### Block Size
+- to exploit spatial locality, a cache uses larger blocks to hold several consecutive words
+- advantage of a block size greater than one
+    - when a miss occurs and the word is fetched into the cache, the adjacent words in the block are also fetched
+    - subsequent accesses are more likely to hit because of spatial locality
+    - a large block size means that a fixed-size cache will have fewer blocks
+        - may lead to more conflicts, increasing the miss rate
+        - takes more time to fetch the missing cache block after a miss, because more than one data word is fetched
+          from main memory
+    - time required to load the missing block into the cache is called the miss penalty
+    - if the adjacent words in the block are not accessed later, the effort of fetching them is wasted
+- principle of using larger block sizes to exploit spatial locality also applies to associative caches
+
+#### Putting it All Together
+- caches are organized as two-dimensional arrays
+- rows are called sets
+- columns are called ways
+- each entry in the array consists of a data block and its associated valid and tag bits
+- characterized by
+    - capacity C
+    - block size b (and number of blocks, B = C/b)
+    - number of blocks in a set (N)
+
+```
+Organization        Number of Ways (N)      Number of Sets (S)
+Direct Mapped       1                       B
+Set Associative     1 < N < B               B / N
+Fully Associative   B                       1
+```
+- each address in memory maps to only one set but can be stored in any of the ways
+- Cache capacity, associativity, set size, and block size are typically powers of 2
+    - makes the cache fields (tag, set, and block offset bits) subsets of the address bits
+- increasing the associativity N usually reduces the miss rate caused by conflicts
+    - higher associativity requires more tag comparators
+- increasing the block size b takes advantage of spatial locality to reduce the miss rate
+    - decreases the number of sets in a fixed sized cache and therefore could lead to more conflicts
+    - also increases the miss penalty
+
+### What Data is Replaced?
+- direct mapped cache
+    - each address maps to a unique block and set
+    - if a set is full when new data must be loaded, the block in that set is replaced with the new data
+- set associative and fully associative caches
+    - cache must choose which block to evict when a cache set is full
+    - temporal locality suggests that the best choice is to evict the least recently used block, because it is least
+      likely to be used again soon
+    - most associative caches have a least recently used (LRU) replacement policy
+- two-way set associative cache
+    - use bit, U, indicates which way within a set was least recently used
+    - each time one of the ways is used, U is adjusted to indicate the other way
+- set associative caches with more than two ways
+    - tracking the least recently used way becomes complicated
+    - the ways are often divided into two groups and U indicates which group of ways was least recently used for
+      simplification
+    - upon replacement, the new block replaces a random block within the least recently used group
+    - such a policy is called pseudo-LRU and is good enough in practice
+
+### Advanced Cache Design
+- modern systems use multiple levels of caches to decrease memory access time
+
+#### Multiple-Level Caches
+- large caches are beneficial because they are more likely to hold data of interest and therefore have lower miss rates
+    - tend to be slower than small ones
+- modern systems often use at least two levels of caches
+- first-level (L1) cache is small enough to provide a one- or two-cycle access time
+- second-level (L2) cache is also built from SRAM but is larger, and therefore slower, than the L1 cache
+- processor first looks for the data in the L1 cache
+    - if the L1 cache misses, the processor looks in the L2 cache
+    - if the L2 cache misses, the processor fetches the data from main memory
+- many modern systems add even more levels of cache to the memory hierarchy, because accessing main memory is so slow
+
+#### Reducing Miss Rate
+- can be reduced by changing capacity, block size, and/or associativity
+- understand the causes of the misses
+    - compulsory
+        - the first request to a cache block is called a compulsory miss, because the block must be read from memory
+          regardless of the cache design
+    - capacity
+        - occur when the cache is too small to hold all concurrently used data
+    - conflict
+        - caused when several addresses map to the same set and evict blocks that are still needed
+- changing cache parameters can affect one or more type of cache miss
+    - increasing capacity can reduce conflict and capacity misses, but it does not affect compulsory misses
+    - increasing block size could reduce compulsory misses (due to spatial locality) but might actually increase
+      conflict misses (because more addresses would map to the same set and could conflict)
+- best to benchmark while changing parameters
+- miss rate can also be decreased by using larger block sizes that take advantage of spatial locality
+    - as block size increases, the number of sets in a fixed-size cache decreases, increasing the probability of
+      conflicts
+    - for small caches, such as the 4-KB cache, increasing the block size beyond 64 bytes increases the miss rate because
+      of conflicts
+    - for larger caches, increasing the block size beyond 64 bytes does not change the miss rate
+    - large block sizes might still increase execution time because of the larger miss penalty, the time required to
+      fetch the missing cache block from main memory
+
+#### Write Policy
+- memory stores, or writes, follow a similar procedure as loads
+- on memory store, the processor checks the cache
+    - if the cache misses, the cache block is fetched from main memory into the cache, and then the appropriate word in
+      the cache block is written
+    - if the cache hits, the word is simply written to the cache block
+- write-through cache
+    - data written to a cache block is simultaneously written to main memory
+- write-back cache
+    - dirty bit (D) is associated with each cache block
+    - D is 1 when the cache block has been written and 0 otherwise
+    - dirty cache blocks are written back to main memory only when they are evicted from the cache
+- write-through cache requires no dirty bit but usually requires more main memory writes than a write-back cache.
+- modern caches are usually write-back because main memory access time is so large
+
+### The Evolution of MIPSCaches
+- major trends are the introduction of multiple levels of cache, larger cache capacity, and increased associativity
+- driven by the growing disparity between CPU frequency and main memory speed and the decreasing cost of transistors
+- growing difference between CPU and memory speeds necessitates a lower miss rate to avoid the main memory bottleneck,
+  and the decreasing cost of transistors allows larger cache sizes
+
+## 8.4 Virtual Memory
+- most modern computer systems use a hard drive made of magnetic or solid state storage as the lowest level in the
+  memory hierarchy
+- hard drive is large and cheap but slow
+    - provides a much larger capacity than is possible with a cost-effective main memory (DRAM)
+    - if a significant fraction of memory accesses involve the hard drive, performance is dismal
+- hard disk
+    - contains one or more rigid disks or platters, each of which has a read/write head on the end of a long triangular
+      arm
+    - head moves to the correct location on the disk and reads or writes data magnetically as the disk rotates
+    - head takes several milliseconds to seek the correct location on the disk, which is fast from a human perspective
+      but millions of times slower than the processor
+- hard drive inexpensively gives the illusion of a very large memory while still providing the speed of faster memory
+  for most accesses
+- larger memory is called virtual memory
+- smaller main memory is called physical memory
+- programs can access data anywhere in virtual memory, so they must use virtual addresses that specify the location
+  in virtual memory
+- physical memory holds a subset of most recently accessed virtual memory
+- physical memory acts as a cache for virtual memory
+- most accesses hit in physical memory at the speed of DRAM, yet the program has the capacity of the larger
+  virtual memory
+- virtual memory divided into virtual pages, typically 4 KB in size.
+- physical memory divided into physical pages of the same size
+- virtual page may be located in physical memory (DRAM) or on the hard drive
+- process of determining the physical address from the virtual address is called address translation
+- if the processor attempts to access a virtual address that is not in physical memory, a page fault occurs, and the
+  operating system loads the page from the hard drive into physical memory
+- to avoid page faults caused by conflicts, any virtual page can map to any physical page
+    - physical memory behaves as a fully associative cache for virtual memory
+- in a conventional fully associative cache, every cache block has a comparator that checks the most significant
+  address bits against a tag to determine whether the request hits in the block
+- in an analogous virtual memory system, each physical page would need a comparator to check the most significant
+  virtual address bits against a tag to determine whether the virtual page maps to that physical page
+- realistic virtual memory system has so many physical pages that providing a comparator for each page would be
+  excessively expensive
+    - virtual memory system uses a page table to perform address translation
+    - page table contains an entry for each virtual page, indicating its location in physical memory or that it is on
+      the hard drive
+    - each load or store instruction requires a page table access followed by a physical memory access
+    - page table access translates the virtual address used by the program to a physical address
+    - physical address is then used to actually read or write the data
+    - page table is usually so large that it is located in physical memory
+    - each load or store involves two physical memory accesses
+        - page table access
+        - data access
+    - translation lookaside buffer (TLB) caches the most commonly used page table entries to speed address translation
+
+```
+Analogous cache and virtual memory terms
+Cache           Virtual Memory
+Block           Page
+Block size      Page size
+Block offset    Page offset
+Miss            Page fault
+Tag             Virtual page number
+```
+
+### Address Translation
+- virtual memory uses virtual addresses to allow access to large memory
+- must translate these virtual addresses to either find the address in physical memory or take a page fault and fetch
+  the data from the hard drive
+- most significant bits of the virtual or physical address specify the virtual or physical page number
+- least significant bits specify the word within the page and are called the page offset
+- MIPS accommodates 32-bit addresses
+    - With a 2-GB=2^31-byte virtual memory, only the least significant 31 virtual address bits are used
+    - 32nd bit is always 0
+    - with a 128-MB = 227-byte physical memory, only the least significant 27 physical address bits are used
+    - the upper 5 bits are always 0
+- there are 2^31/2^12 = 2^19 virtual pages and 2^27/2^12 = 2^15 physical pages because the page size is 4 KB = 212 bytes
+    - virtual and physical page numbers are 19 and 15 bits
+- physical memory can only hold up to 1/16th of the virtual pages at any given time
+    - remainder of virtual pages are kept on the hard drive.
+- only the page number needs to be translated to obtain the physical address from the virtual address
+- least significant 12 bits indicate the page offset and require no translation
+- upper 19 bits of the virtual address specify the virtual page number (VPN) and are translated to a 15-bit physical
+  page number (PPN)
+
+### The Page Table
+- processor uses a page table to translate virtual addresses to physical addresses
+- page table contains an entry for each virtual page
+- entry contains a physical page number and a valid bit
+    - if the valid bit is 1, the virtual page maps to the physical page specified in the entry
+    - otherwise, the virtual page is found on the hard drive
+- stored in physical memory because page table is large
+- page table is indexed with the virtual page number (VPN)
+- page table can be stored anywhere in physical memory, at the discretion of the OS
+    - processor typically uses a dedicated register, called the page table register, to store the base address of the
+      page table in physical memory
+- to perform a load or store, the processor must first translate the virtual address to a physical address and then
+  access the data at that physical address
+- processor extracts the virtual page number from the virtual address and adds it to the page table register to find
+  the physical address of the page table entry
+    - then reads this page table entry from physical memory to obtain the physical page number
+    - if the entry is valid, it merges this physical page number with the page offset to create the physical address
+    - it reads or writes data at this physical address
+- each load or store involves two physical memory accesses because the page table is stored in physical memory
+
+### The Translation Lookaside Buffer
+- temporal and spatial locality of data accesses and the large page size mean that many consecutive loads or stores
+  are likely to reference the same page
+- processor can keep the last several page table entries in a small cache called a translation lookaside buffer (TLB)
+- processor "looks aside" to find the translation in the TLB before having to access the page table in physical
+  memory
+- vast majority of accesses hit in the TLB, avoiding the time-consuming page table reads from physical memory
+- organized as a fully associative cache and typically holds 16 to 512 entries
+    - each entry holds a virtual page number and its corresponding physical page number
+    - accessed using the virtual page number
+    - if the TLB hits, it returns the corresponding physical page number
+    - otherwise, the processor must read the page table in physical memory
+    - designed to be small enough that it can be accessed in less than one cycle
+    - typically have a hit rate of greater than 99%
+    - decreases the number of memory accesses required for most load or store instructions from two to one
+
+### Memory Protection
+- equally important reason to use virtual memory is to provide protection between concurrently running programs
+- all concurrently running programs are simultaneously present in physical memory
+    - programs should be protected from each other so that no program can crash or hijack another program
+    - no program should be able to access another program's memory without permission
+- virtual memory systems provide memory protection by giving each program its own virtual address space
+- each program can use as much memory as it wants in that virtual address space, but only a portion of the virtual
+  address space is in physical memory at any given time
+- each program can use its entire virtual address space without having to worry about where other programs are
+  physically located
+- a program can access only those physical pages that are mapped in its page table
+    - program cannot accidentally or maliciously access another program’s physical pages because they are not mapped in
+     its page table
+    - in some cases multiple programs access common instructions or data
+        - OS adds control bits to each page table entry to determine which programs can write to the shared physical
+          pages
+
+### Replacement Policies
+- virtual memory systems use write-back and an approximate least recently used (LRU) replacement policy
+    - write-through policy would be impractical
+    - store instructions would operate at the speed of the hard drive instead of the speed of the processor
+      (milliseconds instead of nanoseconds)
+- with writeback, physical page is written back to the hard drive only when it is evicted from physical memory
+- writing the physical page back to the hard drive and reloading it with a different virtual page is called paging
+    - hard drive in a virtual memory system is sometimes called swap space
+    - processor pages out one of the least recently used physical pages when a page fault occurs, then replaces that
+      page with the missing virtual page
+- each page table entry contains two additional status bits to support these replacement policies
+    - dirty bit D
+        - 1 if any store instructions have changed the physical page since it was read from the hard drive
+        - when a physical page is paged out, needs to be written back to the hard drive only if its dirty bit is 1
+        - otherwise, hard drive already holds an exact copy of the page
+    - use bit U
+        - 1 if the physical page has been accessed recently
+        - exact LRU replacement would be impractically complicated
+        - OS approximates LRU replacement by periodically resetting all the use bits in the page table
+        - when a page is accessed, its use bit is set to 1
+        - on page fault, the OS finds a page with U=0 to page out of physical memory
+        - does not necessarily replace the least recently used page, just one of the least recently used pages
+
+### Multilevel Page Tables
+- page tables can be broken up into multiple (usually two) levels to conserve physical memory
+- first-level page table is always kept in physical memory
+    - indicates where small second-level page tables are stored in virtual memory
+- second-level page tables each contain the actual translations for a range of virtual pages
+    - if a particular range of translations is not actively used, the corresponding second-level page table can be
+      paged out to the hard drive so it does not waste physical memory
+- in a two-level page table, the virtual page number is split into two parts
+    - page table number
+        - indexes the first-level page table, which must reside in physical memory
+        - first-level page table entry gives the base address of the second-level page table or indicates that it must
+          be fetched from the hard drive when V is 0
+    - page table offset
+        - indexes the second-level page table
+    - remaining 12 bits of the virtual address are the page offset for a page size of 212 = 4 KB
+- two-level page table requires a fraction of the physical memory needed to store the entire page table (2 MB)
+- drawback of a two-level page table is that it adds yet another memory access for translation when the TLB misses
+
+## 8.5 I/O Introduction
+Input/Output (I/O) systems are
+- used to connect a computer with external devices called peripherals
+- devices typically include keyboards, monitors, printers, and wireless networks in PCs/laptops
+- includes specialized elements for embedded systems
+- processor accesses an I/O device using the address and data busses in the same way that it accesses memory
+- a portion of the address space is dedicated to I/O devices rather than memory
+- each I/O device is assigned one or more memory addresses in this range
+    - a store to the specified address sends data to the device
+    - a load receives data from the device. This method of communicating with I/O devices is called memory-mapped I/O
+- a load or store may access either memory or an I/O device with memory-mapped I/O
+- write-enabled registers hold the values written to the I/O devices
+- software that communicates with an I/O device is called a device driver
+- writing a device driver requires detailed knowledge about the I/O device hardware
+- addresses associated with I/O devices are often called I/O registers because they may correspond with physical
+  registers in the I/O device
+
+## 8.6 Embedded I/O Systems
+- embedded systems use a processor to control interactions with the physical environment
+- typically built around microcontroller units (MCUs) which combine a microprocessor with a set of easy-to-use
+  peripherals such as general-purpose digital and analog I/O pins, serial ports, timers, etc
+- microcontrollers are generally inexpensive and are designed to minimize system cost and size by integrating
+  most of the necessary components onto a single chip
+- most are smaller and lighter than a dime, consume milliwatts of power, and range in cost from a few dimes up to
+  several dollars
+- microcontrollers are classified by the size of data that they operate upon. 8-bit microcontrollers are the
+  smallest and least expensive, while 32-bit microcontrollers provide more memory and higher performance
+
+### PIC32MX675F512H Microcontroller
+- based around a 32-bit MIPS processor
+- processor connects via 32-bit busses to Flash memory containing the program and SRAM containing data
+- has 512 KB of Flash and 64 KB of RAM
+    - other flavors with 16 to 512 KB of FLASH and 4 to 128 KB of RAM are available at various price points
+- high performance peripherals such as USB and Ethernet also communicate directly with the RAM through a bus matrix
+- lower performance peripherals including serial ports, timers, and A/D converters share a separate peripheral bus
+- chip also contains timing generation circuitry to produce the clocks and voltage sensing circuitry to detect when
+  the chip is powering up or about to lose power
+- all addresses used by the programmer are virtual
+- MIPS architecture offers a 32-bit address space to access up to 232 bytes = 4 GB of memory, but only a small
+  fraction of that memory is actually implemented on the chip
+- relevant sections from address 0xA0000000-0xBFC02FFF include the RAM, the Flash, and the special function registers
+  (SFRs) used to communicate with peripherals
+- NOTE: there is an additional 12 KB of Boot Flash that typically performs some initialization and then jumps to the
+  main program in Flash memory
+- on reset, the program counter is initialized to the start of the Boot Flash at 0xBFC00000
+- pins include power and ground, clock, reset, and many I/O pins that can be used for general-purpose I/O and/or
+  special-purpose peripherals
+- PIC32 and external circuitry are mounted on a printed circuit board
+    - may be an actual product (e.g. a toaster controller), or a development board facilitating easy access to the
+      chip during testing
+- LTC1117-3.3 regulator accepts an input of 4.5-12 V (e.g., from a wall transformer, battery, or external power supply)
+  and drops it down to a steady 3.3 V required at the power supply pins
+- multiple VDD and GND pins to reduce power supply noise by providing a low-impedance path
+- bypass capacitors provide a reservoir of charge to keep the power supply stable in the event of sudden changes
+  in current demand
+- bypass capacitor also connects to the VCORE pin, which serves an internal 1.8 V voltage regulator
+- typically draws 1–2 mA/MHz of current from the power supply
+- external oscillator running up to 50 MHz can be connected to the clock pin
+- microcontroller can be programmed to use an internal oscillator running at 8.00 MHz ± 2%
+    - much less precise in frequency, but may be good enough
+- peripheral bus clock, PBCLK, for the I/O devices (such as serial ports, A/D converter, timers) typically runs at a
+  fraction (e.g., half) of the speed of the main system clock SYSCLK
+- clocking scheme can be set by configuration bits in the MPLAB development software
+
+- good to provide a reset button to put the chip into a known initial state of operation
+    - consists of a push-button switch and a resistor connected to the reset pin, MCLR
+    - reset pin is active-low, indicating that the processor resets if the pin is at 0
+    - when the button is not pressed, the switch is open and the resistor pulls the reset pin to 1, allowing
+      normal operation
+    - when the button is pressed, the switch closes and pulls the reset pin down to 0, forcing the processor to reset
+    - also resets itself automatically when power is turned on
+
+- the easiest way to program the microcontroller is with a Microchip In Circuit Debugger (ICD) 3
+    - known as a puck
+    - allows the programmer to communicate with the PIC32 from a PC to download code and to debug the program
+    - connects to a USB port on the PC and to a six-pin RJ-11 modular connector on the PIC32 development board
+    - RJ-11 connector is the familiar connector used in United States telephone jacks
+    - ICD3 communicates with the PIC32 over a 2-wire In-Circuit Serial Programming interface with a clock and a
+      bidirectional data pin
+    - free MPLAB Integrated Development Environment (IDE) to write your programs in assembly language or C,
+      debug them in simulation, and download and test them on a development board by means of the ICD
+- most of the pins of the PIC32 microcontroller default to function as general-purpose digital I/O pins
+- same pins are shared for special-purpose I/O functions such as serial ports, analog-to-digital converter inputs, etc.,
+  that become active when the corresponding peripheral is enabled
+- responsibility of the programmer to use each pin for only one purpose at any given time
+
+### General-Purpose Digital I/O
+- general-purpose I/O (GPIO) pins are used to read or write digital signals
+    - schematic tells the programmer the function of each pin and the hardware designer what connections to
+      physically make
+- PIC32 organizes groups of GPIOs into ports that are read and written together
+    - each port may have up to 16 GPIO pins, although the PIC32 doesn’t have enough pins to provide that many
+      signals for all of its ports
+    - each port is controlled by two registers
+        - TRISx
+            - determine whether the pin of the port is an input or an output
+        - PORTx
+            - registers indicate the value read from an input or driven to an output
+        - x is a letter (A-G) indicating the port of interest
+        - 16 least significant bits of each register correspond to the sixteen pins of the GPIO port
+        - when a given bit of the TRISx register is 0, the pin is an output, and when it is 1, the pin is an input
+        - good to leave unused GPIO pins as inputs (their default state) so that they are not inadvertently
+          driven to problem values
+        - each register is memory-mapped to a word in the Special Function Registers portion of virtual memory
+          (0xBF80000-BF8FFFF)
+        - programmer can access them by name rather than having to look up the address
+        - can write the entire register at once or access individual bits
+- each port also has corresponding SET and CLR registers that can be written with a mask indicating which bits to set
+  or clear
+- number of GPIO pins available depends on the size of the package
+- logic levels are LVCMOS-compatible
+- input pins expect logic levels of VIL = 0.15VDD and VIH = 0.8VDD, or 0.5 V and 2.6 V assuming VDD of 3.3V
+- output pins produce VOL of 0.4 V and VOH of 2.4 V as long as the output current Iout does not exceed 7 mA
+
+### Serial I/O
+If a microcontroller
+- must break the message into multiple smaller transmissions if microcontroller needs to send more bits than the number
+  of free GPIO pins
+    - can send one bit
+        - serial I/O
+        - popular because it uses few wires and is fast enough for many applications
+        - multiple standards for serial I/O have been established and the PIC32 has dedicated hardware to easily send data via these standards
+    - can send several bits
+        - parallel I/O
+- Serial Peripheral Interface (SPI) protocol
+- Universal Asynchronous Receiver/Transmitter (UART) protocol
+- other common serial standards
+    - Inter-Integrated Circuit (I2C)
+        - 2-wire interface with a clock and a bidirectional data pin
+        - used similarly to SPI
+    - Universal Serial Bus (USB)
+    - Ethernet. I2C (pronounced “I squared C”) is a
+
+#### Serial Peripheral Interface (SPI)
+- easy to use and relatively fast
+- physical interface consists of three pins
+    - Serial Clock (SCK)
+    - Serial Data Out (SDO)
+    - Serial Data In (SDI)
+- connects a master device to a slave device
+- master produces the clock
+    - initiates communication by sending a series of clock pulses on SCK
+    - if it wants to send data to the slave, it puts the data on SDO, starting with the most significant bit
+    - slave may simultaneously respond by putting data on the master’s SDI
+- PIC32 has up to four SPI ports unsurprisingly named SPI1-SPI4
+    - each can operate as a master or slave
+- PIC program must first configure the port
+    - it can then write data to a register
+    - data is transmitted serially to the slave
+    - data received from the slave is collected in another register
+    - when the transmission is complete, the PIC32 can read the received data
+- each SPI port is associated with four 32-bit registers
+    - SPIxCON
+        - SPI1CON is the control register for SPI port 1
+        - used to turn the SPI ON and set attributes such as the number of bits to transfer and the polarity of the
+          clock
+    - SPIxSTAT
+    - SPIxBRG
+    - SPIxBUF
+    - all have a default value of 0 on reset
+- STAT is the status register indicating whether the receive register is full
+- refer to datasheet
+- serial clock can be configured to toggle at half the peripheral clock rate or less
+- SPI has no theoretical limit on the data rate and can readily operate at tens of MHz on a printed circuit board
+    - may experience noise problems running above 1 MHz using wires on a breadboard
+- BRG is the baud rate register that sets the speed of SCK relative to the peripheral clock (see formula)
+- BUF is the data buffer
+    - data written to BUF is transferred over the SPI port on the SDO pin, and the received data from the SDI pin can
+      be found by reading BUF after the transfer is complete
+- to prepare the SPI in master mode
+    - turn it OFF by clearing bit 15 of the CON register (the ON bit) to 0
+    - clear anything that might be in the receive buffer by reading the BUF register
+    - set the desired baud rate by writing the BRG register
+    - put the SPI in master mode by setting bit 5 of the CON register (MSTEN) to 1
+    - set bit 8 of the CON register (CKE) so that SDO is centered on the rising edge of the clock
+    - turn the SPI back ON by setting the ON bit of the CON register
+- to send data to the slave
+    - write the data to the BUF register
+    - data will be transmitted serially
+    - slave will simultaneously send data back to the master
+    - wait until bit 11 of the STAT register (the SPIBUSY bit) becomes 0 indicating that the SPI has completed its
+      operation
+    - data received from the slave can be read from BUF
+- SPI port on a PIC32 is highly configurable so that it can talk to a wide variety of serial devices
+    - leads to the possibility of incorrectly configuring the port and getting garbled data transmission
+    - relative timing of the clock and data signals are configured with three CON register bits called CKP, CKE, and SMP
+    - by default, these bits are 0, but the timing uses CKE = 1
+    - master changes SDO on the falling edge of SCK, so the slave should sample the value on the rising edge using a
+      positive edge-triggered flip-flop
+    - master expects SDI to be stable around the rising edge of SCK, so the slave should change it on the falling edge,
+    - MODE32 and MODE16 bits of the CON register specify whether a 32- or 16-bit word should be sent
+    - both default to 0 indicating an 8-bit transfer
+- sometimes it is necessary to change the configuration bits to communicate with a device that expects different timing
+- when CKP = 1, SCK is inverted. When CKE = 0, the clocks toggle half a cycle earlier relative to the data
+- when SAMPLE = 1, the master samples SDI half a cycle later (and the slave should ensure it is stable at that time)
+- be aware that different SPI products may use different names and polarities for these options
+    - check the waveforms carefully for your device
+    - can also be helpful to examine SCK, SDO, and SDI on an oscilloscope if you are having communication difficulties
+
+**********
+#### Universal Asynchronous Receiver Transmitter (UART)
+- serial I/O peripheral that communicates between two systems without sending a clock
+    - systems must agree in advance about what data rate to use and must each locally generate its own clock
+    - system clocks may have a small frequency error and an unknown phase relationship, the UART manages reliable
+      asynchronous communication
+- used in protocols such as RS-232 and RS-485
+- computer serial ports use the RS- 232C standard, introduced in 1969 by the Electronic Industries Association
+    - standard originally envisioned connecting Data Terminal Equipment (DTE) such as a mainframe computer to Data
+      Communication Equipment (DCE) such as a modem
+    - relatively slow compared to SPI, the standards have been around for so long that they remain important today
+- DTE sends data to the DCE over the TX line and receives data back over the RX line
+    - line idles at a logic '1' when not in use
+    - each character is sent as a start bit (0), 7-8 data bits, an optional parity bit, and one or more stop bits (1’s)
+    - detects the falling transition from idle to start to lock on to the transmission at the appropriate time
+    - seven data bits is sufficient to send an ASCII character, eight bits are normally used because they can convey
+      an arbitrary byte of data
+    - an additional bit, the parity bit, can also be sent, allowing the system to detect if a bit was corrupted
+      during transmission
+    - can be configured as even or odd
+    - even parity means that the parity bit is chosen such that the total collection of data and parity has an
+      even number of 1's
+        - parity bit is the XOR of the data bits
+    - receiver can then check if an even number of 1's was received and signal an error if not
+    - odd parity is the reverse and is hence the XNOR of the data bits
+    - common choice is 8 data bits, no parity, and 1 stop bit, making a total of 10 symbols to convey an 8-bit
+      character of information
+    - signaling rates are referred to in units of baud rather than bits/sec
+    - systems must be configured for the appropriate baud rate and number of data, parity, and stop bits or the data
+      will be garbled
+    - hassle, especially for nontechnical users, which is one of the reasons that the Universal Serial Bus (USB) has
+      replace UARTs in personal computer systems
+- typical baud rates include 300, 1200, 2400, 9600, 14400, 19200, 38400, 57600, and 115200
+- lower rates were used in the 1970’s and 1980’s for modems that sent data over the phone lines as a series of tones
+- in contemporary systems, 9600 and 115200 are two of the most common baud rates
+- 9600 is encountered where speed doesn’t matter, and 115200 is the fastest standard rate, though still slow compared
+  to other modern serial I/O standards
+- RS-232 standard defines several additional signals
+- Request to Send (RTS) and Clear to Send (CTS) signals can be used for hardware handshaking
+    - can be operated in either of two modes
+    - flow control mode
+        - DTE clears RTS to 0 when it is ready to accept data from the DCE
+    - DCE clears CTS to 0 when it is ready to receive data from the DTE
+    - some datasheets use an overbar to indicate that they are active-low
+    - in the older simplex mode, the DTE clears RTS to 0 when it is ready to transmit
+    - DCE replies by clearing CTS when it is ready to receive the transmission
+- some systems, especially those connected over a telephone line, also use Data Terminal Ready (DTR), Data Carrier
+  Detect (DCD), Data Set Ready (DSR), and Ring Indicator (RI) to indicate when equipment is connected to the line
+- original standard recommended a massive 25-pin DB-25 connector, but PCs streamlined to a male 9-pin DE-9 connector
+  with the pinout
+- cable wires normally connect straight across
+- when directly connecting two DTEs, a null modem cable shown in Figure 8.42(c) may be needed to swap RX and TX
+  and complete the handshaking
+- some connectors are male and some are female
+- it can take a large box of cables and a certain amount of guess-work to connect two systems over RS-232,
+  again explaining the shift to USB
+- embedded systems typically use a simplified 3- or 5-wire setup consisting of GND, TX, RX, and possibly RTS and CTS
+- RS-232 represents a 0 electrically with 3 to 15 V and a 1 with −3 to −15 V (bipolar signaling)
+- transceiver converts the digital logic levels of the UART to the positive and negative levels expected by RS-232
+  and also provides electrostatic discharge protection to protect the serial port from damage when the user plugs in
+  a cable
+- MAX3232E is a transceiver compatible with both 3.3 and 5 V digital logic
+    - contains a charge pump that, in conjunction with external capacitors, generates ± 5 V outputs from a single
+      low-voltage power supply
+- PIC32 has six UARTs named U1-U6. As with SPI, the PIC program must first configure the port
+    - unlike SPI, reading and writing can occur independently because either system may transmit without receiving and
+      vice versa
+    - each associated with five 32-bit registers
+        - UxMODE
+        - UxSTA (status)
+        - UxBRG
+        - UxTXREG
+        - UxRXREG
+    - U1MODE is the mode register for UART1
+    - mode register is used to configure the UART and the STA register is used to check when data is available
+    - BRG register is used to set the baud rate
+    - data is transmitted or received by writing the TXREG or reading the RXREG
+- MODE register defaults to 8 data bits, 1 stop bit, no parity, and no RTS/CTS flow control, so for most applications
+  the programmer is only interested in bit 15, the ON bit, which enables the UART
+- STA register contains bits to enable the transmit and receive pins and to check if the transmit and receive
+  buffers are full
+- after setting the ON bit of the UART, the programmer must also set the UTXEN and URXEN bits (bits 10 and 12) of the
+  STA register to enable these two pins
+- UTXBF (bit 9) indicates that the transmit buffer is full
+- URXDA (bit 0) indicates that the receive buffer has data available
+- STA register also contains bits to indicate parity and framing errors
+    - a framing error occurs if the start or stop bits aren’t found at the expected time
+- 16-bit BRG register is used to set the baud rate to a fraction of the peripheral bus clock
+
+formula here
+
+- it is sometimes impossible to reach exactly the target baud rate
+- as long as the frequency error is much less than 5%, the phase error between the transmitter and receiver will
+  remain small over the duration of a 10-bit frame so data is received properly
+- system will then resynchronize at the next start bit
+- transmit data, wait until STA.UTXBF is clear indicating that the transmit buffer has space available, and then write
+  the byte to TXREG
+- to receive data, check STA.URXDA to see if data has arrived, and then read the byte from the RXREG
+- communicating with the serial port from a C program on a PC is a bit of a hassle because serial port driver
+  libraries are not standardized across operating systems
+- programming environments such as Python, Matlab, or LabVIEW make serial communication painless
+
+### Timers
+- embedded systems commonly need to measure time
+- PIC32 has five 16-bit timers on board
+    - timer 1 is called a Type A timer that can accept an asynchronous external clock source, such as a 32 KHz watch
+      crystal
+    - timers 2/3 and 4/5 are Type B timers
+        - run synchronously off the peripheral clock and can be paired (e.g., 2 with 3) to form 32-bit timers for
+          measuring long periods of time
+- each timer is associated with three 16-bit registers
+    - TxCON
+    - TMRx
+    - PRx
+    - e.g. T1CON is the control register for Timer 1
+        - CON is the control register
+    - TMR contains the current time count
+    - PR is the period register
+- when a timer reaches the specified period, it rolls back to 0 and sets the TxIF bit in the IFS0 interrupt flag
+  register
+    - program can poll this bit to detect overflow
+    - it can also generate an interrupt
+- each timer acts as a 16-bit counter accumulating ticks of the internal peripheral clock (20 MHz in our example) by
+  default
+- prescaling by k:1 causes the timer to only count once every k ticks
+    - useful to generate longer time intervals, especially when the peripheral clock is running fast
+- another timer feature is gated time accumulation
+    - timer only counts while an external pin is high
+    - allows the timer to measure the duration of an external pulse
+    - enabled using the CON register.
+
+### Interrupts
+- timers are often used in conjunction with interrupts so that a program may go about its usual business and then
+- interrupt requests occur when a hardware event occurs, such as a timer overflowing, a character being received
+  over a UART, or certain GPIO pins toggling
+    - each type of interrupt request sets a specific bit in the Interrupt Flag Status (IFS) registers
+    - processor then checks the corresponding bit in the Interrupt Enable Control (IEC) registers
+    - if the bit is set, the microcontroller should respond to the interrupt request by invoking an interrupt service
+      routine (ISR)
+    - ISR is a function with void arguments that handles the interrupt and clears the bit of the IFS before returning
+    - PIC32 interrupt system supports single and multi-vector modes
+    - single-vector mode
+        - all interrupts invoke the same ISR, which must examine the CAUSE register to determine the reason for the
+          interrupt (if multiple types of interrupts may occur) and handle it accordingly
+    - multi-vector mode
+        - each type of interrupt calls a different ISR
+        - MVEC bit in the INTCON register determines the mode
+    - MIPS interrupt system must be enabled with the ei instruction before it will accept any interrupts
+- PIC32 also allows each interrupt source to have a configurable priority and subpriority
+    - priority is in the range of 0–7, with 7 being highest
+    - higher priority interrupt will preempt an interrupt presently being handled
+    - subpriority is in the range of 0–3
+    - if two events with the same priority are simultaneously pending, the one with the higher subpriority will be
+      handled first
+    - subpriority will not cause a new interrupt to preempt an interrupt of the same priority presently being serviced
+    - priority and subpriority of each event is configured with the IPC registers
+- each interrupt source has a vector number in the range of 0–63
+- ISR function declaration is tagged by two special _ _attribute_ _ directives indicating the priority level and
+  vector number
+    - compiler uses these attributes to associate the ISR with the appropriate interrupt request
+    - MPLAB C Compiler For PIC32 MCUs User’s Guide has more information about writing interrupt service routines
+
+### Analog I/O
+- embedded systems need analog inputs and outputs to interface with the world
+- use analog-to-digital-converters (ADCs) to quantize analog signals into digital values, and
+  digital-to-analog-converters (DACs) to do the reverse
+- converters are characterized by their resolution, dynamic range, sampling rate, and accuracy
+- sampling rates are also listed in samples per second (sps), where 1 sps = 1 Hz
+- relationship between the analog input voltage Vin(t) and the digital sample X[n] is
+```
+X[n] = 2^N * (Vin(t) - Vref- / Vref+ - Vref-)
+n = t/fs
+```
+- DAC might have N = 16-bit resolution over a full-scale output range of Vref = 2.56 V
+```
+Vout(t) = X[n]/2^N * Vref
+```
+- many microcontrollers have built-in ADCs of moderate performance
+- for higher performance (e.g., 16-bit resolution or sampling rates in excess of 1 MHz), it is often necessary to
+  use a separate ADC connected to the microcontroller
+- fewer microcontrollers have built-in DACs, so separate chips may also be used
+    - often simulate analog outputs using a technique called pulse-width modulation (PWM)
+
+#### A/D Conversion
+- PIC32 has a 10-bit ADC with a maximum speed of 1 million samples/sec (Msps)
+- can connect to any of 16 analog input pins via an analog multiplexer
+- analog inputs are called AN0-15 and share their pins with digital I/O port RB
+- Vref+ is the analog VDD pin and Vref− is the analog GND pin
+- programmer must initialize the ADC, specify which pin to sample, wait long enough to sample the voltage,
+  start the conversion, wait until it finishes, and read the result
+- highly configurable
+    - automatically scan through multiple analog inputs at programmable intervals and to generate interrupts upon
+      completion
+- controlled by a host of registers
+    - AD1CON1-3
+    - AD1CHS
+    - AD1PCFG
+    - AD1CSSL
+    - ADC1BUF0-F
+    - AD1CON1 is the primary control register
+    - has an ON bit to enable the ADC, a SAMP bit to control when sampling and conversion takes place, and a DONE
+      bit to indicate conversion complete
+    - AD1CON3 has ADCS[7:0] bits that control the speed of the A/D conversion
+    - AD1CHS is the channel selection register specifying the analog input to sample
+    - AD1PCFG is the pin configuration register
+        - when a bit is 0, the corresponding pin acts as an ana- log input
+        - when it is a 1, the pin acts as a digital input
+    - ADC1BUF0 holds the 10-bit conversion result
+    - other registers are not required in our simple example
+- sampling time is the amount of time necessary for a new input to stabilize before its conversion can start
+    - as long as the resistance of the source being sampled is less than 5 KΩ, the sampling time can be as small as
+      132 ns, which is only a small number of clock cycles
+
+#### D/A Conversion
+- PIC32 has no built-in DAC
+- some DACs accept the N-bit digital input on a parallel interface with N wires, while others accept it over a
+  serial interface such as SPI
+- some DACs require both positive and negative power supply voltages, while others operate off of a single supply
+- some support a flexible range of supply voltages, while others demand a specific voltage
+- input logic levels should be compatible with the digital source
+- ome DACs produce a voltage output proportional to the digital input, while others produce a current output
+    - an operational amplifier may be needed to convert this current to a voltage in the desired range
+- Analog Devices AD558 8-bit parallel DAC and the Linear Technology LTC1257 12-bit serial DAC
+    - both produce voltage outputs
+    - run off a single 5-15 V power supply
+    - use VIH = 2.4 V such that they are compatible with 3.3 V outputs from the PIC32
+    - come in DIP packages that make them easy to breadboard
+    - easy to use
+    - AD558
+        - produces an output on a scale of 0-2.56 V
+        - consumes 75 mW
+        - comes in a 16-pin package
+        - has a 1 μs settling time permitting an output rate of 1 Msample/sec
+    - LTC1257
+        - produces an output on a scale of 0-2.048V
+        - consumes less than 2 mW
+        - comes in an 8-pin package
+        - has a 6 μs settling time
+        - its SPI operates at a maximum of 1.4 MHz
+- Texas Instruments is another leading ADC and DAC manufacturer
+
+#### Pulse-Width Modulation
+- alternative for a digital system to generate an analog output
+- periodic output is pulsed high for part of the period and low for the remainder
+    - duty cycle is the fraction of the period for which the pulse is high
+    - average value of the output is proportional to the duty cycle
+    For example, if the output swings between 0 and 3.3 V and has a duty cycle of 25%, the average value will be 0.25 × 3.3 = 0.825 V.
+    - low-pass filtering a PWM signal eliminates the oscillation and leaves a signal with the desired average value
+- PIC32 contains five output compare modules, OC1-OC5, that each, in conjunction with Timer 2 or 3, can produce
+  PWM outputs
+    - each output compare module is associated with three 32-bit registers
+        - OCxCON
+        - OCxR
+        - OCxRS
+        - CON is the control register
+        - OCM bits of the CON register should be set to 1102 to activate PWM mode, and the ON bit should be enabled
+        - the output compare uses Timer2 in 16-bit mode, but the OCTSEL and OC32 bits can be used to select Timer3
+          and/or 32-bit mode
+        - in PWM mode, RS sets the duty cycle, the timer’s period register PR sets the period, and OCxR can be ignored
+
+### Other Microcontroller Peripherals
+- microcontrollers frequently interface with other external peripherals.
+    - charactermode liquid crystal displays (LCDs)
+    - VGA monitors
+    - Bluetooth wireless links
+    - motor control
+- standard communication interfaces
+    - USB
+    - Ethernet
+
+#### Character LCDs
+- small liquid crystal display capable of showing one or a few lines of text
+- commonly used in the front panels of appliances such as cash registers, laser printers, and fax machines that
+  need to display a limited amount of information
+- easy to interface with a microcontroller over parallel, RS-232, or SPI interfaces
+- e.g. Crystalfontz America
+This section gives an example of interfacing a
+PIC32 microcontroller to a character LCD over an 8-bit parallel interface
+    - interface is compatible with the industry-standard HD44780 LCD controller originally developed by Hitachi
+    - to initialize the LCD, the PIC32 must write a sequence of instructions to the LCD
+        - wait > 15000 μs after VDD is applied
+        - write 0x30 to set 8-bit mode
+        - wait > 4100 μs
+        - write 0x30 to set 8-bit mode again
+        - wait > 100 μs
+        - write 0x30 to set 8-bit mode yet again
+        - wait until busy flag is clear
+        - write0x3Ctoset2linesand5×8dotfont
+        - wait until busy flag is clear
+        - write 0x08 to turn display OFF
+        - wait until busy flag is clear
+        - write 0x01 to clear the display
+        - wait > 1530 μs
+        - write 0x06 to set entry mode to increment cursor after each character
+        - wait until busy flag is clear
+        - write 0x0C to turn display ON with no cursor
+    - to write text to the LCD, the microcontroller can send a sequence of ASCII characters
+        - may also send the instructions 0x01 to clear the display or 0x02 to return to the home position in the upper
+          left
+
+#### VGA Monitor
+- Video Graphics Array (VGA) monitor standard was introduced in 1987 for the IBM PS/2 computers, with a 640 × 480
+  pixel resolution on a cathode ray tube (CRT) and a 15-pin connector conveying color information with analog voltages
+- modern LCD monitors have higher resolution but remain backward compatible with the VGA standard
+- in a cathode ray tube, an electron gun scans across the screen from left to right exciting fluorescent material to
+  display an image
+- color CRTs use three different phosphors for red, green, and blue, and three electron beams
+- strength of each beam determines the intensity of each color in the pixel
+- at the end of each scanline, the gun must turn off for a horizontal blanking interval to return to the beginning of
+  the next line
+- after all of the scanlines are complete, the gun must turn off again for a vertical blanking interval to return
+  to the upper left corner
+- process repeats about 60–75 times per second to give the visual illusion of a steady image.
+- in a 640 × 480 pixel VGA monitor refreshed at 59.94 Hz, the pixel clock operates at 25.175 MHz, so each pixel is
+  39.72 ns wide
+- full screen can be viewed as 525 horizontal scanlines of 800 pixels each, but only 480 of the scanlines and 640 pixels
+  per scan line actually convey the image, while the remainder are black
+- scanline begins with a back porch, the blank section on the left edge of the screen
+    - then contains 640 pixels, followed by a blank front porch at the right edge of the screen and a horizontal
+      sync (hsync) pulse to rapidly move the gun back to the left edge
+      Figure 8.51(a) shows the timing of each of these portions of the scanline, beginning with the active pixels. The
+    - entire scan line is 31.778 μs long
+- the vertical direction, the screen starts with a back porch at the top, followed by 480 active scan lines, followed
+  by a front porch at the bottom and a vertical sync (vsync) pulse to return to the top to start the next frame
+- new frame is drawn 60 times per second
+    - NOTE: the time units are now scan lines rather than pixel clocks
+- higher resolutions use a faster pixel clock, up to 388 MHz at 2048×1536 @ 85 Hz
+- horizontal timing involves a front porch of 24 clocks, hsync pulse of 136 clocks, and back porch of 160 clocks
+- vertical timing involves a front porch of 3 scan lines, vsync pulse of 6 lines, and back porch of 29 lines
+- pixel information is conveyed with three analog voltages for red, green, and blue
+- each voltage ranges from 0–0.7 V, with more positive indicating brighter
+- voltages should be 0 during the front 2 and back porches
+- cable can also provide an IC serial link to configure the monitor
+- video signal must be generated in real time at high speed, which is difficult on a microcontroller but easy on an
+  FPGA
+- simple black and white display could be produced by driving all three color pins with either 0 or 0.7 V using a
+  voltage divider connected to a digital output pin
+- color monitor, on the other hand, uses a video DAC with three separate D/A converters to independently drive the
+  three color pins
+    - DAC receives 8 bits of R, G, and B from the FPGA
+    - also receives a SYNC_b signal that is driven active low whenever HSYNC or VSYNC are asserted
+    - video DAC produces three output currents to drive the red, green, and blue analog lines, which are normally
+      75 Ω transmission lines parallel terminated at both the video DAC and the monitor
+    - RSET resistor sets the scale of the output current to achieve the full range of color
+    - clock rate depends on the resolution and refresh rate
+        - it may be as high as 330 MHz with a fast-grade ADV7125JSTZ330 model DAC
+
+#### Bluetooth Wireless Communication
+- standards now available for wireless communication
+    - Wi-Fi
+    - ZigBee
+    - Bluetooth
+    standards are elaborate and require sophisticated integrated circuits, but a
+- growing assortment of modules abstract away the complexity and give the user a simple interface for wireless
+  communication
+    - BlueSMiRF
+        - easy-to- use Bluetooth wireless interface that can be used instead of a serial cable
+- Bluetooth is a wireless standard developed by Ericsson in 1994 for low-power, moderate speed, communication over
+  distances of 5–100 meters, depending on the transmitter power level
+    - commonly used to connect an earpiece to a cellphone or a keyboard to a computer
+    - unlike infrared communication links, it does not require a direct line of sight between devices
+- Bluetooth operates in the 2.4 GHz unlicensed industrial-scientific-medical (ISM) band
+- defines 79 radio channels spaced at 1 MHz intervals starting at 2402 MHz
+- hops between these channels in a pseudo-random pattern to avoid consistent interference with other devices
+  like wireless phones operating in the same band
+- Bluetooth transmitters are classified at one of three power levels, which dictate the range and power consumption
+    - in the basic rate mode, it operates at 1 Mbit/sec using Gaussian frequency shift keying (FSK)
+    - in ordinary FSK, each bit is conveyed by transmitting a frequency of fc ± fd, where fc is the center frequency
+      of the channel and fd is an offset of at least 115 kHz
+    - abrupt transition in frequencies between bits consumes extra bandwidth
+    - Gaussian FSK, the change in frequency is smoothed to make better use of the spectrum
+
+#### Motor Control
+- application of microcontrollers is to drive actuators such as motors
+- three general types of motors
+    - DC motors
+        - require a high drive current, so a powerful driver such as an H-bridge must be connected between the
+          microcontroller and the motor
+        - also require a separate shaft encoder if the user wants to know the current position of the motor
+    - servo motors
+        - accept a pulse-width modulated signal to specify their position over a limited range of angles
+        - easy to interface, but are not as powerful and are not suited to continuous rotation
+    - stepper motors
+        - accept a sequence of pulses, each of which rotates the motor by a fixed angle called a step
+        - more expensive and still need an H-bridge to drive the high current, but the position can be
+          precisely controlled
+- draw a substantial amount of current and may introduce glitches on the power supply that disturb digital logic
+    - one way to reduce this problem is to use a different power supply or battery for the motor than for the digital
+      logic
+
+#### DC Motors
+
+#### Servo Motor
+
+#### Stepper Motor
+
+## 8.7 PC I/O Systems
+- wide variety of I/O protocols for purposes
+    - memory
+    - disks
+    - networking
+    - internal expansion cards
+    - external devices
+- I/O standards have evolved to offer very high performance and to make it easy for users to add devices.
+    - attributes come at the expense of complexity in the I/O protocols
+- motherboard contains
+    - DRAM memory module slots
+    - wide variety of I/O device connectors
+    - power supply connector
+    - voltage regulators
+    - capacitors
+    - DRAM modules are connected over a DDR3 interface
+    - external peripherals such as keyboards or webcams can be attached over USB
+    - high-performance expansion cards such as graphics cards connect over the PCI Express x16 slot
+    - lower-performance cards can use PCI Express x1 or the older PCI slots
+    - connects to the network using the Ethernet jack (or wi-fi)
+    - hard disks are connected to a SATA port
+- one of the major advances in PC I/O standards has been the development of high-speed serial links
+    - most I/O was previously built around parallel links consisting of a wide data bus and a clock signal
+    - the difference in delay among the wires in the bus set a limit to how fast the bus could run
+    - busses connected to multiple devices suffer from transmission line problems such as reflections and different
+      flight times to different loads
+    - noise can also corrupt the data
+    - oint-to-point serial links eliminate many of these problems
+    - data is usually transmitted on a differential pair of wires
+    - external noise that affects both wires in the pair equally is unimportant
+    - transmission lines are easy to properly terminate, so reflections are small
+    - no explicit clock is sent
+        - clock is recovered at the receiver by watching the timing of the data transitions
+    - high-speed serial link design is a specialized subject
+    - good interfaces can run faster than 10 Gb/s over copper wires and even faster along optical fibers
+
+### USB
+- Universal Serial Bus (USB), developed by Intel, IBM, Microsoft, and others, greatly simplified adding peripherals
+  by standardizing the cables and software configuration process
+- USB 1.0 was released in 1996
+    - cable with four wires
+        - 5 V
+        - GND
+        - differential pair of wires to carry data
+    - cable is impossible to plug in backward or upside down
+    - operates at up to 12 Mb/s
+    - can pull up to 500 mA from the USB port
+- USB 2.0 released in 2000
+    - upgraded the speed to 480 Mb/s by running the differential wires much faster
+    - became practical for attaching webcams and external hard disks
+    - Flash memory sticks with a USB interface also replaced floppy disks as a means of transferring files
+      between computers
+- USB 3.0 released in 2008
+    - further boosted the speed to 5 Gb/s
+    - uses the same shape connector
+    - cable has more wires that operate at very high speed
+    - better suited to connecting high-performance hard disks
+    - added a Battery Charging Specification that boosts the power supplied over the port to speed up charging
+      mobile devices
+
+### PCI and PCI Express
+- Peripheral Component Interconnect (PCI) bus is an expansion bus standard developed by Intel that became widespread
+  around 1994
+    - was used to add expansion cards such as extra serial or USB ports, network interfaces, sound cards, modems,
+      disk controllers, or video cards
+    - 32-bit parallel bus operates at 33 MHz, giving a bandwidth of 133 MB/s
+- demand for PCI expansion cards has steadily declined
+    - more standard ports such as Ethernet and SATA are now integrated into the motherboard
+- contemporary motherboards often still have a small number of PCI slots, but fast devices like video cards are now
+  connected via PCI Express (PCIe)
+- PCI Express slots provide one or more lanes of high-speed serial links
+    - PCIe 3.0, each lane operates at up to 8 Gb/s
+- most motherboards provide an x16 slot with 16 lanes giving a total of 16 GB/s of bandwidth to data-hungry devices
+  such as video cards
+
+### DDR3 Memory
+DRAM connects to the microprocessor over a parallel bus. In 2012, the present
+- standard as of 2012 is DDR3
+    - third generation of double-data rate memory bus operating at 1.5 V
+    - typical motherboards now come with two DDR3 channels so they can access two banks of memory modules simultaneously
+Figure 8.71 shows a 4 GB
+- DDR3 dual inline memory module (DIMM)
+- as of 2012 DIMMs typically carry 1–16 GB of DRAM
+- DRAM presently operates at a clock rate of 100–266 MHz
+- DDR3 operates the memory bus at four times the DRAM clock rate
+- transfers data on both the rising and falling edges of the clock
+- sends 8 words of data for each memory clock. At 64 bits/word, this corresponds to 6.4–17 GB/s of bandwidth
+- DRAM latency remains high, with a roughly 50 ns lag from a read request until the arrival of the first word of data
+
+### Networking
+- connect to the Internet over a network interface running the Transmission Control Protocol and Internet Protocol
+  (TCP/IP)
+- physical connection may be an Ethernet cable or a wireless Wi-Fi link
+- Ethernet is defined by the IEEE 802.3 standard
+    - developed at Xerox Palo Alto Research Center (PARC) in 1974
+    - originally operated at 10 Mb/s (called 10 Mbit Ethernet
+    - now is commonly found at 100 Mbit (Mb/s) and 1 Gbit (Gb/s) running on Category 5 cables containing four
+      twisted pairs of wires
+    - 10 Gbit Ethernet running on fiber optic cables is increasingly popular for servers and other high-performance
+      computing, and 100 Gbit Ethernet is emerging
+- Wi-Fi is the popular name for the IEEE 802.11 wireless network standard
+    - operates in the 2.4 and 5 GHz unlicensed wireless bands, meaning that the user doesn’t need a radio operator’s
+      license to transmit in these bands at low power
+    - increasing performance comes from advancing modulation and signal processing, multiple antennas, and wider
+      signal bandwidths
+
+### SATA
+- in 1986 Western Digital introduced the Integrated Drive Electronics (IDE) interface
+    - evolved into the AT Attachment (ATA) standard
+    - uses a bulky 40 or 80-wire ribbon cable with a maximum length of 18" to send data at 16–133 MB/s
+- been supplanted by Serial ATA (SATA)
+    - uses high-speed serial links to run at 1.5, 3, or 6 Gb/s over a more convenient 7-conductor cable
+- fastest solid-state drives in 2012 approach 500 MB/s of bandwidth, taking full advantage of SATA
+- related standard is Serial Attached SCSI (SAS)
+    - evolution of the parallel SCSI (Small Computer System Interface) interface
+    - offers performance comparable to SATA and supports longer cables
+    - common in server computers
+
+### Interfacing to a PC
+- I/O standards optimized for high performance and ease of attachment but are difficult to implement in hardware
+- engineers and scientists often need a way to connect a PC to external circuitry, such as sensors, actuators,
+  microcontrollers, or FPGAs
+The serial connection described in Section 8.6.3.2 is sufficient for a l
+- low-speed connection serial connection to a microcontroller with a UART may be sufficient
+- two other options
+    - data acquisition systems
+    - USB links
+
+#### Data Acquisition Systems
+- Data Acquisition Systems (DAQs) connect a computer to the real world using multiple channels of analog and/or
+  digital I/O
+- commonly available as USB devices
+- National Instruments (NI)
+- high-performance DAQ prices tend to run into the thousands of dollars, mostly because the market is small and
+  has limited competition
+- example has two analog channels capable of input and output at 200 ksamples/sec with a 16 bit resolution and
+  ±10V dynamic range
+    - channels can be configured to operate as an oscilloscope and signal generator
+    - has eight digital input and output lines compatible with 3.3 and 5 V systems
+    - generates +5, +15, and −15 V power sup- ply outputs and includes a digital multimeter capable of measuring
+      voltage, current, and resistance
+    - can replace an entire bench of test and measurement equipment while simultaneously offering automated data logging
+- some DAQs can also be controlled from C programs using the LabWindows environment, from Microsoft .NET applications
+  using the Measurement Studio environment, or from Matlab using the Data Acquisition Toolbox
+
+#### USB Links
+- products contain predeveloped drivers and libraries, allowing the user to easily write a program on the PC that
+  blasts data to and from an FPGA or microcontroller
+- FTDI
+- example FTDI C232HM-DDHSL USB to Multi-Protocol Synchronous Serial Engine (MPSSE)
+    - provides a USB jack at one end
+    - an SPI interface operating at up to 30 Mb/s at the other end
+    - 3.3 V power and four general purpose I/O pins
+    - cable can optionally supply 3.3 V power to the FPGA
+    - three SPI pins connect to an FPGA slave device
+- PC requires the D2XX dynamically linked library driver to be installed
+- can then write a C program using the library to send data over the cable
+- FTDI UM232H module (faster connection)
+    - links a PC's USB port to an 8-bit synchronous parallel interface operating up to 40 MB/s
+
+## 8.8 Real-World Perspective: x86 Memory and I/O Systems
+- faster processors = elaborate memory hierarchies to keep a steady supply of data and instructions
+- x86 also has an unusual programmed I/O system that differs from the more common memory- mapped I/O
+
+### x86 Cache Systems
+
+| Processor | Year | Frequency (MHz) | Level 1 Data Cache | Level 1 Instruction Cache | Level 2 Cache |
+| --------- | ---- | --------------- | ------------------ | ------------------------- | ------------- |
+| 80486 | 1989 | 25–100 | 8 KB unified | | none on chip |
+| Pentium | 1993 | 60-300 | 8 KB | 8 KB | 256 KB - 1 MB on MCM |
+| Pentium Pro | 1995 | 150–200 | 8 KB | 8 KB | 256 KB–1 MB on MCM |
+| Pentium II | 1997 | 233-450 | 16 KB | 16 KB | 256-512 KB on cartridge |
+| Pentium III | 1999 | 450-1400 | 16 KB | 16 KB | 256-512 on chip |
+| Pentium 4 | 2001 | 1400-3730 | 8-16 KB | 12 Kop trace cache | 256 KB - 2 MB on chip |
+| Pentium M | 2003 | 900-2130 | 32 KB | 32 KB | 2 MB shared on chip |
+| Core Duo | 2005 | 1500-2160 | 32 KB/core | 32 KB/core | 2 MB shared on chip |
+| Core i7 | 2009 | 1600-3600 | 32 KB/core | 32 KB/core | 256 KB/core + 4-15 MB L3 |
+
+- 80386, initially produced in 1985, operated at 16 MHz
+    - lacked a cache, so it directly accessed main memory for all instructions and data
+    - depending on the speed of the memory, the processor might get an immediate response, or it might have to pause
+      for one or more cycles for the memory to react
+    - these cycles are called wait states, and they increase the CPI of the processor
+- microprocessor clock frequencies have increased by at least 25% per year since then
+- memory latency has barely diminished
+- delay from when the processor sends an address to main memory until the memory returns the data can now exceed
+  100 processor clock cycles
+    - caches with a low miss rate are essential to good performance
+- 80486 introduced a unified write-through cache to hold both instructions and data
+    - Most high-performance computer systems also provided a larger second-level cache on the motherboard using
+      commercially available SRAM chips that were substantially faster than main memory
+- Pentium processor introduced separate instruction and data caches to avoid contention during simultaneous requests
+  for data and instructions
+    - caches used a write-back policy, reducing the communication with main memory
+    - larger second-level cache (typically 256–512 KB) was usually offered on the motherboard
+- P6 series of processors (Pentium Pro, Pentium II, and Pentium III) were designed for much higher clock frequencies
+    - second-level cache on the motherboard could not keep up
+    - moved closer to the processor to improve its latency and throughput
+    - Pentium Pro was packaged in a multichip module (MCM) containing both the processor chip and a second-level cache
+      chip
+    - processor had separate 8-KB level 1 instruction and data caches
+    - these caches were nonblocking, so that the out-of-order processor could continue executing subsequent cache
+      accesses even if the cache missed a particular access and had to fetch data from main memory
+    - second-level cache was 256 KB, 512 KB, or 1 MB in size and could operate at the same speed as the processor
+    - MCM packaging proved too expensive for high-volume manufacturing
+    - Pentium II was sold in a lower-cost cartridge containing the processor and the second-level cache
+    - level 1 caches were doubled in size to compensate for the fact that the second-level cache operated at half
+      the processor’s speed
+    - Pentium III integrated a full-speed second-level cache directly onto the same chip as the processor
+    - cache on the same chip can operate at better latency and throughput, so it is substantially more effective than
+      an off-chip cache of the same size
+- Pentium 4 offered a nonblocking level 1 data cache
+    - switched to a trace cache to store instructions after they had been decoded into micro-ops, avoiding the delay of
+      redecoding each time instructions were fetched from the cache
+- Pentium M design was adapted from the Pentium III
+    - increased the level 1 caches to 32 KB each and featured a 1- to 2-MB level 2 cache
+    - Core Duo contains two modified Pentium M processors and a shared 2-MB cache on one chip
+        - shared cache is used for communication between the processors
+            - one can write data to the cache
+            - other can read it
+- Nehalem (Core i3-i7) design adds a third level of cache shared between all of the cores on the die to
+  facilitate sharing information between cores
+    - each core has its own 64 KB L1 cache and 256 KB L2 cache, while the shared L3 cache contains 4-8+ MB
+
+### x86 Virtual Memory
+- x86 processors operate in either real mode or protected mode
+    - real mode is backward compatible with the original 8086
+        - only uses 20 bits of address, limiting memory to 1 MB, and it does not allow virtual memory
+    - protected mode was introduced with the 80286 and extended to 32-bit addresses with the 80386
+        - supports virtual memory with 4-KB pages
+        - also provides memory protection so that one program cannot access the pages belonging to other programs
+        - buggy or malicious program cannot crash or corrupt other programs
+        - all modern operating systems now use protected mode
+- 32-bit address permits up to 4 GB of memory
+- processors since the Pentium Pro have bumped the memory capacity to 64 GB using a technique called physical
+  address extension
+- each process uses 32-bit addresses
+- virtual memory system maps these addresses onto a larger 36-bit virtual memory space
+- uses different page tables for each process, so that each process can have its own address space of up to 4 GB
+x86 has been upgraded to x86-64 to get around the memory bottleneck
+    - offers 64-bit virtual addresses and general-purpose registers
+    - only 48 bits of the virtual address are used, providing a 256 terabyte (TB) virtual address space (as of 2012)
+    - limit may be extended to the full 64 bits as memories expand, offering a 16 exabyte (EB) capacity
+- x86 uses programmed I/O, in which special IN and OUT instructions are used to read and write I/O devices
+    - x86 defines 216 I/O ports
+    - IN instruction reads one, two, or four bytes from the port specified by DX into AL, AX, or EAX
+    - OUT is similar, but writes the port
+- connecting a peripheral device to a programmed I/O system is similar to connecting it to a memory-mapped system
+- when accessing an I/O port, the processor sends the port number rather than the memory address on the 16 least
+  significant bits of the address bus
+- device reads or writes data from the data bus
+- major difference is that the processor also produces an M/IO signal
+    - when M/IO = 1, the processor is accessing memory
+    - when it is 0, the process is accessing one of the I/O devices
+    - address decoder must also look at M/IO to generate the appropriate enables for main memory and for the I/O devices
+    - I/O devices can also send interrupts to the processor to indicate that they are ready to communicate
+
