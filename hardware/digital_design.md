@@ -363,7 +363,6 @@
     - dual - B OR complement of B = 1
 
 ### Theorems of Several Variables
-- TODO: finish table here
 - commutativity
     - T6 - B • C = C • B
     - T6' - Β + C = C + Β
@@ -422,8 +421,223 @@
   to a level of OR gates
 
 ### Hardware Reduction
+- some logic functions require an enormous amount of hardware when built using two-level logic
+    - XOR function of multiple variables
+    - three-input XOR using the two-level techniques we have studied so far
+        - can be built out of a cascade of two-input XORs
+    - eight-input XOR would require 128 eight-input AND gates and one 128-input OR gate for a two-level sum-of-products implementation
+    - better option is to use a tree of two-input XOR gates
+- selecting the best multilevel implementation of a specific logic function is not a simple process
+    - fewest gates
+    - fastest
+    - shortest design time
+    - least cost
+    - least power consumption
 
-- TODO: more here
+### Bubble Pushing
+- CMOS circuits prefer NANDs and NORs over ANDs and ORs
+- reading the equation by inspection from a multilevel circuit with NANDs and NORs can be difficult
+- bubble pushing is a helpful to redraw circuits so that the bubbles cancel out and the function can be more easily
+  determined
+- guidelines
+    - begin at the output of the circuit and work toward the inputs
+    - push any bubbles on the final output back toward the inputs so that you can read an equation in terms of the
+      output (for example, Y) instead of the complement of the output
+    - working backward, draw each gate in a form so that bubbles cancel
+        - if the current gate has an input bubble, draw the preceding gate with an output bubble
+        - if the current gate does not have an input bubble, draw the preceding gate without an output bubble
+- bubbles in series cancel
+
+## X’S and Z’S, Oh My
+- real circuits can also have illegal and floating values, represented symbolically by X and Z
+- symbol X indicates that the circuit node has an unknown or illegal value
+    - commonly happens if it is being driven to both 0 and 1 at the same time
+- contention when a node is driven both HIGH and LOW is considered to be an error and must be avoided
+- actual voltage on a node with contention may be somewhere between 0 and VDD, depending on the relative strengths of
+  the gates driving HIGH and LOW
+    - often, but not always, in the forbidden zone
+- contention also can cause large amounts of power to flow between the fighting gates, resulting in the circuit
+  getting hot and possibly damaged
+- X values are also sometimes used by circuit simulators to indicate an uninitialized value
+- designers also use the symbol X to indicate "don’t care" values in truth tables
+    - do not confuse
+    - X indicates that the value of the variable in the truth table is
+      unimportant (can be either 0 or 1) when it appears in a truth table
+    - X indicates that the circuit node has an unknown or illegal value when it appears in a circuit
+
+### Floating Value: Z
+- Z indicates that a node is being driven neither HIGH nor LOW
+    - node is said to be floating, high impedance, or high Z
+    - typical misconception is that a floating or undriven node is the same as a logic 0
+    - floating node might be 0, might be 1, or might be at some voltage in between, depending on the history of the
+      system
+- does not always mean there is an error in the circuit, so long as some other circuit element does drive the node
+  to a valid logic level when the value of the node is relevant to circuit operation
+- common way to produce a floating node is to forget to connect a voltage to a circuit input, or to assume
+  that an unconnected input is the same as an input with the value of 0
+- tristate buffer has three possible output states
+    - HIGH (1)
+    - LOW (0)
+    - floating (Z)
+    - input A, output Y, and enable E
+    - when the enable is TRUE acts as a simple buffer, transferring the input value to the output
+    - when the enable is FALSE, the output is allowed to float (Z)
+    - commonly used on busses that connect multiple chips
+        - microprocessor
+        - video controller
+        - Ethernet controller
+    - all need to communicate with the memory system in a personal computer
+        - each chip can connect to a shared memory bus using tristate buffers
+        - only one chip at a time is allowed to assert its enable signal to drive a value onto the bus
+        - other chips must produce floating outputs so that they do not cause contention with the chip talking to
+          the memory
+        - any chip can read the information from the shared bus at any time
+    - modern computers have higher speeds possible with point-to-point links
+        - chips are connected to each other directly rather than over a shared bus
+
+## Karnaugh Maps
+- Karnaugh maps (K-maps) 
+    - graphical method for simplifying Boolean equations
+    - invented in 1953 by Maurice Karnaugh a telecommunications engineer at Bell Labs
+    - work well for problems with up to four variables
+    - give insight into manipulating Boolean equations
+- logic minimization involves combining terms
+    - two terms containing an implicant P and the true and complementary forms of some variable A are combined to 
+      eliminate A
+- K-maps use grid to show elimination
+
+### Circular Thinking
+
+### Logic Minimization with K-Maps
+- rules for finding a minimized equation from a K-map
+    - use the fewest circles necessary to cover all the 1’s
+    - all the squares in each circle must contain 1’s
+    - each circle must span a rectangular block that is a power of 2 (i.e., 1, 2, or 4) squares in each direction
+    - each circle should be as large as possible
+    - a circle may wrap around the edges of the K-map
+    - a 1 in a K-map may be circled multiple times if doing so allows fewer circles to be used
+
+### Don’t Cares
+- "don’t care" entries for truth table inputs reduce the number of rows in the table when some vari-ables do not affect
+  the output
+    - indicated by the symbol X, which means that the entry can be either 0 or 1
+- also appear in truth table outputs where the output value is unimportant or the corresponding input combination
+  can never happen
+    - can be treated as either 0’s or 1’s at the designer’s discretion
+- X’s allow for even more logic minimization in K-maps
+    - can be circled if they help cover the 1’s with fewer or larger circles, but they do not have to be circled if
+      they are not helpful
+
+### The Big Picture
+- Boolean algebra and Karnaugh maps are two methods of logic simplification
+- goal is to find a low-cost method of implementing a particular logic function
+- computer programs called logic synthesizers produce simplified circuits from a description of the logic function
+- for large problems, logic synthesizers are much more efficient than humans
+- for small problems, a human with a bit of experience can find a good solution by inspection
+- never used a Karnaugh map in real life to solve a practical problem
+- insight gained from the principles underlying Karnaugh maps is valuable
+    - also on job interviews
+
+## Combinational Building Blocks
+- combinational logic is often grouped into larger building blocks to build more complex systems
+- three building blocks
+    - full adders
+    - priority circuits
+    - seven-segment display decoders
+- two more commonly used building blocks
+    - multiplexers
+    - decoders
+
+### Multiplexers
+- most commonly used combinational circuits
+- choose an output from among several possible inputs based on the value of a select signal
+- sometimes affectionately called a mux
+
+### 2:1 Multiplexer
+- multiplexer chooses between the two data inputs based on the select
+    - input S is also called a control signal because it controls what the multiplexer does
+- 2:1 multiplexer can be built from sum-of-products logic
+    - Boolean equation for the multiplexer may be derived with a Karnaugh map or read off by inspection
+- multiplexers can be built from tristate buffers
+    - tristate enables are arranged such that, at all times, exactly one tristate buffer is active
+
+### Wider Multiplexers
+- 4:1 multiplexer has four data inputs and one output
+    - two select signals are needed to choose among the four data inputs
+- can be built using sum-of-products logic, tristates, or multiple 2:1 multiplexers
+- product terms enabling the tristates can be formed using AND gates and inverters
+- can also be formed using a decoder
+- wider multiplexers, such as 8:1 and 16:1 multiplexers, can be built by expanding the methods
+- N:1 multiplexer needs log2N select lines
+
+### Multiplexer Logic
+Multiplexers can be used as lookup tables to perform logic functions. Figure 2.59 shows a 4:1 multiplexer used to implement a two-input
+AND gate. The inputs, A and B, serve as select lines. The multiplexer data inputs are connected to 0 or 1 according to the corresponding row of the truth table. In general, a 2N-input multiplexer can be programmed to per- form any N-input logic function by applying 0’s and 1’s to the appropri- ate data inputs. Indeed, by changing the data inputs, the multiplexer can be reprogrammed to perform a different function.
+With a little cleverness, we can cut the multiplexer size in half, using only a 2N–1-input multiplexer to perform any N-input logic function. The strategy is to provide one of the literals, as well as 0’s and 1’s, to the multiplexer data inputs.
+To illustrate this principle, Figure 2.60 shows two-input AND and XOR functions implemented with 2:1 multiplexers. We start with an ordinary truth table, and then combine pairs of rows to eliminate the right- most input variable by expressing the output in terms of this variable. For example, in the case of AND, when A = 0, Y = 0, regardless of B. When A=1, Y=0 if B=0 and Y=1 if B=1, so Y=B. We then use the multi- plexer as a lookup table according to the new, smaller truth table.
+### Decoders
+A decoder has N inputs and 2N outputs. It asserts exactly one of its outputs depending on the input combination. Figure 2.63 shows a 2:4 decoder. When A1:0 = 00, Y0 is 1. When A1:0 = 01, Y1 is 1. And so forth. The outputs are called one-hot, because exactly one is “hot” (HIGH) at a given time.
+
+#### Decoder Logic
+- decoders can be combined with OR gates to build logic functions
+    - two-input XNOR function using a 2:4 decoder and a single OR gate
+    - each output of a decoder represents a single minterm, the function is built as the OR of all the minterms
+      in the function
+- when using decoders to build logic, it is easiest to express functions as a truth table or in canonical
+  sum-of-products form
+- N-input function with M 1’s in the truth table can be built with an N:2N decoder and an M-input OR gate attached to
+  all of the minterms containing 1’s in the truth table
+    - used for Read Only Memories (ROMs)
+
+## Timing
+- one of the most challenging issues in circuit design is timing
+    - speed of circuit
+- delay between an input change and the subsequent output change
+- timing diagram
+    - portrays the transient response of the buffer circuit when an input changes
+    - transition from LOW to HIGH is called the rising edge
+    - transition from HIGH to LOW (not shown in the figure) is called the falling edge
+- measure delay from the 50% point of the input signal, A, to the 50% point of the output signal, Y
+- 50% point is the point at which the signal is half-way (50%) between its LOW and HIGH values as it transitions
+
+### Propagation and Contamination Delay
+- combinational logic is characterized by its propagation delay and contamination delay.
+- propagation delay tpd is the maximum time from when an input changes until the output or outputs reach their final
+  value
+- contamination delay tcd is the minimum time from when an input changes until any output starts to change its value
+
+- underlying causes of delay in circuits include the time required to charge the capacitance in a circuit and the speed
+  of light
+- tpd and tcd may be different for many reasons
+    - different rising and falling delays
+    - multiple inputs and outputs, some of which are faster than others
+    - circuits slowing down when hot and speeding up when cold
+- manufacturers normally supply data sheets specifying these delays for each gate
+- propagation and contamination delays are also determined by the path a signal takes from input to output
+
+- critical path limits the speed at which the circuit operates
+- propagation delay of a combinational circuit is the sum of the propagation delays through each element on the
+  critical path
+- contamination delay is the sum of the contamination delays through each element on the short path
+- equations here
+
+## Glitches
+- possible that a single input transition can cause multiple output transitions
+    - glitches or hazards
+- usually don’t cause problems
+    - important to realize that they exist and recognize them when looking at timing diagrams
+- glitches are not a problem when waiting for the propagation delay to elapse before we depend on the output because the
+  output eventually settles to the right answer
+
+- glitch can occur when a change in a single variable crosses the boundary between two prime implicants in a K-map
+    - can eliminate the glitch by adding redundant implicants to the K-map to cover these boundaries
+    - comes at the cost of extra hardware
+    - simultaneous transitions on multiple inputs can also cause glitches
+    - glitches cannot be fixed by adding hardware
+    - vast majority of interesting systems have simultaneous (or near-simultaneous) transitions on multiple inputs,
+      glitches are a fact of life in most circuits
+- point of discussing glitches is not to eliminate them but to be aware that they exist
+    - especially important when looking at timing diagrams on a simulator or oscilloscope
 
 
 # Ch. 3 - Sequential Logic Design
@@ -1852,11 +2066,698 @@ op          addr
      - shifted result is placed in rd
      - shamt field is ignored and should be all 0’s
 
-
 - TODO: more here
 
+#### Generating Constants
+- addi instruction is helpful for assigning 16-bit constants
+- use a load upper immediate instruction (lui) followed by an or immediate (ori) instruction to assign 32-bit constants
+    - lui loads a 16-bit immediate into the upper half of a register and sets the lower half to 0
+    - ori merges a 16-bit immediate into the lower half
 
-# Ch. 7 - Microarchiecture
+### Multiplication and Division Instructions
+- multiplying two 32-bit numbers produces a 64-bit product
+- ividing two 32-bit numbers produces a 32-bit quotient and a 32-bit remainder
+- MIPS architecture has two special-purpose registers, hi and lo, which are used to hold the results of multiplication
+  and division
+    - mult $s0, $s1 multiplies the values in $s0 and $s1
+        - 32 most significant bits of the product are placed in hi and the 32 least significant bits are placed in lo
+        - div $s0, $s1 computes $s0/$s1
+        - quotient is placed in lo and the remainder is placed in hi
+- MIPS provides another multiply instruction that produces a 32-bit result in a general purpose register
+    - mul $s1, $s2, $s3 multiplies the values in $s2 and $s3 and places the 32-bit result in $s1
+
+### Branching
+- computer performs different tasks depending on the input to make decisions
+    - if/else statements
+    - switch/case statements
+    - while loops
+    - for loops
+    - conditionally execute code depending on some test
+- program counter increments by 4 after each instruction sequentially execute instructions
+- branch instructions modify the program counter to skip over sections of code or to repeat previous code
+- conditional branch instructions perform a test and branch only if the test is TRUE
+- unconditional branch instructions, called jumps, always branch
+
+#### Conditional Branches
+- MIPS instruction set has two conditional branch instructions
+    - branch if equal (beq)
+    - branch if not equal (bne)
+- beq branches when the values in two registers are equal, and bne branches when they are not equal
+    - NOTE: branches are written as beq rs, rt, imm, where rs is the first source register
+        - reversed from most I-type instructions
+- assembly code uses labels to indicate instruction locations in the program
+    - when the assembly code is translated into machine code, these labels are translated into instruction
+    - MIPS assembly labels are followed by a colon (:) and cannot use reserved words, such as instruction mnemonics
+    - most programmers indent their instructions but not the labels, to help make labels stand out
+
+#### Jump
+- unconditionally branch, or jump, using the three types of jump instructions
+    - jump (j)
+        - jumps directly to the instruction at the specified label
+    - jump and link (jal)
+        - is similar to j but is used by functions to save a return address
+    - jump register (jr)
+        - jumps to the address held in a register
+- after the j target instruction code unconditionally continues executing the add instruction at the label target
+    - all of the instructions between the jump and the label are skipped.
+
+### Conditional Statements
+- if, if/else, and switch/case statements
+- each conditionally execute a block of code consisting of one or more statements
+
+#### If Statements
+- executes a block of code, the if block, only when a condition is met
+- assembly code for the if statement tests the opposite condition of the one in the high-level code
+- bne instruction branches (skips the if block) when not condition
+- otherwise, i == j, the branch is not taken, and the if block is executed as desired
+
+#### If/Else Statements
+- execute one of two blocks of code depending on a condition
+    - when the condition in the if statement is met, the if block is executed
+    - otherwise, the else block is executed
+- if/else assembly code tests the opposite condition of the one in the high-level code
+- assembly code tests for the opposite condition
+    - opposite condition is TRUE, bne skips the if block and executes the else block
+    - otherwise, the if block executes and finishes with a jump instruction (j) to jump past the else block
+
+#### Switch/Case Statements
+- execute one of several blocks of code depending on the conditions
+    - if no conditions are met, the default block is executed
+- equivalent to a series of nested if/else statements
+
+### Getting Loopy
+- repeatedly execute a block of code depending on a condition
+- for loops and while loops are common loop constructs used by high-level languages
+
+#### While Loops
+- repeatedly execute a block of code until a condition is not met
+    - assembly code for while loops tests the opposite condition of the one given in the high-level code
+    - if that opposite condition is TRUE, the while loop is finished
+
+#### For Loops
+- repeatedly execute a block of code until a condition is not met
+    - add support for a loop variable, which typically keeps track of the number of loop executions
+    - initialization code executes before the for loop begins
+    - condition is tested at the beginning of each loop
+    - if the condition is not met, the loop exits
+    - loop operation executes at the end of each loop
+
+### Magnitude Comparison
+- previously used beq and bne to perform equality or inequality comparisons and branches
+- MIPS provides the set less than instruction, slt, for magnitude comparison
+    - sets rd to 1 when rs < rt. Otherwise, rd is 0
+
+### Arrays
+- useful for accessing large amounts of similar data
+- organized as sequential data addresses in memory
+- each element is identified by a number called its index
+- number of elements in the array is called the size of the array
+
+#### Array Indexing
+- first step in accessing an array element is to load the base address of the array into a register
+- base address points to the start of the array
+- offset can be used to access subsequent elements of the array
+
+### Bytes and Characters
+- numbers in the range [ –128, 127] can be stored in a single byte rather than an entire word
+- fewer than 256 characters on an English language keyboard, English characters are often represented by bytes
+- C language uses the type char to represent a byte or character
+- early computers lacked a standard mapping between bytes and English characters, so exchanging text between
+  computers was difficult
+- in 1963, the American Standards Association published the American Standard Code for Information Interchange (ASCII),
+  which assigns each text character a unique byte value
+- ASCII values are given in hexadecimal
+- lower-case and upper-case letters differ by 0x20 (32)
+- MIPS provides load byte and store byte instructions to manipulate bytes or characters of data
+    - load byte unsigned (lbu)
+    - load byte (lb)
+    - store byte (sb)
+- load byte unsigned (lbu) zero-extends the byte, and load byte (lb) sign-extends the byte to fill the entire 32-bit
+  register
+- store byte (sb) stores the least significant byte of the 32-bit register into the specified byte address in memory
+- lbu loads the byte at memory address 2 into the least significant byte of $s1 and fills the remaining register bits
+  with 0
+- lb loads the sign-extended byte at memory address 2 into $s2
+- sb stores the least significant byte of $s3 into memory byte 3
+    - it replaces 0xF7 with 0x9B
+    - more significant bytes of $s3 are ignored
+- series of characters is called a string
+    - variable length
+    - programming languages must provide a way to determine the length or end of the string
+    - null character (0x00) signifies the end of a string in C
+
+### Function Calls
+- aka procedures
+- reuse frequently accessed code and to make a program more modular and readable
+- inputs, called arguments, and an output, called the return value
+- functions should calculate the return value and cause no other unintended side effects
+- when one function calls another, the calling function, the caller, and the called function, the callee, must
+  agree on where to put the arguments and the return value
+- MIPS - the caller conventionally places up to four arguments in registers $a0–$a3 before making the function call,
+  and the callee places the return value in registers $v0–$v1 before finishing
+    - convention allows both functions to know where to find the arguments and return value, even if the
+      caller and callee were written by different people
+- callee must not interfere with the function of the caller
+    - means that the callee must know where to return to after it completes and it must not trample on any registers or
+      memory needed by the caller
+    - caller stores the return address in $ra at the same time it jumps to the callee using the jump and
+      link instruction (jal)
+    - callee must not overwrite any architectural state or memory that the caller is depending on
+    - callee must leave the saved registers, $s0–$s7, $ra, and the stack, a portion of memory used for
+      temporary variables, unmodified
+
+#### Function Calls and Returns
+- MIPS uses the jump and link instruction (jal) to call a function and the jump register instruction (jr) to
+  return from a function
+- jump and link (jal) and jump register (jr $ra) are the two essential instructions needed for a function call
+- jal performs two operations: it stores the address of the next instruction (the instruction after jal) in
+  the return address register ($ra), and it jumps to the target instruction
+
+### Input Arguments and Return Values
+- by MIPS convention, functions use $a0–$a3 for input arguments and $v0–$v1 for the return value
+- according to MIPS convention, the calling function, main, places the function arguments from left to right
+  into the input registers, $a0–$a3
+- called function stores the return value in the return register, $v0
+- a function that returns a 64-bit value, such as a double-precision floating point number, uses both return registers,
+  $v0 and $v1
+- when a function with more than four arguments is called, the additional input arguments are placed on the stack,
+  which we discuss next
+
+### The Stack
+- memory that is used to save local variables within a function
+- expands (uses more memory) as the processor needs more scratch space and contracts (uses less memory) when the
+  processor no longer needs the variables stored there
+
+- last-in-first-out (LIFO) queue
+    - last item pushed onto the stack is the first one that can be pulled (popped) off
+- each function may allocate stack space to store local variables but must deallocate it before returning
+- top of the stack is the most recently allocated space
+- MIPS stack grows down in memory
+- stack expands to lower memory addresses when a program needs more scratch space
+- stack pointer, $sp, is a special MIPS register that points to the top of the stack
+- points to (gives the address of) data
+- stack pointer ($sp) starts at a high memory address and decrements to expand as needed
+- one of the important uses of the stack is to save and restore registers that are used by a function
+    - function should not modify any registers besides the one containing the return value $v0
+- function saves registers on the stack before it modifies them, then restores them from the stack before it returns
+    1. makes space on the stack to store the values of one or more registers
+    2. stores the values of the registers on the stack
+    3. executes the function using the registers
+    4. restores the original values of the registers from the stack
+    5. deallocates space on the stack
+
+- stack space that a function allocates for itself is called its stack frame
+- each function should access only its own stack frame, not the frames belonging to other functions
+
+#### Preserved Registers
+- if the calling function does not use those registers, the effort to save and restore them is wasted
+- to avoid this waste, MIPS divides registers into preserved and nonpreserved categories
+- preserved registers include $s0–$s7 (hence their name, saved)
+- nonpreserved registers include $t0–$t9 (hence their name, temporary)
+- function must save and restore any of the preserved registers that it wishes to use, but it can change the
+  nonpreserved registers freely
+- when one function calls another, the former is the caller and the latter is the callee
+- callee must save and restore any preserved registers that it wishes to use
+- callee may change any of the nonpreserved registers. Hence, if the caller is holding active data in a
+  nonpreserved register, the caller needs to save that nonpreserved register before making the function call and
+  then needs to restore it afterward
+- preserved registers are also called callee-save, and nonpreserved registers are called caller-save
+
+- $s0–$s7 are generally used to hold local variables within a function, so they must be saved
+- $ra must also be saved, so that the function knows where to return
+- $t0–$t9 are used to hold temporary results before they are assigned to local variables
+    - calculations typically complete before a function call is made, so they are not preserved, and it is rare that
+    the caller needs to save them
+- $a0–$a3 are often overwritten in the process of calling a function
+    - must be saved by the caller if the caller depends on any of its own arguments after a called function returns
+- $v0–$v1 certainly should not be preserved, because the callee returns its result in these registers
+- stack above the stack pointer is automatically preserved as long as the callee does not write to memory addresses
+  above $sp
+    - does not modify the stack frame of any other functions
+    - stack pointer itself is preserved, because the callee deallocates its stack frame before returning by adding
+      back the same amount that it subtracted from $sp at the beginning of the function
+
+#### Recursive Function Calls
+- function that does not call others is called a leaf function
+- function that does call others is called a nonleaf function
+- nonleaf functions are somewhat more complicated because they may need to save nonpreserved registers on the stack
+  before they call another function, and then restore those registers afterward
+    - caller saves any non-preserved registers ($t0–$t9 and $a0–$a3) that are needed after the call
+    - callee saves any of the preserved registers ($s0–$s7 and $ra) that it intends to modify
+- recursive function
+    - nonleaf function that calls itself
+
+#### Additional Arguments and Local Variables
+- functions may have more than four input arguments and local variables
+    - stack is used to store these temporary values
+- by MIPS convention, if a function has more than four arguments, the first four are passed in the argument registers
+  as usual
+- additional arguments are passed on the stack, just above $sp
+- caller must expand its stack to make room for the additional arguments
+- function can also declare local variables or arrays
+- ocal variables are declared within a function and can be accessed only within that function
+- local variables are stored in $s0–$s7
+    - if there are too many local variables, they can also be stored in the function’s stack frame
+    - local arrays are stored on the stack
+- callee’s stack frame
+    - holds the function’s own arguments, the return address, and any of the saved registers that the function will
+      modify
+    - holds local arrays and any excess local variables
+    - the callee has more than four arguments, it finds them in the caller’s stack frame
+    - accessing additional input arguments is the one exception in which a function can access stack data not in its
+      own stack frame
+
+## Addressing Modes
+- MIPS uses five addressing modes
+    - register-only
+    - immediate
+    - base
+    - PC-relative
+    - pseudo-direct
+- first three modes (register-only, immediate, and base addressing) define modes of reading and writing operands
+- last two (PC-relative and pseudo-direct addressing) define modes of writing the pro- gram counter, PC
+
+### Register-Only Addressing
+- registers for all source and destination operands
+- all R-type instructions use register-only addressing
+
+### Immediate Addressing
+- uses the 16-bit immediate along with registers as operands
+- some I-type instructions, such as add immediate (addi) and load upper immediate (lui), use immediate addressing
+
+### Base Addressing
+- memory access instructions, such as load word (lw) and store word (sw), use base addressing
+    - effective address of the memory operand is found by adding the base address in register rs to the sign-extended
+      16-bit offset found in the immediate field
+
+### PC-Relative Addressing
+- conditional branch instructions use PC-relative addressing to specify the new value of the PC if the branch is taken
+- signed offset in the immediate field is added to the PC to obtain the new PC
+    - branch destination address is said to be relative to the current PC
+- 16-bit immediate field gives the number of instructions between the BTA and the instruction after the branch
+  instruction (the instruction at PC + 4)
+- processor calculates the BTA from the instruction by sign-extending the 16-bit immediate, multiplying it by
+  4 (to convert words to bytes), and adding it to PC + 4
+
+### Pseudo-Direct Addressing
+- address is specified in the instruction
+- jump instructions, j and jal, ideally would use direct addressing to specify a 32-bit jump target address (JTA) to
+  indicate the instruction address to execute next
+- J-type instruction encoding does not have enough bits to specify a full 32-bit JTA
+    - six bits of the instruction are used for the opcode, so only 26 bits are left to encode the JTA
+    - two least significant bits, JTA1:0, should always be 0, because instructions are word aligned
+    - next 26 bits, JTA27:2, are taken from the addr field of the instruction
+    - four most significant bits, JTA31:28, are obtained from the four most significant bits of PC + 4
+    - called pseudo-direct
+- processor calculates the JTA from the J-type instruction by appending two 0’s and prepending the four most
+  significant bits of PC + 4 to the 26-bit address field (addr)
+- because the four most significant bits of the JTA are taken from PC + 4, the jump range is limited
+- all J-type instructions, j and jal, use pseudo-direct addressing
+- NOTE: jump register instruction, jr, is not a J-type instruction
+    - R-type instruction that jumps to the 32-bit value held in register rs
+
+## Lights, Camera, Action: Compiling, Assembling, and Loading
+
+#### The Memory Map
+- defines where code, data, and stack memory are located
+- with 32-bit addresses, the MIPS address space spans 232 bytes = 4 gigabytes (GB)
+- word addresses are divisible by 4 and range from 0 to 0xFFFFFFFC
+- MIPS architecture divides the address space into four parts or segments
+    - text segment
+    - global data segment
+    - dynamic data segment
+    - reserved segments
+
+#### The Text Segment
+- stores the machine language program
+- large enough to accommodate almost 256 MB of code
+- NOTE: that the four most significant bits of the address in the text space are all 0, so the j instruction can
+  directly jump to any address in the program
+
+#### The Global Data Segment
+- stores global variables that, in contrast to local variables, can be seen by all functions in a program
+    - defined at start-up, before the program begins executing
+    - declared outside the main function in a C program and can be accessed by any function
+- global data segment is large enough to store 64 KB of global variables
+- global variables are accessed using the global pointer ($gp), which is initialized to 0x100080000
+    - $gp does not change during program execution unlike the stack pointer ($sp)
+    - any global variable can be accessed with a 16-bit positive or negative offset from $gp
+    - offset is known at assembly time, so the variables can be efficiently accessed using base addressing mode with
+      constant offsets
+
+#### The Dynamic Data Segment
+- holds the stack and the heap
+    - data in this segment are not known at start-up but are dynamically allocated and deallocated throughout the
+      execution of the program
+- largest segment of memory used by a program, spanning almost 2 GB of the address space
+- heap stores data that is allocated by the program during runtime
+- memory allocations are made by the malloc function in C
+- in C++ and Java, new is used to allocate memory
+- heap data can be used and discarded in any order
+- heap grows upward from the bottom of the dynamic data segment
+- if the stack and heap ever grow into each other, the program’s data can become corrupted
+    - memory allocator tries to ensure that this never happens by returning an out-of-memory error if there is
+      insufficient space to allocate more dynamic data
+
+#### The Reserved Segments
+- used by the operating system and cannot directly be used by the program
+- part of the reserved memory is used for interrupts and for memory-mapped I/O
+
+### Translating and Starting a Program
+- steps required to translate a program from a high-level language into machine language and to start executing
+  that program
+    - the high-level code is compiled into assembly code
+    - assembly code is assembled into machine code in an object file
+    - linker combines the machine code with object code from libraries and other files to produce an entire executable
+      program
+    - most compilers perform all three steps of compiling, assembling, and linking in practice
+    - loader loads the program into memory and starts execution
+```
+High-Level Code -> Compiler -> Assembly Code -> Assembler -> Object File -> Linker -> Executable -> Loader -> Memory -> Object Files Library Files
+```
+
+#### Step 1: Compilation
+- compiler translates high-level code into assembly language
+- the .data and .text keywords are assembler directives that indicate where the text and data segments begin
+- labels are used for global variables
+- their storage location will be determined by the assembler
+
+#### Step 2: Assembling
+- assembler turns the assembly language code into an object file containing machine language code
+- makes two passes through the assembly code
+    - first pass - the assembler assigns instruction addresses and finds all the symbols, such as labels and global
+      variable names
+    - the names and addresses of the symbols are kept in a symbol table
+    - symbol addresses are filled in after the first pass, when the addresses of labels are known
+    - global variables are assigned storage locations in the global data segment of memory, starting at memory address
+      0x10000000
+    - second pass through - assembler produces the machine language code
+    - addresses for the global variables and labels are taken from the symbol table
+    - machine language code and symbol table are stored in the object file
+
+#### Step 3: Linking
+- most large programs contain more than one file
+- if the programmer changes only one of the files, it would be wasteful to recompile and reassemble the other files
+- programs often call functions in library files
+    - library files almost never change
+- linker combines all of the object files into one machine language file called the executable
+- relocates the data and instructions in the object files so that they are not all on top of each other
+- uses the information in the symbol tables to adjust the addresses of global variables and of labels that are relocated
+
+#### Step 4: Loading
+- operating system loads a program by reading the text segment of the executable file from a storage device
+  (usually the hard disk) into the text segment of memory
+- operating system sets $gp to 0x10008000 (the middle of the global data segment) and $sp to 0x7FFFFFFC
+  (the top of the dynamic data segment), then performs a jal 0x00400000 to jump to the beginning of the program
+
+## Odds and Ends
+
+### Pseudoinstructions
+- if an instruction is not available in the MIPS instruction set it is probably because the same operation can be
+  performed using one or more existing MIPS instructions
+    - MIPS is a reduced instruction set computer (RISC)
+    - instruction size and hardware complexity are minimized by keeping the number of instructions small
+- MIPS defines pseudoinstructions that are not actually part of the instruction set but are commonly used by
+  programmers and compilers
+- when converted to machine code, pseudoinstructions are translated into one or more MIPS instructions
+- load immediate pseudoinstruction (li) loads a 32-bit constant using a combination of lui and ori instructions
+- no operation pseudoinstruction (nop, pronounced “no op”) performs no operation
+    - PC is incremented by 4 upon its execution
+    - no other registers or memory values are altered
+    - the machine code for the nop instruction is 0x00000000.
+- some pseudoinstructions require a temporary register for intermediate calculations
+
+### Exceptions
+- like an unscheduled function call that jumps to a new address
+- may be caused by hardware or software
+    - processor may receive notification that the user pressed a key on a keyboard
+    - processor may stop what it is doing, determine which key was pressed, save it for future reference,
+      then resume the program that was running
+    - hardware exception triggered by an input/output (I/O) device such as a keyboard is often called an interrupt
+    - program may encounter an error condition such as an undefined instruction
+    - program then jumps to code in the operating system (OS), which may choose to terminate the offending program
+- software exceptions are sometimes called traps
+- other causes of exceptions
+    - division by zero
+    - attempts to read nonexistent memory
+    - hardware malfunctions
+    - debugger breakpoints
+    - arithmetic overflow
+- processor records the cause of an exception and the value of the PC at the time the exception occurs
+    - jumps to the exception handler function
+    - exception handler is code (usually in the OS) that examines the cause of the exception and responds appropriately
+      (by reading the keyboard on a hardware interrupt, for example)
+    - then returns to the program that was executing before the exception took place
+    - in MIPS, the exception handler is always located at 0x80000180
+    - when an exception occurs, the processor always jumps to this instruction address, regardless of the cause
+- MIPS architecture uses a special-purpose register, called the Cause register, to record the cause of the exception
+- different codes are used to record different exception causes
+- exception handler code reads the Cause register to determine how to handle the exception
+- some other architectures jump to a different exception handler for each different cause instead of using a Cause
+  register
+- MIPS uses another special-purpose register called the Exception Program Counter (EPC) to store the value of the
+  PC at the time an exception takes place
+- processor returns to the address in EPC after handling the exception
+    - analogous to using $ra to store the old value of the PC during a jal instruction
+- EPC and Cause registers are not part of the MIPS register file
+- mfc0 (move from coprocessor 0) instruction copies these and other special-purpose registers into one of the general
+  purpose registers
+- Coprocessor 0 is called the MIPS processor control
+    - handles interrupts and processor diagnostics
+- syscall and break instructions cause traps to perform system calls or debugger breakpoints
+- exception handler uses the EPC to look up the instruction and determine the nature of the system call or breakpoint
+  by looking at the fields of the instruction
+- summary
+    - an exception causes the processor to jump to the exception handler
+    - exception handler saves registers on the stack, then uses mfc0 to look at the cause and respond accordingly
+    - when the handler is finished, it restores the registers from the stack, copies the return address from EPC to $k0
+      using mfc0, and returns using jr $k0
+
+### Signed and Unsigned Instructions
+- MIPS has certain instructions that come in signed and unsigned flavors
+    - addition and subtraction
+    - multiplication and division
+    - set less than
+    - partial word loads
+
+#### Addition and Subtraction
+- performed identically whether the number is signed or unsigned
+- interpretation of the results is different
+- if two large signed numbers are added together, the result may incorrectly produce the opposite sign
+- adding two huge negative numbers gives a positive result
+    - called arithmetic overflow
+- the C language ignores arithmetic overflows, but other languages, such as Fortran, require that the program
+  be notified
+- MIPS processor takes an exception on arithmetic overflow
+    - program can decide what to do about the overflow
+- signed versions are add, addi, and sub
+- unsigned versions are addu, addiu, and subu
+- versions are identical except that signed versions trigger an exception on overflow, whereas unsigned versions do not
+- C programs technically use the unsigned versions of these instructions because they ignore the exceptions
+
+#### Multiplication and Division
+- behave differently for signed and unsigned numbers
+- as an unsigned number, 0xFFFFFFFF represents a large number, but as a signed number it represents –1
+    - 0xFFFFFFFF x 0xFFFFFFFF would equal 0xFFFFFFFE00000001 if the numbers were unsigned but 0x0000000000000001 if the
+      numbers were signed
+- mult and div treat the operands as signed numbers
+- multu and divu treat the operands as unsigned numbers
+
+#### Set Less Than
+- set less than instructions can compare either two registers (slt) or a register and an immediate (slti)
+- signed (slt and slti) and unsigned (sltu and sltiu) versions
+- in a signed com- parison, 0x80000000 is less than any other number, because it is the most negative two’s
+  complement number
+- in an unsigned comparison, 0x80000000 is greater than 0x7FFFFFFF but less than 0x80000001, because all
+  numbers are positive
+- NOTE: sltiu sign-extends the immediate before treating it as an unsigned number
+
+#### Loads
+- byte loads come in signed (lb) and unsigned (lbu) versions
+- lb sign-extends the byte, and lbu zero-extends the byte to fill the entire 32-bit register
+- MIPS provides signed and unsigned half-word loads (lh and lhu), which load two bytes into the lower half and
+  sign- or zero-extend the upper half of the word
+
+### Floating-Point Instructions
+- MIPS architecture defines an optional floating-point coprocessor, known as coprocessor 1
+- early MIPS implementations - floating-point coprocessor was a separate chip that users could purchase if they
+  needed fast floating-point math
+- in recent MIPS implementations, the floating-point coprocessor is built in alongside the main processor
+- MIPS defines thirty-two 32-bit floating-point registers, $f0–$f31
+    - separate from the ordinary registers used so far
+- supports both single- and double-precision IEEE floating-point arithmetic
+- double-precision (64-bit) numbers are stored in pairs of 32-bit registers, so only the 16 even- numbered registers
+  ($f0, $f2, $f4,..., $f30) are used to specify double- precision operations
+- floating-point instructions all have an opcode of 17 (100012)
+    - require both a funct field and a cop (coprocessor) field to indicate the type of instruction
+    - MIPS defines the F-type instruction format for floating-point instructions
+    - come in both single- and double-precision flavors
+    - cop = 16 (100002) for sin- gle-precision instructions or 17 (100012) for double-precision instructions
+    - F-type instructions have two source operands, fs and ft, and one destination, fd (like R-type)
+    - precision is indicated by .s and .d in the mnemonic
+- floating-point arithmetic instructions include addition (add.s, add.d), subtraction (sub.s, sub.d), multiplication
+  (mul.s, mul.d), and division (div.s, div.d) as well as negation (neg.s, neg.d) and absolute value (abs.s, abs.d)
+- floating-point branches have two parts
+    - compare instruction is used to set or clear the floating-point condition flag (fpcond)
+    - conditional branch checks the value of the flag
+    - compare instructions include equality (c.seq.s/c.seq.d), less than (c.lt.s/c.lt.d), and less than or equal to
+      (c.le.s/c.le.d)
+    - conditional branch instructions are bc1f and bc1t that branch if fpcond is FALSE or TRUE, respectively
+    - inequality, greater than or equal to, and greater than comparisons are performed with seq, lt, and le, followed
+      by bc1f
+- floating-point registers are loaded and stored from memory using lwc1 and swc1
+    - move 32 bits, so two are necessary to handle a double-precision number
+
+## Real-World Perspective: x86 Architecture
+- x86, also called IA-32, is a 32-bit architecture originally developed by Intel
+- AMD also sells x86 compatible microprocessors
+- x86 architecture has a long and convoluted history dating back to 1978, when Intel announced the 16-bit 8086
+  microprocessor
+- IBM selected the 8086 and its cousin, the 8088, for IBM’s first personal computers
+- In 1985, Intel introduced the 32-bit 80386 microprocessor, which was backward compatible with the 8086, so it could
+  run software developed for earlier PCs
+- processor architectures compatible with the 80386 are called x86 processors
+- Pentium, Core, and Athlon processors are well known x86 processors
+- various groups at Intel and AMD over many years have shoehorned more instructions and capabilities into the
+  antiquated architecture
+    - result is far less elegant than MIPS
+- software compatibility is far more important than technical elegance, so x86 has been the de facto PC standard for
+  more than two decades
+- more than 100 million x86 processors are sold every year
+- huge market justifies more than $5 billion of research and development annually to continue improving the processors
+- example of a Complex Instruction Set Computer (CISC) architecture
+- programs for CISC architectures usually require fewer instructions
+- instruction encodings were selected to be more compact, so as to save memory, when RAM was far more expensive than
+  it is today
+    - instructions are of variable length and are often less than 32 bits
+    - trade-off is that complicated instructions are more difficult to decode and tend to execute more slowly
+
+### x86 Registers
+- 8086 microprocessor provided eight 16-bit registers
+    - could separately access the upper and lower eight bits of some of these registers
+- when the 32-bit 80386 was introduced, the registers were extended to 32 bits
+    - registers are called EAX, ECX, EDX, EBX, ESP, EBP, ESI, and EDI
+- for backward compatibility, the bottom 16 bits and some of the bottom 8-bit portions are also usable
+- eight registers are almost, but not quite, general purpose
+    - certain instructions cannot use certain registers
+    - other instructions always put their results in certain registers
+- x86 program counter is called EIP (the extended instruction pointer)
+    - advances from one instruction to the next or can be changed with branch, jump, and function call instructions
+
+### x86 Operands
+- MIPS instructions always act on registers or immediates
+- explicit load and store instructions are needed to move data between memory and the registers
+- x86 instructions may operate on registers, immediates, or memory
+    - partially compensates for the small set of registers
+- MIPS instructions generally specify three operands
+    - two sources and one destination
+- x86 instructions specify only two operands
+    - source
+    - second
+        - both a source and the destination
+    - always overwrite one of their sources with the result
+    - combinations are possible except memory to memory
+- supports a much wider variety of memory addressing modes
+- memory locations are specified with any combination of a base register, displacement, and a scaled index register
+    - displacement can be an 8-, 16-, or 32-bit value
+    - scale multiplying the index register can be 1, 2, 4, or 8
+    - base + displacement mode is equivalent to the MIPS base addressing mode for loads and stores
+    - scaled index provides an easy way to access arrays or structures of 2-, 4-, or 8-byte elements without having to
+      issue a sequence of instructions to generate the address
+
+table operand locations
+
+table memory addressing modes
+
+### Status Flags
+Meaning
+AH <– AH + BL
+AX <– AX + 0xFFFF EAX <– EAX + EDX
+Data Size
+8-bit
+16-bit
+32-bit
+
+- uses status flags (also called condition codes) to make decisions about branches and to keep track of carries and
+  arithmetic overflow
+- uses a 32-bit register, called EFLAGS, that stores the status flags
+- architectural state of an x86 processor includes EFLAGS as well as the eight registers and the EIP
+
+### x86 Instructions
+- larger set of instructions than MIPS
+- also has instructions for floating-point arithmetic and for arithmetic on multiple short data elements packed into
+  a longer word
+- D indicates the destination (a register or memory location)
+- S indicates the source (a register, memory location, or immediate).
+- NOTE: some instructions always act on specific registers
+    - 32 x 32-bit multiplication always takes one of the sources from EAX and always puts the 64-bit result in EDX
+      and EAX
+    - LOOP always stores the loop counter in ECX
+    - PUSH, POP, CALL, and RET use the stack pointer, ESP
+- conditional jumps check the flags and branch if the appropriate condition is met
+    - come in many flavors
+    - JZ jumps if the zero flag (ZF) is 1
+    - JNZ jumps if the zero flag is 0
+    - jumps usually follow an instruction, such as the compare instruction (CMP), that sets the flags
+
+### x86 Instruction Encoding
+- instruction encodings are truly messy, a legacy of decades of piecemeal changes
+- NOTE: for 32 bit
+- x86 instructions vary from 1 to 15 bytes
+- opcode may be 1, 2, or 3 bytes
+- followed by four optional fields
+    - Mod R/M
+        - specifies an addressing mode
+        - byte uses the 2-bit Mod and 3-bit R/M field to specify the addressing mode for one of the operands
+        - operand can come from one of the eight registers, or from one of 24 memory addressing modes
+        - due to artifacts in the encodings, the ESP and EBP registers are not available for use as the base or index
+          register in certain addressing modes
+        - Reg field specifies the register used as the other operand
+        - for certain instructions that do not require a second operand, the Reg field is used to specify three more
+          bits of the opcode
+    - SIB
+        - specifies the scale, index, and base registers in certain addressing modes
+        - specifies the index register and the scale (1, 2, 4, or 8) in addressing modes using a scaled index register
+        - if both a base and index are used, the SIB byte also specifies the base register
+    - Displacement
+        - indicates a 1-, 2-, or 4-byte displacement in certain addressing modes
+    - Immediate
+        - 1-, 2-, or 4-byte constant for instructions using an immediate as the source operand
+    - instruction can be preceded by up to four optional byte-long prefixes that modify its behavior
+- MIPS fully specifies the instruction in the opcode and funct fields of the instruction
+- x86 uses a variable number of bits to specify different instructions
+    - uses fewer bits to specify more common instructions, decreasing the average length of the instructions
+    - ome instructions even have multiple opcodes
+    - add AL, imm8 performs an 8-bit add of an immediate to AL
+        - is represented with the 1-byte opcode, 0x04, followed by a 1-byte immediate
+    - A register (AL, AX, or EAX) is called the accumulator
+    - add D, imm8 performs an 8-bit add of an immediate to an arbitrary destination, D (memory or a register)
+        - represented with the 1-byte opcode 0x80 followed by one or more bytes specifying D, followed by a 1-byte
+          immediate
+- many instructions have shortened encodings when the destination is the accumulator
+
+### Other x86 Peculiarities
+- 80286 introduced segmentation to divide memory into segments of up to 64 KB in length
+- when the OS enables segmentation, addresses are computed relative to the beginning of the segment
+- processor checks for addresses that go beyond the end of the segment and indicates an error, thus preventing
+  programs from accessing memory outside their own segment
+- segmentation proved to be a hassle for programmers and is not used in modern versions of the Windows operating system
+- x86 contains string instructions that act on entire strings of bytes or words
+- operations include moving, comparing, or scanning for a specific value
+    - these instructions are usually slower than performing the equivalent operation with a series of simpler
+      instructions, so they are best avoided
+- 0x66 prefix is used to choose between 16- and 32-bit operand sizes
+    - other prefixes include ones used to lock the bus (to control access to shared variables in a multiprocessor
+      system), to predict whether a branch will be taken or not, and to repeat the instruction during a string move
+
+### The Big Picture
+- x86 tends to have shorter programs, because a complex instruction is equivalent to a series of simple MIPS
+  instructions and because the instructions are encoded to minimize memory use
+- has too few registers, and the instructions are difficult to decode
+- x86 is firmly entrenched as the dominant computer architecture for PCs
+
+
+# Ch. 7 - Microarchitecture
 ## 7.1 Introduction
 - connection between logic and architecture
     - specific arrangement of registers, ALUs, finite state machines (FSMs), memories, and other logic building
@@ -3877,4 +4778,245 @@ x86 has been upgraded to x86-64 to get around the memory bottleneck
     - when it is 0, the process is accessing one of the I/O devices
     - address decoder must also look at M/IO to generate the appropriate enables for main memory and for the I/O devices
     - I/O devices can also send interrupts to the processor to indicate that they are ready to communicate
+
+# Digital System Implementation
+## 74xx Logic
+- in the 1970s and 1980s many digital systems were built from simple chips
+    - handful of logic gates
+    - 7404 chip contains six NOT gates
+    - 7408 contains four AND gates
+    - 7474 contains two flip-flops
+    - chips are collectively referred to as 74xx-series logic
+    - obsolete but useful for simple digital systems or class projects
+    - commonly sold in 14-pin dual inline packages (DIPs)
+
+### Logic Gates
+- 74xx-series chips containing basic logic gates
+- sometimes called small-scale integration (SSI) chips
+- built from a few transistors
+- 14-pin packages typically have a notch at the top or a dot on the top left to indicate orientation
+- pins are numbered starting with 1 in the upper left and going counterclockwise around the package
+- need to receive power (VDD = 5 V) and ground (GND = 0 V) at pins 14 and 7
+- number of logic gates on the chip is determined by the number of pins
+- NOTE: pins 3 and 11 of the 7421 chip are not connected (NC) to anything
+- 7474 flip-flop has the usual D, CLK, and Q terminals
+    - also has a complementary output, Q
+    - receives asynchronous set (also called preset, or PRE) and reset (also called clear, or CLR) signals
+    - active low
+        - flop sets when PRE = 0, resets when CLR = 0, and operates normally when PRE = CLR = 1
+
+### Other Functions
+- 74xx series also includes more complex logic functions
+    - called medium-scale integration (MSI) chips
+    - larger packages to accommodate more inputs and outputs
+
+## Programmable Logic
+- programmable logic
+    - arrays of circuitry that can be configured to perform specific logic functions
+- three forms of programmable logic so far
+    - programmable read only memories (PROMs)
+    - programmable logic arrays (PLAs)
+    - field programmable gate arrays (FPGAs)
+- configuration of these chips may be performed by blowing on-chip fuses to connect or disconnect circuit elements
+    - called one-time programmable (OTP) logic
+        - once a fuse is blown it cannot be restored
+    - configuration may be stored in a memory that can be reprogrammed at will
+    - eprogrammable logic is convenient in the laboratory because the same chip can be reused during development
+
+### PROMs
+- can be used as lookup tables
+    - 2N-word x M-bit PROM can be programmed to perform any combinational function of N inputs and M outputs
+
+### FPGAs
+- consist of arrays of configurable logic elements (LEs) connected together with programmable wires
+    - also called configurable logic blocks (CLBs)
+- LEs contain small lookup tables and flip-flops
+- scale gracefully to extremely large capacities, with thousands of lookup tables
+- Xilinx and Altera
+- lookup tables and programmable wires are flexible enough to implement any logic function
+- much less efficient in speed and cost (chip area) than hard-wired versions of the same functions
+- often include specialized blocks, such as memories, multipliers, and even entire microprocessors
+- design is usually specified with a hardware description language (HDL)
+    - some FPGA tools also support schematics
+- design is then simulated
+- inputs are applied and compared against expected outputs to verify that the logic is correct
+- logic synthesis converts the HDL into Boolean functions
+- good synthesis tools produce a schematic of the functions
+- examine to ensure that the desired logic was produced
+- when the synthesis results are good, the FPGA tool maps the functions onto the LEs of a specific chip
+- place and route tool determines which functions go in which lookup tables and how they are wired together
+- wire delay increases with length, so critical circuits should be placed close together
+- timing analysis compares the timing constraints (e.g., an intended clock speed of 100MHz) against the actual circuit
+  delays and reports any errors
+- when the design is correct, a file is generated specifying the contents of all the LEs and the programming of
+  all the wires on the FPGA
+    - many FPGAs store this configuration information in static RAM that must be reloaded each time the FPGA is
+      turned on
+    - can download this information from a computer in the laboratory, or can read it from a nonvolatile ROM
+      when power is first applied
+- cost has declined at approximately 30% per year
+    - becoming extremely popular
+
+## Application-Specific Integrated Circuits
+- application-specific integrated circuits (ASICs)
+    - chips designed for a particular purpose
+    - graphics accelerators
+    - network interface chips
+    - cell phone chips
+- designer places transistors to form logic gates and wires the gates together
+- typically several times faster than an FPGA and occupies an order of magnitude less chip area (and hence cost)
+  (hardwired for specific function)
+- masks specifying where transistors and wires are located on the chip cost hundreds of thousands of dollars to produce
+- if errors are discovered after the ASIC is manufactured, the designer must correct the problem, generate new masks,
+  and wait for another batch of chips to be fabricated
+    - suitable only for products that will be produced in large quantities and whose function is well defined in advance
+- logic verification is especially important because correction of errors after the masks are produced is expensive
+- synthesis produces a netlist consisting of logic gates and connections between the gates
+    - gates in this netlist are placed
+    - wires are routed between gates
+    - masks are generated and used to fabricate the ASIC
+- single speck of dust can ruin an ASIC, so the chips must be tested after fabrication
+- fraction of manufactured chips that work is called the yield
+    - typically 50 to 90%, depending on the size of the chip and the maturity of the manufacturing process
+
+## Data Sheets
+
+## Logic Families
+- series of chips have been manufactured using many different technologies, called logic families
+    - offer different speed, power, and logic level trade-offs
+    - other chips are usually designed to be compatible with some of these logic families
+- advances in bipolar circuits and process technology led to the Schottky (S) and Low-Power Schottky (LS) families
+
+- CMOS circuits became popular as they matured in the 1980s and 1990s because they draw very little power supply or
+  input current
+    - High Speed CMOS (HC) and Advanced High Speed CMOS (AHC) families draw almost no static power
+    - deliver the same current for HIGH and LOW outputs
+    - conform to the "CMOS" logic levels
+    - levels are incompatible with TTL circuits
+    - motivates the use of High Speed TTL-compatible CMOS (HCT) and Advanced High Speed TTL-compatible CMOS (AHCT)
+        - accept TTL input logic levels and generate valid CMOS output logic levels
+        - slightly slower than their pure CMOS counterparts
+   - all CMOS chips are sensitive to electrostatic discharge (ESD) caused by static electricity
+- FPGAs often offer separate voltage supplies for the internal logic, called the core, and for the input/output (I/O)
+  pins
+- FPGAs have configurable I/Os that can operate at many different voltages, so as to be compatible with the rest of the system.
+
+## Packaging and Assembly
+- integrated circuits are typically placed in packages made of plastic or ceramic
+    - connect the tiny metal I/O pads of the chip to larger pins in the package for ease of connection
+    - protect the chip from physical damage
+    - spread the heat generated by the chip over a larger area to help with cooling
+- packages are placed on a breadboard or printed circuit board and wired together to assemble the system
+- generally categorized
+    - through-hole
+        - have pins that can be inserted through holes in a printed circuit board or into a socket
+        - dual inline packages (DIPs) have two rows of pins with 0.1-inch spacing between pins
+        - pin grid arrays (PGAs) support more pins in a smaller package by placing the pins under the package
+    - surface mount (SMT)
+        - soldered directly to the surface of a printed circuit board without using holes
+        - pins are called leads
+        - thin small outline package (TSOP) has two rows of closely spaced leads (typically 0.02-inch spacing)
+        - plastic leaded chip carriers (PLCCs) have J-shaped leads on all four sides, with 0.05-inch spacing
+        - can be soldered directly to a board or placed in special sockets
+        - Quad flat packs (QFPs) accommodate a large number of pins using closely spaced legs on all four sides
+        - Ball grid arrays (BGAs) eliminate the legs altogether
+            - have hundreds of tiny solder balls on the underside of the package
+            - carefully placed over matching pads on a printed circuit board, then heated so that the solder melts and
+              joins the package to the underlying board
+
+### Breadboards
+- breadboard is a plastic board containing rows of sockets
+- all five holes in a row are connected together
+- each pin of the package is placed in a hole in a separate row
+- wires can be placed in adjacent holes in the same row to make connections to the pin
+- often provide separate columns of connected holes running the height of the board to distribute power and ground
+- easy to accidentally plug a wire in the wrong hole or have a wire fall out
+- requires a great deal of care (and usually some debugging in the laboratory)
+- only for prototyping not production
+
+### Printed Circuit Boards
+- chip packages may be soldered to a printed circuit board (PCB)
+- formed of alternating layers of conducting copper and insulating epoxy
+- copper is etched to form wires called traces
+- holes called vias are drilled through the board and plated with metal to connect between layers
+- usually designed with computer-aided design (CAD) tools
+- can etch and drill your own simple boards in the laboratory
+- can send the board design to a specialized factory for inexpensive mass production
+- traces are normally made of copper because of its low resistance
+- traces are embedded in an insulating material, usually a green, fire resistant plastic called FR4
+- typically has copper power and ground layers, called planes, between signal layers
+
+### Putting It All Together
+- most modern chips with large numbers of inputs and outputs use SMT packages, especially QFPs and BGAs
+- packages require a printed circuit board rather than a breadboard
+- working with BGAs is challenging because they require specialized assembly equipment
+- balls cannot be probed with a voltmeter or oscilloscope during debugging in the laboratory because they are
+  hidden under the package
+- designer needs to consider packaging early on to determine whether a breadboard can be used during prototyping
+  and whether BGA parts will be required
+- professional engineers rarely use breadboards when they are confident of connecting chips together correctly
+  without experimentation
+
+## Transmission Lines
+
+### Short Termination
+
+### Mismatched Termination
+
+### When to Use Transmission Line Models
+
+### Putting it all Together
+- transmission lines model the fact that signals take time to propagate down long wires because the speed of
+  light is finite
+- ideal transmission line has uniform inductance L and capacitance C per unit length and zero resistance
+- transmission line is characterized by its characteristic impedance Z0 and delay td which can be derived from the
+  inductance, capacitance, and wire length
+- transmission line has significant delay and noise effects on signals whose rise/fall times are less than about 5td
+- for systems with 2 ns rise/fall times, PCB traces longer than about 6 cm must be analyzed as transmission lines to
+  accurately understand their behavior
+- a digital system consisting of a gate driving a long wire attached to the input of a second gate can be modeled with a
+  transmission line
+- voltage source, source impedance ΖS, and switch model the first gate switching from 0 to 1 at time 0
+- driver gate cannot supply infinite current
+    - modeled by ZS
+    - ZS is usually small for a logic gate, but a designer may choose to add a resistor in series with the gate to
+      raise ZS and match the impedance of the line
+    - input to the second gate is modeled as ZL
+    - CMOS circuits usually have little input current, so ZL may be close to infinity
+    - designer may also choose to add a resistor in parallel with the second gate, between the gate input and ground,
+      so that ZL matches the impedance of the line
+- when the first gate switches, a wave of voltage is driven onto the transmission line
+- source impedance and transmission line form a voltage divider
+    - wave formula here
+- at time td, the wave reaches the end of the line
+- part is absorbed by the load impedance, and part is reflected
+- reflection coefficient kr indicates the portion that is reflected
+    - formulas here
+- reflected wave adds to the voltage already on the line
+- reaches the source at time 2td, where part is absorbed and part is again reflected
+- reflections continue back and forth, and the voltage on the line eventually approaches the value that would be
+  expected if the line were a simple equipotential wire
+
+## Economics
+- economic considerations are a major factor in design decisions
+- cost of a digital system can be divided
+    - nonrecurring engineering costs (NRE)
+        - accounts for the cost of designing the system
+        - includes the salaries of the design team, computer and software costs, and the costs of producing the first working unit
+        - fully loaded cost of a designer in the United States in 2012 (including salary, health insurance,
+          retirement plan, and a computer with design tools) was roughly $200,000 per year
+    - recurring costs
+        - cost of each additional unit
+            - components
+            - manufacturing
+            - marketing
+            - technical support
+            - shipping
+- sales price must cover not only the cost of the system but also other costs such as office rental, taxes, and
+  salaries of staff who do not directly contribute to the design (such as the janitor and the CEO)
+- chips are usually purchased from a distributor rather than directly from the manufacturer
+  (unless you are ordering tens of thousands of units)
+- Digikey (www.digikey.com)
+- Jameco (www.jameco.com)
+- All Electronics (www.allelectronics.com)
 
