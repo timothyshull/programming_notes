@@ -17,7 +17,7 @@
 - analog circuits
 - digital circuits
 - microarchitecture - links the logic and architecture levels of abstraction
-- architecture - level of abstraction that describes a computer from the programmer’s perspective
+- architecture - level of abstraction that describes a computer from the programmer's perspective
 - operating system
 
 ### Discipline
@@ -104,7 +104,7 @@
     - add 1
 - to subtract - take two's complement of second operand and then add
 - 0 is considered positive because it's sign bit is 0
-- n-bit two’s complement numbers represent one of 2^n possible values
+- n-bit two's complement numbers represent one of 2^n possible values
 - overflow may occur
     - overflow occurs if the two numbers being added have the same sign bit and the result has the opposite sign bit
 
@@ -114,9 +114,9 @@
     - unsigned - 0, 2^n - 1
     - sign/magnitude - -2^(n-1) + 1, 2^(n-1) - 1
     - two's complement
-- two’s complement numbers are convenient because they represent both positive and negative integers and because
+- two's complement numbers are convenient because they represent both positive and negative integers and because
   ordinary addition works for all numbers
-- unless stated otherwise, assume that all signed binary numbers use two’s complement representation
+- unless stated otherwise, assume that all signed binary numbers use two's complement representation
 
 ## 1.5 Logic Gates
 - simple digital circuits that take one or more binary inputs and produce a binary output
@@ -168,7 +168,7 @@
 ### Supply Voltage
 - lowest voltage in the system is 0 V, also called ground or GND
 - highest voltage in the system comes from the power supply and is usually called VDD
-- in 1970’s and 1980’s technology, VDD was generally 5V
+- in 1970's and 1980's technology, VDD was generally 5V
 - as chips have progressed to smaller transistors, VDD has dropped to 3.3 V, 2.5 V, 1.8 V, 1.5 V, 1.2 V
     - to save power and avoid overloading the transistors
 
@@ -178,7 +178,7 @@
 - The driver produces a LOW (0) output in the range of 0 to VOL or a HIGH(1) output in the range of VOH to VDD
 - if the receiver gets an input in the range of 0 to VIL, it will consider the input to be LOW
 - if the receiver gets an input in the range of VIH to VDD, it will consider the input to be HIGH
-- if the receiver’s input should fall in the forbidden zone (VIL -> VIH) gate behavior is unpredictable
+- if the receiver's input should fall in the forbidden zone (VIL -> VIH) gate behavior is unpredictable
 - output and input high and low logic levels
 
 ### Noise Margins
@@ -448,7 +448,7 @@
         - if the current gate does not have an input bubble, draw the preceding gate without an output bubble
 - bubbles in series cancel
 
-## X’S and Z’S, Oh My
+## X'S and Z'S, Oh My
 - real circuits can also have illegal and floating values, represented symbolically by X and Z
 - symbol X indicates that the circuit node has an unknown or illegal value
     - commonly happens if it is being driven to both 0 and 1 at the same time
@@ -459,7 +459,7 @@
 - contention also can cause large amounts of power to flow between the fighting gates, resulting in the circuit
   getting hot and possibly damaged
 - X values are also sometimes used by circuit simulators to indicate an uninitialized value
-- designers also use the symbol X to indicate "don’t care" values in truth tables
+- designers also use the symbol X to indicate "don't care" values in truth tables
     - do not confuse
     - X indicates that the value of the variable in the truth table is
       unimportant (can be either 0 or 1) when it appears in a truth table
@@ -510,22 +510,22 @@
 
 ### Logic Minimization with K-Maps
 - rules for finding a minimized equation from a K-map
-    - use the fewest circles necessary to cover all the 1’s
-    - all the squares in each circle must contain 1’s
+    - use the fewest circles necessary to cover all the 1's
+    - all the squares in each circle must contain 1's
     - each circle must span a rectangular block that is a power of 2 (i.e., 1, 2, or 4) squares in each direction
     - each circle should be as large as possible
     - a circle may wrap around the edges of the K-map
     - a 1 in a K-map may be circled multiple times if doing so allows fewer circles to be used
 
-### Don’t Cares
-- "don’t care" entries for truth table inputs reduce the number of rows in the table when some vari-ables do not affect
+### Don't Cares
+- "don't care" entries for truth table inputs reduce the number of rows in the table when some vari-ables do not affect
   the output
     - indicated by the symbol X, which means that the entry can be either 0 or 1
 - also appear in truth table outputs where the output value is unimportant or the corresponding input combination
   can never happen
-    - can be treated as either 0’s or 1’s at the designer’s discretion
-- X’s allow for even more logic minimization in K-maps
-    - can be circled if they help cover the 1’s with fewer or larger circles, but they do not have to be circled if
+    - can be treated as either 0's or 1's at the designer's discretion
+- X's allow for even more logic minimization in K-maps
+    - can be circled if they help cover the 1's with fewer or larger circles, but they do not have to be circled if
       they are not helpful
 
 ### The Big Picture
@@ -571,12 +571,24 @@
 - N:1 multiplexer needs log2N select lines
 
 ### Multiplexer Logic
-Multiplexers can be used as lookup tables to perform logic functions. Figure 2.59 shows a 4:1 multiplexer used to implement a two-input
-AND gate. The inputs, A and B, serve as select lines. The multiplexer data inputs are connected to 0 or 1 according to the corresponding row of the truth table. In general, a 2N-input multiplexer can be programmed to per- form any N-input logic function by applying 0’s and 1’s to the appropri- ate data inputs. Indeed, by changing the data inputs, the multiplexer can be reprogrammed to perform a different function.
-With a little cleverness, we can cut the multiplexer size in half, using only a 2N–1-input multiplexer to perform any N-input logic function. The strategy is to provide one of the literals, as well as 0’s and 1’s, to the multiplexer data inputs.
-To illustrate this principle, Figure 2.60 shows two-input AND and XOR functions implemented with 2:1 multiplexers. We start with an ordinary truth table, and then combine pairs of rows to eliminate the right- most input variable by expressing the output in terms of this variable. For example, in the case of AND, when A = 0, Y = 0, regardless of B. When A=1, Y=0 if B=0 and Y=1 if B=1, so Y=B. We then use the multi- plexer as a lookup table according to the new, smaller truth table.
+- multiplexers can be used as lookup tables to perform logic functions
+- 4:1 multiplexer used to implement a two-input AND gate
+    - inputs, A and B, serve as select lines
+    - multiplexer data inputs are connected to 0 or 1 according to the corresponding row of the truth table
+- a 2N-input multiplexer can be programmed to perform any N-input logic function by applying 0's and 1's to the 
+  appropriate data inputs
+    - by changing the data inputs, the multiplexer can be reprogrammed to perform a different function
+- can cut the multiplexer size in half using only a 2N–1-input multiplexer to perform any N-input logic function
+    - provide one of the literals, as well as 0's and 1's, to the multiplexer data inputs
+
 ### Decoders
-A decoder has N inputs and 2N outputs. It asserts exactly one of its outputs depending on the input combination. Figure 2.63 shows a 2:4 decoder. When A1:0 = 00, Y0 is 1. When A1:0 = 01, Y1 is 1. And so forth. The outputs are called one-hot, because exactly one is “hot” (HIGH) at a given time.
+- N inputs and 2N outputs
+    - asserts exactly one of its outputs depending on the input combination
+- 2:4 decoder
+    - when A1:0 = 00, Y0 is 1
+    - when A1:0 = 01, Y1 is 1
+    - etc
+    - outputs are called one-hot, because exactly one is "hot" (HIGH) at a given time
 
 #### Decoder Logic
 - decoders can be combined with OR gates to build logic functions
@@ -585,8 +597,8 @@ A decoder has N inputs and 2N outputs. It asserts exactly one of its outputs dep
       in the function
 - when using decoders to build logic, it is easiest to express functions as a truth table or in canonical
   sum-of-products form
-- N-input function with M 1’s in the truth table can be built with an N:2N decoder and an M-input OR gate attached to
-  all of the minterms containing 1’s in the truth table
+- N-input function with M 1's in the truth table can be built with an N:2N decoder and an M-input OR gate attached to
+  all of the minterms containing 1's in the truth table
     - used for Read Only Memories (ROMs)
 
 ## Timing
@@ -624,7 +636,7 @@ A decoder has N inputs and 2N outputs. It asserts exactly one of its outputs dep
 ## Glitches
 - possible that a single input transition can cause multiple output transitions
     - glitches or hazards
-- usually don’t cause problems
+- usually don't cause problems
     - important to realize that they exist and recognize them when looking at timing diagrams
 - glitches are not a problem when waiting for the propagation delay to elapse before we depend on the output because the
   output eventually settles to the right answer
@@ -1300,7 +1312,7 @@ Cin A B | Cout S
 
 ### Subtraction
 - flip the sign of the second number then add
-    - for two’s complement number - invert the bits and add 1
+    - for two's complement number - invert the bits and add 1
 
 #### Subtractor
 
@@ -1355,7 +1367,7 @@ Cin A B | Cout S
 - move bits and multiply or divide by powers of 2
     - shifter shifts a binary number left or right by a specified number of positions
         - logical shifter
-            - shifts the number to the left (LSL) or right (LSR) and fills empty spots with 0’s
+            - shifts the number to the left (LSL) or right (LSR) and fills empty spots with 0's
         - arithmetic shifter
             - same as a logical shifter, but on right shifts fills the most significant bits with a copy of the
               old most significant bit (msb)
@@ -1371,7 +1383,7 @@ Cin A B | Cout S
 - partial products are formed by multiplying a single digit of the multiplier with the entire multiplicand
     - shifted partial products are summed to form the result
 - an NxN multiplier multiplies two N-bit numbers and produces a 2N-bit result
-    - partial products in binary multiplication are either the multiplicand or all 0’s
+    - partial products in binary multiplication are either the multiplicand or all 0's
 - multiplication of 1-bit binary numbers is equivalent to the AND operation
     - AND gates are used to form the partial products
 
@@ -1380,13 +1392,13 @@ Cin A B | Cout S
 ### Division
 - can be performed using the following algorithm for N-bit unsigned numbers in the range [0, 2N−1]
 ```
-R′=0
+R'=0
 for i = N−1 to 0
-    R={R′ << 1, Ai}
+    R={R' << 1, Ai}
     D=R−B
-    if D < 0 then Qi = 0, R′ = R    // R < B
-    else Qi = 1, R′ = D             // R ≥ B
-R=R′
+    if D < 0 then Qi = 0, R' = R    // R < B
+    else Qi = 1, R' = D             // R ≥ B
+R=R'
 ```
 - partial remainder R is initialized to 0
 - most significant bit of the dividend A then becomes the least significant bit of R
@@ -1412,9 +1424,9 @@ R=R′
 ### Fixed-Point Number Systems
 - implied binary point between the integer and fraction bits
     - analogous to the decimal point between the integer and fraction digits of an ordinary decimal number
-- signed fixed-point numbers can use either two’s complement or sign/magnitude notation
+- signed fixed-point numbers can use either two's complement or sign/magnitude notation
     - in sign/magnitude form the most significant bit is used to indicate the sign
-    - in two’s complement is formed by inverting the bits of the absolute value and adding a
+    - in two's complement is formed by inverting the bits of the absolute value and adding a
       1 to the least significant (rightmost) bit
 - just a collection of bits
     - no way of knowing the existence of the binary point except through agreement for interpretation
@@ -1770,7 +1782,7 @@ DRAM            1                           slow
 
 # Ch. 6 - Architecture
 ## 6.1 Introduction
-- architecture is the programmer’s view of a computer
+- architecture is the programmer's view of a computer
     - defined by the instruction set (language) and operand locations (registers and memory)
 - different architectures exist
     - x86
@@ -1801,7 +1813,7 @@ DRAM            1                           slow
         - Cisco
 
 ## 6.2 Assembly Language
-- human-readable representation of the computer’s native language
+- human-readable representation of the computer's native language
 - instruction specifies operation to perform and the operands on which to operate
 
 ### Instructions
@@ -1824,7 +1836,7 @@ DRAM            1                           slow
 
 ### Operands: Registers, Memory, and Constants
 - instruction operates on operands
-- computers operate on 1’s and 0’s - not variable names
+- computers operate on 1's and 0's - not variable names
 - instructions need a physical location from which to retrieve the binary data
 - operands can be stored in registers or memory, or they may be constants stored in the instruction itself
 - computers use various locations to hold operands in order to optimize for speed and data capacity
@@ -1912,7 +1924,7 @@ $ra         31          function return address
   Add immediate,
 - addi - add immediate
     - adds the immediate specified in the instruction to a value in a register
-- immediate specified in an instruction is a 16-bit two’s complement number in the range [–32,768, 32,767]
+- immediate specified in an instruction is a 16-bit two's complement number in the range [–32,768, 32,767]
 - subtraction is equivalent to adding a negative number
     - no subi instruction in the MIPS architecture
 - MIPS instruction set makes the compromise of supporting three instruction formats
@@ -1921,7 +1933,7 @@ $ra         31          function return address
     - 26-bit immediate
 
 ## 6.3 Machine Language
-- program written in assembly language is translated from mnemonics to a representation using only 1’s and 0’s
+- program written in assembly language is translated from mnemonics to a representation using only 1's and 0's
 - MIPS uses 32-bit instructions
     - encodes all instructions as words that can be stored in memory.
     - some instructions may not require all 32 bits of encoding
@@ -1973,16 +1985,16 @@ op      rs      rt      imm
         - always second register field in machine language instruction
     - imm
         - holds the 16-bit immediate operand
-        - negative immediate values are represented using 16-bit two’s complement notation
+        - negative immediate values are represented using 16-bit two's complement notation
         - 16-bit immediate field but used in 32-bit operations
-            - upper half should be all 0’s for positive immediates
-            - upper half should be all 1’s for negative immediates
+            - upper half should be all 0's for positive immediates
+            - upper half should be all 1's for negative immediates
             - called sign extension
-                - N-bit two’s complement number is sign-extended to an M-bit number (M > N) by copying the sign bit
+                - N-bit two's complement number is sign-extended to an M-bit number (M > N) by copying the sign bit
                   (most significant bit) of the N-bit number into all of the upper bits of the M-bit number
                 - does not change its value
 - most MIPS instructions sign-extend the immediate
-    - an exception to this rule is that logical operations (andi, ori, xori) place 0’s in the upper half
+    - an exception to this rule is that logical operations (andi, ori, xori) place 0's in the upper half
       (called zero extension)
 
 ### J-Type Instructions
@@ -2052,8 +2064,8 @@ op          addr
 - shift the value in a register left or right by up to 31 bits
     - multiply or divide by powers of two
 - sll (shift left logical), srl (shift right logical), and sra (shift right arithmetic)
-- left shifts always fill the least significant bits with 0’s
-- right shifts can be either logical (0’s shift into the most significant bits) or arithmetic (the sign bit shifts
+- left shifts always fill the least significant bits with 0's
+- right shifts can be either logical (0's shift into the most significant bits) or arithmetic (the sign bit shifts
   into the most significant bits)
 - shifting a value left by N is equivalent to multiplying it by 2^N
 - arithmetically shifting a value right by N is equivalent to dividing it by 2^N
@@ -2064,7 +2076,7 @@ op          addr
      - rt ($s1) holds the value to be shifted
      - five least significant bits of rs ($s2) give the amount to shift
      - shifted result is placed in rd
-     - shamt field is ignored and should be all 0’s
+     - shamt field is ignored and should be all 0's
 
 - TODO: more here
 
@@ -2317,13 +2329,13 @@ op          addr
 - function can also declare local variables or arrays
 - ocal variables are declared within a function and can be accessed only within that function
 - local variables are stored in $s0–$s7
-    - if there are too many local variables, they can also be stored in the function’s stack frame
+    - if there are too many local variables, they can also be stored in the function's stack frame
     - local arrays are stored on the stack
-- callee’s stack frame
-    - holds the function’s own arguments, the return address, and any of the saved registers that the function will
+- callee's stack frame
+    - holds the function's own arguments, the return address, and any of the saved registers that the function will
       modify
     - holds local arrays and any excess local variables
-    - the callee has more than four arguments, it finds them in the caller’s stack frame
+    - the callee has more than four arguments, it finds them in the caller's stack frame
     - accessing additional input arguments is the one exception in which a function can access stack data not in its
       own stack frame
 
@@ -2369,7 +2381,7 @@ op          addr
     - next 26 bits, JTA27:2, are taken from the addr field of the instruction
     - four most significant bits, JTA31:28, are obtained from the four most significant bits of PC + 4
     - called pseudo-direct
-- processor calculates the JTA from the J-type instruction by appending two 0’s and prepending the four most
+- processor calculates the JTA from the J-type instruction by appending two 0's and prepending the four most
   significant bits of PC + 4 to the 26-bit address field (addr)
 - because the four most significant bits of the JTA are taken from PC + 4, the jump range is limited
 - all J-type instructions, j and jal, use pseudo-direct addressing
@@ -2415,7 +2427,7 @@ op          addr
 - in C++ and Java, new is used to allocate memory
 - heap data can be used and discarded in any order
 - heap grows upward from the bottom of the dynamic data segment
-- if the stack and heap ever grow into each other, the program’s data can become corrupted
+- if the stack and heap ever grow into each other, the program's data can become corrupted
     - memory allocator tries to ensure that this never happens by returning an out-of-memory error if there is
       insufficient space to allocate more dynamic data
 
@@ -2481,7 +2493,7 @@ High-Level Code -> Compiler -> Assembly Code -> Assembler -> Object File -> Link
   programmers and compilers
 - when converted to machine code, pseudoinstructions are translated into one or more MIPS instructions
 - load immediate pseudoinstruction (li) loads a 32-bit constant using a combination of lui and ori instructions
-- no operation pseudoinstruction (nop, pronounced “no op”) performs no operation
+- no operation pseudoinstruction (nop, pronounced "no op") performs no operation
     - PC is incremented by 4 upon its execution
     - no other registers or memory values are altered
     - the machine code for the nop instruction is 0x00000000.
@@ -2566,7 +2578,7 @@ High-Level Code -> Compiler -> Assembly Code -> Assembler -> Object File -> Link
 #### Set Less Than
 - set less than instructions can compare either two registers (slt) or a register and an immediate (slti)
 - signed (slt and slti) and unsigned (sltu and sltiu) versions
-- in a signed com- parison, 0x80000000 is less than any other number, because it is the most negative two’s
+- in a signed com- parison, 0x80000000 is less than any other number, because it is the most negative two's
   complement number
 - in an unsigned comparison, 0x80000000 is greater than 0x7FFFFFFF but less than 0x80000001, because all
   numbers are positive
@@ -2613,7 +2625,7 @@ High-Level Code -> Compiler -> Assembly Code -> Assembler -> Object File -> Link
 - AMD also sells x86 compatible microprocessors
 - x86 architecture has a long and convoluted history dating back to 1978, when Intel announced the 16-bit 8086
   microprocessor
-- IBM selected the 8086 and its cousin, the 8088, for IBM’s first personal computers
+- IBM selected the 8086 and its cousin, the 8088, for IBM's first personal computers
 - In 1985, Intel introduced the 32-bit 80386 microprocessor, which was backward compatible with the 8086, so it could
   run software developed for earlier PCs
 - processor architectures compatible with the 80386 are called x86 processors
@@ -2920,7 +2932,7 @@ Execution Time = (# instructions)(cycles/instruction)(seconds/cycle)
     - read this instruction from instruction memory
     - PC is simply connected to the address input of the instruction memory
     - instruction memory reads out, or fetches, the 32-bit instruction, labeled Instr
-- processor’s actions depend on the specific instruction that was fetched
+- processor's actions depend on the specific instruction that was fetched
 - first determine datapath connections for the lw instruction then generalize the datapath to handle the other
   instructions
 - lw instruction
@@ -2984,19 +2996,19 @@ Execution Time = (# instructions)(cycles/instruction)(seconds/cycle)
     - ALUSrc is
         - 0 for R-type instructions to choose SrcB from the register file
         - 1 for lw and sw to choose SignImm
-    - useful to enhance the datapath’s capabilities by adding a multiplexer to choose inputs from several possibilities
+    - useful to enhance the datapath's capabilities by adding a multiplexer to choose inputs from several possibilities
     - add another multiplexer to choose between ReadData and ALUResult because R-type instructions write the ALUResult to the register file
         - output Result
         - controlled by another new signal, MemtoReg
             - 0 for R-type instructions to choose Result from the ALUResult
             - 1 for lw to choose ReadData
-            - don’t care about the value for sw because sw does not write to the register file
+            - don't care about the value for sw because sw does not write to the register file
     - add a third multiplexer to choose WriteReg from the appropriate field of the instruction because the register is
       specified by the rd field, Instr15:11, for R-type instructions
         - multiplexer is controlled by RegDst
             - 1 for R-type instructions to choose WriteReg from the rd field, Instr15:11
             - 0 for lw to choose the rt field, Instr20:16
-            - don’t care about the value of RegDst for sw because sw does not write to the register file
+            - don't care about the value of RegDst for sw because sw does not write to the register file
 - extend the datapath to handle beq
     - beq compares two registers
         - if equal it takes the branch by adding the branch offset to the program counter
@@ -3014,7 +3026,7 @@ Execution Time = (# instructions)(cycles/instruction)(seconds/cycle)
     - ALUControl = 110 so the ALU performs a subtraction
     - ALUSrc=0 to choose SrcB from the register file
     - RegWrite and MemWrite are 0, because a branch does not write to the register file or memory
-    - don’t care about the values of RegDst and MemtoReg because the register file is not written
+    - don't care about the values of RegDst and MemtoReg because the register file is not written
 
 ### Single-Cycle Control
 - computes the control signals based on the opcode and funct fields of the instruction, Instr31:26 and Instr5:0
@@ -3032,7 +3044,7 @@ ALUOp   Meaning
 10      look at funct field
 11      n/a
 ```
-- truth table can use don’t care’s X1 and 1X instead of 01 and 10 to simplify the logic because ALUOp is never 11
+- truth table can use don't care's X1 and 1X instead of 01 and 10 to simplify the logic because ALUOp is never 11
 - ALU should add or subtract when ALUOp is 00 or 01
 - decoder examines the funct field to determine the ALUControl when ALUOp is 10
 - for the implemented R-type instructions
@@ -3047,7 +3059,7 @@ fill in
 - all R-type instructions use the same main decoder values
     - differ only in the ALU decoder output
 - for instructions that do not write to the register file (e.g., sw and beq), the RegDst and MemtoReg control signals
-  are don’t cares (X)
+  are don't cares (X)
     - address and data to the register write port do not matter because RegWrite is not asserted
     - logic for the decoder can be designed using your favorite techniques for combinational logic design
 
@@ -3238,14 +3250,14 @@ Aside from advances in manufacturing, the
     - WAR hazards could not occur in the simple MIPS pipeline, but they may happen in an out-of-order processor if the
       dependent instruction (in this case, sub) is moved too early
     - a WAR hazard is not essential to the operation of the program
-        - merely an artifact of the programmer’s choice to use the same register for two unrelated instructions
+        - merely an artifact of the programmer's choice to use the same register for two unrelated instructions
         - MIPS architecture only has 32 registers, so sometimes the programmer is forced to reuse a register and
           introduce a hazard just because all the other registers are in use
 - a third type of hazard is called write after write (WAW) or an output dependence
     - occurs if an instruction attempts to write a register after a subsequent instruction has already written it
     - results in the wrong value being written to the register
     - WAW hazards are not essential either
-        - artifacts caused by the programmer’s using the same register for two unrelated instructions
+        - artifacts caused by the programmer's using the same register for two unrelated instructions
      - squashing the add - program could eliminate a WAW hazard by discarding the result of the add instead of writing
        it to $t0
 - out-of-order processors use a table to keep track of instructions waiting to issue
@@ -3294,7 +3306,7 @@ Aside from advances in manufacturing, the
       thread level parallelism (TLP)
 - in a conventional processor, the threads only give the illusion of running simultaneously
     - threads actually take turns being executed on the processor under control of the OS
-    - when one thread’s turn ends, the OS saves its architectural state, loads the architectural state of the next
+    - when one thread's turn ends, the OS saves its architectural state, loads the architectural state of the next
       thread, and starts executing that next thread
     - called context switching
     - as long as the processor switches through all the threads fast enough, the user perceives all of the threads as
@@ -3363,7 +3375,7 @@ Aside from advances in manufacturing, the
 - other heterogeneous systems can include a mix of traditional cores and specialized hardware
     - floating-point coprocessors are an early example of this
     - early microprocessors did not have space for floating-point hardware on the main chip
-    - today’s microprocessors include one or more floating-point units on chip and are now beginning to include other
+    - today's microprocessors include one or more floating-point units on chip and are now beginning to include other
       types of specialized hardware
         - AMD and Intel both have processors that incorporate a graphics processing unit (GPU) or FPGA and one or more
           traditional x86 cores on the same chip
@@ -3436,12 +3448,12 @@ Aside from advances in manufacturing, the
     - some models include built-in graphics processors, also called graphics accelerators
     - some support "Turbo- Boost" to improve the performance of single-threaded code by turning off the unused cores
       and raising the voltage and clock frequency of the boosted core
-    - some offer "hyperthreading" Intel’s term for 2-way multi-threading that doubles the number of cores from the
-      user’s perspective
+    - some offer "hyperthreading" Intel's term for 2-way multi-threading that doubles the number of cores from the
+      user's perspective
 
 
 # Ch. 8 - Memory and I/O Systems
-- computer’s ability to solve problems requires memory system and the input/output (I/O) devices
+- computer's ability to solve problems requires memory system and the input/output (I/O) devices
     - monitors
     - keyboards
     - printers
@@ -3529,10 +3541,10 @@ AMAT = tcache + MRcache (tMM + MRmm*tVM)
 - tVM - access time of virtual memory
 - MRcache - cache miss rate
 - MRMM - main memory miss rate
-- Amdahl’s Law - says that the effort spent on increasing the performance of a subsystem is worthwhile only if the
+- Amdahl's Law - says that the effort spent on increasing the performance of a subsystem is worthwhile only if the
   subsystem affects a large percentage of the overall performance
     - making the memory system ten times faster will not necessarily make a computer program run ten times as fast
-    - if 50% of a program’s instructions are loads and stores, a tenfold memory system improvement only means a 1.82-fold
+    - if 50% of a program's instructions are loads and stores, a tenfold memory system improvement only means a 1.82-fold
       improvement in program performance
 
 ## Caches
@@ -3880,7 +3892,7 @@ Tag             Virtual page number
 - each program can use its entire virtual address space without having to worry about where other programs are
   physically located
 - a program can access only those physical pages that are mapped in its page table
-    - program cannot accidentally or maliciously access another program’s physical pages because they are not mapped in
+    - program cannot accidentally or maliciously access another program's physical pages because they are not mapped in
      its page table
     - in some cases multiple programs access common instructions or data
         - OS adds control bits to each page table entry to determine which programs can write to the shared physical
@@ -4018,7 +4030,7 @@ Input/Output (I/O) systems are
     - schematic tells the programmer the function of each pin and the hardware designer what connections to
       physically make
 - PIC32 organizes groups of GPIOs into ports that are read and written together
-    - each port may have up to 16 GPIO pins, although the PIC32 doesn’t have enough pins to provide that many
+    - each port may have up to 16 GPIO pins, although the PIC32 doesn't have enough pins to provide that many
       signals for all of its ports
     - each port is controlled by two registers
         - TRISx
@@ -4058,7 +4070,7 @@ If a microcontroller
         - 2-wire interface with a clock and a bidirectional data pin
         - used similarly to SPI
     - Universal Serial Bus (USB)
-    - Ethernet. I2C (pronounced “I squared C”) is a
+    - Ethernet. I2C (pronounced "I squared C") is a
 
 #### Serial Peripheral Interface (SPI)
 - easy to use and relatively fast
@@ -4070,7 +4082,7 @@ If a microcontroller
 - master produces the clock
     - initiates communication by sending a series of clock pulses on SCK
     - if it wants to send data to the slave, it puts the data on SDO, starting with the most significant bit
-    - slave may simultaneously respond by putting data on the master’s SDI
+    - slave may simultaneously respond by putting data on the master's SDI
 - PIC32 has up to four SPI ports unsurprisingly named SPI1-SPI4
     - each can operate as a master or slave
 - PIC program must first configure the port
@@ -4139,7 +4151,7 @@ If a microcontroller
     - relatively slow compared to SPI, the standards have been around for so long that they remain important today
 - DTE sends data to the DCE over the TX line and receives data back over the RX line
     - line idles at a logic '1' when not in use
-    - each character is sent as a start bit (0), 7-8 data bits, an optional parity bit, and one or more stop bits (1’s)
+    - each character is sent as a start bit (0), 7-8 data bits, an optional parity bit, and one or more stop bits (1's)
     - detects the falling transition from idle to start to lock on to the transmission at the appropriate time
     - seven data bits is sufficient to send an ASCII character, eight bits are normally used because they can convey
       an arbitrary byte of data
@@ -4159,9 +4171,9 @@ If a microcontroller
     - hassle, especially for nontechnical users, which is one of the reasons that the Universal Serial Bus (USB) has
       replace UARTs in personal computer systems
 - typical baud rates include 300, 1200, 2400, 9600, 14400, 19200, 38400, 57600, and 115200
-- lower rates were used in the 1970’s and 1980’s for modems that sent data over the phone lines as a series of tones
+- lower rates were used in the 1970's and 1980's for modems that sent data over the phone lines as a series of tones
 - in contemporary systems, 9600 and 115200 are two of the most common baud rates
-- 9600 is encountered where speed doesn’t matter, and 115200 is the fastest standard rate, though still slow compared
+- 9600 is encountered where speed doesn't matter, and 115200 is the fastest standard rate, though still slow compared
   to other modern serial I/O standards
 - RS-232 standard defines several additional signals
 - Request to Send (RTS) and Clear to Send (CTS) signals can be used for hardware handshaking
@@ -4212,7 +4224,7 @@ If a microcontroller
 - UTXBF (bit 9) indicates that the transmit buffer is full
 - URXDA (bit 0) indicates that the receive buffer has data available
 - STA register also contains bits to indicate parity and framing errors
-    - a framing error occurs if the start or stop bits aren’t found at the expected time
+    - a framing error occurs if the start or stop bits aren't found at the expected time
 - 16-bit BRG register is used to set the baud rate to a fraction of the peripheral bus clock
 
 formula here
@@ -4286,7 +4298,7 @@ formula here
 - ISR function declaration is tagged by two special _ _attribute_ _ directives indicating the priority level and
   vector number
     - compiler uses these attributes to associate the ISR with the appropriate interrupt request
-    - MPLAB C Compiler For PIC32 MCUs User’s Guide has more information about writing interrupt service routines
+    - MPLAB C Compiler For PIC32 MCUs User's Guide has more information about writing interrupt service routines
 
 ### Analog I/O
 - embedded systems need analog inputs and outputs to interface with the world
@@ -4384,7 +4396,7 @@ Vout(t) = X[n]/2^N * Vref
         - OCM bits of the CON register should be set to 1102 to activate PWM mode, and the ON bit should be enabled
         - the output compare uses Timer2 in 16-bit mode, but the OCTSEL and OC32 bits can be used to select Timer3
           and/or 32-bit mode
-        - in PWM mode, RS sets the duty cycle, the timer’s period register PR sets the period, and OCxR can be ignored
+        - in PWM mode, RS sets the duty cycle, the timer's period register PR sets the period, and OCxR can be ignored
 
 ### Other Microcontroller Peripherals
 - microcontrollers frequently interface with other external peripherals.
@@ -4623,7 +4635,7 @@ Figure 8.71 shows a 4 GB
     - 10 Gbit Ethernet running on fiber optic cables is increasingly popular for servers and other high-performance
       computing, and 100 Gbit Ethernet is emerging
 - Wi-Fi is the popular name for the IEEE 802.11 wireless network standard
-    - operates in the 2.4 and 5 GHz unlicensed wireless bands, meaning that the user doesn’t need a radio operator’s
+    - operates in the 2.4 and 5 GHz unlicensed wireless bands, meaning that the user doesn't need a radio operator's
       license to transmit in these bands at low power
     - increasing performance comes from advancing modulation and signal processing, multiple antennas, and wider
       signal bandwidths
@@ -4729,7 +4741,7 @@ The serial connection described in Section 8.6.3.2 is sufficient for a l
     - MCM packaging proved too expensive for high-volume manufacturing
     - Pentium II was sold in a lower-cost cartridge containing the processor and the second-level cache
     - level 1 caches were doubled in size to compensate for the fact that the second-level cache operated at half
-      the processor’s speed
+      the processor's speed
     - Pentium III integrated a full-speed second-level cache directly onto the same chip as the processor
     - cache on the same chip can operate at better latency and throughput, so it is substantially more effective than
       an off-chip cache of the same size
