@@ -1281,7 +1281,6 @@ assert(sf.valid());
 - future f is initially valid because it refers to the asynchronous state of the promise
     - f is no longer valid after transferring the state to sf
         - sf is d
-Just as with other movable objects, the
 - transfer of ownership is implicit for rvalues
     - can construct a std::shared_future directly from the return value of the get_future() member function of a
       std::promise object
@@ -1520,8 +1519,6 @@ std::cout << "do_something() took " << std::chrono::duration<double,std::chrono:
               result of another without any explicit access to shared data
 
 #### FP-style quicksort
-To illustrate the use of futures for FP-style concurrency, let's look at a simple imple- mentation of the
-Quicksort algorithm. The basic idea of the algorithm is simple:
 - given a list of values
     - take an element to be the pivot element
     - partition the list into two sets
@@ -1659,3 +1656,3044 @@ Quicksort algorithm. The basic idea of the algorithm is simple:
     - message passing
         - communication between threads is via asynchronous messages sent through a messaging subsystem that acts as
           an intermediary
+
+
+# Ch. 5 - The C++ memory model and operations on atomic types
+- new (as of C++11) multithreading-aware memory model is one of the most important added features
+    - defines exactly how the fundamental building blocks work for reliability
+- do not need details if using mutexes to protect data and condition variables or futures to signal events
+- only when getting "close to the machine" that precise details of the memory model matter
+- C++ is a systems programming language at its core
+    - goal - no need for a lower-level language
+- programmers should be provided with enough flexibility within C++ to do whatever they need without
+  the language getting in the way
+    - atomic types and operations allow just that, providing facilities for low-level synchronization operations
+      that will commonly reduce to one or two CPU instructions
+
+## 5.1 Memory model basics
+- two components to the memory model
+    - basic structural aspects
+        - relate to how data is laid out in memory
+    - concurrency aspects
+- structural aspects are important for concurrency
+    - especially low-level atomic operations
+- objects and memory locations
+
+### Objects and memory locations
+- data in a C++ program is objects
+    - fundamental or primitive types do not function like objects in Smalltalk, e.g.
+    - C++ Standard defines an object as "a region of storage"
+        - assigns properties to these objects
+            - type
+            - lifetime
+    - some are fundamental types e.g. int or float
+    - others are instances of user-defined classes
+- some objects (e.g. arrays, instances of derived classes, and instances of classes with non-static data members) 
+  have subobjects, some don't
+- object is stored in one or more memory locations
+    - each memory location is either an object (or subobject), a scalar type, or a sequence of adjacent bit fields
+    - NOTE: although adjacent bit fields are distinct objects, they're still counted as the same memory location
+- example of struct
+    - entire struct is one object
+    - consists of several subobjects, one for each data member
+    - bit fields share a memory location
+    - std::string object consists of several memory locations internally
+    - each member has its own memory location
+    - zero-length bit field separates next bit field into its own memory location
+- to note
+    - every variable is an object, including those that are members of other objects
+    - every object occupies at least one memory location
+    - variables of fundamental type such as int or char are exactly one memory location, whatever their size,
+      even if they're adjacent or part of an array
+    - adjacent bit fields are part of the same memory location
+
+### Objects, memory locations, and concurrency
+- everything hinges on memory locations for multithreaded applications in C++
+    - if two threads access separate memory locations everything works fine
+    - if two threads access the same memory location
+        - OK if neither thread is updating the memory location
+            - read-only data doesn't need protection or synchronization
+        - there's a potential for a race condition if either thread is modifying the data
+            - has to be an enforced ordering between the accesses in the two threads to avoid the race condition
+            - can use mutexes
+                - if the same mutex is locked prior to both accesses, only one thread can access the memory
+                  location at a time, so one must happen before the other
+            - can use the synchronization properties of atomic operations either on the same or other memory locations
+              to enforce an ordering between the accesses in the two threads
+       use of atomic operations to enforce an ordering is described in section 5.3.
+- if more than two threads access the same memory location, each pair of accesses must have a defined ordering
+    - with no enforced ordering between two accesses to a single memory location from separate threads
+        - one or both of those accesses is not atomic
+        - one or both is a write
+        - results in a data race and causes undefined behavior
+- according to the language standard, once an application contains any undefined behavior there are no guarantees for
+  program functionality
+- can avoid undefined behavior by using atomic operations to access the memory location involved in a race
+    - doesn't prevent the race itself
+    - which atomic operation touches memory location first is still not specified
+    - does ensure no undefined behavior is encountered
+
+### Modification orders
+- every object in a C++ program has a defined modification order composed of all the writes to that object from
+  all threads in the program, starting with the object's initialization
+    - in most cases order will vary between runs
+    - in any given execution of the program all threads in the system must agree on an order
+    - programmer is responsible for making certain that there's sufficient synchronization to ensure that threads
+      agree on the modification order of each variable if object is not an atomic type
+    - have a data race and undefined behavior if different threads see distinct sequences of values for a single
+      variable
+- compiler is responsible for ensuring synchronization when using atomics
+    - certain kinds of speculative execution aren't permitted
+        - once a thread has seen a particular entry in the modification order
+            - subsequent reads from that thread must return later values
+            - subsequent writes from that thread to that object must occur later in the modification order
+            - a read of an object that follows a write to that object in the same thread must either return the
+              value written or another value that occurs later in the modification order of that object
+    - all threads must agree on the modification orders of each indi-vidual object in a program
+    - don't necessarily have to agree on the relative order of operations on separate objects
+
+## 5.2 Atomic operations and types in C++
+- atomic operation == indivisible operation
+    - can't observe an operation half-done from any thread in the system
+- load will retrieve either the initial value of the object or the value stored by one of the modifications for a load
+  where all modifications are atomic
+- nonatomic operation might be seen as half-done by another thread
+    - for a store the value observed by another thread might be neither the value before the store nor the value stored
+      but something else
+    - for a load, it might retrieve part of the object, have another thread modify the value, and then retrieve
+    - problematic race condition but it may constitute a data race and cause undefined behavior
+
+### The standard atomic types
+- <atomic> header
+- all operations on such types are atomic
+- only operations on these types are atomic in the sense of the language definition
+    - can use mutexes to make other operations appear atomic
+- standard atomic types themselves might use such emulation
+    - they (almost) all have an is_lock_free() member function
+        - allows the user to determine whether operations on a given type are done directly with atomic instructions
+          or done by using a lock internal to the compiler and library
+- only type that doesn't provide an is_lock_free() member function is std::atomic_flag
+    - simple Boolean flag
+    - operations are required to be lock-free
+    - can use that to implement a simple lock and thus implement all the other atomic types using that as a basis
+    - objects of type std::atomic_flag are initialized to clear
+    - can then either be queried and set (with the test_and_set() member function) or cleared (with the clear()
+      member function)
+    - no assignment
+    - no copy construction
+    - no test and clear
+    - no other operations
+- remaining atomic types are all accessed through specializations of the std::atomic<> class template
+    - more full-featured but may not be lock-free
+    - on most popular platforms it's expected that the atomic variants of all the built-in types are lock-free
+        - not required
+    - interface of each specialization reflects the properties of the type
+- can also use the set of names to refer to the implementation-supplied atomic types
+- alternative type names may refer either to the corresponding std::atomic<> specialization or to a base class
+  of that specialization (due to history)
+    - mixing these alternative names with direct naming of std::atomic<> specializations in the same program
+      can lead to nonportable code
+- table 5.1
+- C++ Standard Library also provides a set of typedefs for the atomic types corresponding to the various nonatomic
+  Standard Library typedefs such as std::size_t
+- pattern
+    - for a standard typedef T, the corresponding atomic type is the same name with an atomic_ prefix
+    - for built-in types
+        - signed -> s
+        - unsigned -> u
+        - long long -> llong
+- table 5.2
+- generally simpler to use std::atomic<T>
+- atomic types are not copyable or assignable
+    - no copy constructors or copy assignment operators
+    - support assignment from and implicit conversion to the corresponding built-in types
+    - have load() and store(), exchange(), compare_exchange_weak(), and compare_exchange_strong() member functions
+    - support the compound assignment operators where appropriate: +=, -=, *=, |=,
+    - integral types and std::atomic<> specializations for pointers support ++ and --
+    - operators also have corresponding named member functions with the same functionality
+        - fetch_add()
+        - fetch_or()
+        - etc.
+    - return value from the assignment operators and member functions is either the value stored (in the case of the
+      assignment operators) or the value prior to the operation (in the case of the named functions)
+        - avoids potential problems from such assignment operators returning a reference to the object being
+          assigned to
+- std::atomic<> has a primary template that can be used to create an atomic variant of a user-defined type
+    - operations are limited to
+        - load()
+        - store()
+        - assignment from and conversion to the user-defined type
+        - exchange()
+        - compare_exchange_weak
+        - compare_exchange_strong().
+- each of the operations has an optional memory-ordering argument
+    - used to specify the required memory-ordering semantics
+    - store operations
+        - memory_order_relaxed
+        - memory_order_release
+        - memory_order_seq_cst
+    - load operations
+        - memory_order_relaxed
+        - memory_order_consume
+        - memory_order_acquire
+        - memory_order_seq_cst
+    - read-modify-write operations
+        - memory_order_relaxed
+        - memory_ order_consume
+        - memory_order_acquire
+        - memory_order_release
+        - memory_order_acq_rel
+        - memory_order_seq_cst
+- default is memory_order_seq_cst
+
+### Operations on std::atomic_flag
+- can be in one of two states
+    - set
+    - clear
+- intended as a building block only
+- only use under very special circumstances
+- must be initialized with ATOMIC_FLAG_INIT
+    - initializes the flag to a clear state
+    - applies wherever the object is declared to whatever scope it has
+    - only atomic type to require such special treatment for initialization
+        - guaranteed to be lock-free
+- guaranteed to be statically initialized if it has static storage duration
+    - no initialization-order issues - will always be initialized by the time of the first operation on the flag
+- only three things to do with it
+    - destroy it - destructor
+    - clear it - clear() member function
+    - set it and query the previous value - test_and_set() member function
+    - clear() and test_and_set() member functions can have a memory order specified
+- can't copy-construct another std::atomic_flag object from the first
+- can't assign one std::atomic_flag to another
+- true for all the atomic types
+    - operations on an atomic type are defined as atomic
+    - assignment and copy-construction involve two objects
+        - single operation on two distinct objects can't be atomic
+- std::atomic_flag ideally suited to use as a spinlock mutex
+    - flag is clear and the mutex is unlocked
+    - loop on test_and_set() until the old value is false to lock the mutex
+        - indicates that current thread set the value to true
+    - clear the flag to unlock the mutex
+    - can be used with std::lock_guard<>
+- Listing 5.1
+- does a busy-wait in lock()
+    - bad choice if there is going to be any degree of contention
+    - enough to ensure mutual exclusion
+- can't be used as a general Boolean flag
+    - doesn't have a simple nonmodifying query operation
+    - better off using std::atomic<bool>
+
+### Operations on std::atomic<bool>
+- more full-featured Boolean flag than std::atomic_flag
+    - not copy-constructible or copy-assignable
+    - can construct it from a nonatomic bool
+    - can assign to instances of std::atomic<bool> from a nonatomic bool
+- NOTE: the assignment operator from a nonatomic bool differs from the general convention of returning a reference
+  to the object it's assigned to
+    - returns a bool with the value assigned instead
+- common pattern with std::atomic<> types
+    - assignment operators return values (of the corresponding nonatomic type) rather than references
+- writes (of either true or false) are done by calling store()
+    - memory-order semantics can be specified
+    - test_and_set() -> more general exchange() member function
+        - allows replacement of the stored value and atomically retrieves the original value
+- std::atomic<bool> also supports a plain nonmodifying query of the value with an implicit conversion to plain
+  bool or with an explicit call to load()
+- store() is a store operation
+- load() is a load operation
+- exchange() is a read-modify-write operation
+- std::atomic<bool> introduces another read-modify-write operation to store a new value if the current value is
+  equal to an expected value
+
+#### Storing a new value (or not) depending on the current value
+- compare/exchange operation
+    - compare_exchange_weak()
+    - compare_exchange_strong()
+    - main component of programming with atomic types
+        - compares the value of the atomic variable with a supplied expected value and stores the supplied desired
+          value if they're equal
+        - expected value is updated with the actual value of the atomic variable if the values aren't equal
+        - return type of the compare/exchange functions is a bool, which is true if the store was performed and false
+          otherwise
+- store might not be successful even if the original value was equal to the expected value for compare_exchange_weak()
+    - value of the variable is unchanged and the return value of compare_exchange_weak() is false
+    - most likely to happen on machines that lack a single compare-and-exchange instruction
+        - processor can't guarantee that the operation has been done atomically
+        - thread performing the operation might be switched out in the middle of the necessary sequence of
+          instructions and another thread scheduled in its place
+        - called a spurious failure
+- compare_exchange_weak() is typically be used in a loop to handle spurious failures
+```
+bool expected = false;
+extern atomic<bool> b; // set somewhere else
+while (!b.compare_exchange_weak(expected,true) && !expected);
+```
+- looping as long as flag is still false
+    - flag indicates that the compare_exchange_weak() call failed spuriously
+- compare_exchange_strong() is guaranteed to return false only if the actual value wasn't equal to the expected value
+    - can eliminate the need for loops like the one shown where you just want to know whether you successfully changed
+      a variable or whether another thread got there first
+    - to change the variable regardless of the initial value is update of expected becomes useful
+        - possibly with an updated value that depends on the current value
+        - each time through the loop, expected is reloaded
+        - compare_exchange_weak() or compare_exchange_strong() call should be successful the next time around the loop
+          so if no other thread modifies the value in the meantime
+- may be beneficial to use compare_exchange_weak() in order to avoid a double loop on platforms where
+  compare_exchange_weak() can fail spuriously (and so compare_exchange_strong() contains a loop) if the calculation of
+  the value to be stored is simple
+- may make sense to use compare_exchange_strong() to avoid having to recalculate the value to store when the
+  expected value hasn't changed if the calculation of the value to be stored is itself time consuming
+- can make a difference for the larger atomic types but not so important for std::atomic<bool>
+- can take two memory-ordering parameters
+    - allows for the memory-ordering semantics to differ in the case of success and failure
+    - might be desirable for a successful call to have memory_order_acq_rel semantics whereas a failed
+      call has memory_order_relaxed semantics
+- failed compare/exchange doesn't do a store, so it can't have memory_ order_release or memory_order_acq_rel semantics
+    - not permitted to supply these values as the ordering for failure
+- can't supply stricter memory ordering for failure than for success
+    - must specify memory_order_acquire or memory_order_seq_cst for success to use either semantics for failure
+- failure ordering assumed to be the same as that for success if not specified
+    - release part of the ordering is stripped
+        - memory_order_ release becomes memory_order_relaxed
+        - memory_order_acq_rel becomes memory_order_acquire
+    - default to memory_order_seq_cst as usual
+        - provides the full sequential ordering for both success and failure
+- std::atomic<bool> may not be lock-free (unlike std::atomic_flag)
+    - implementation may have to acquire a mutex internally in order to ensure the atomicity of the operations
+    - can use the is_lock_free() member function to check whether operations on std::atomic<bool> are lock-free
+
+### Operations on std::atomic<T*>: pointer arithmetic
+- atomic form of a pointer to some type T is std::atomic<T*>
+    - operates on values of the corresponding pointer type rather than bool values
+    - neither copy-constructible nor copy-assignable
+    - can be both constructed and assigned from the suitable pointer values
+    - is_lock_free()
+    - load()
+    - store()
+    - exchange()
+    - compare_exchange_weak()
+    - compare_exchange_strong()
+     - take and return T* rather than bool
+- new operations provided by std::atomic<T*> are the pointer arithmetic operations
+- basic operations are provided by the fetch_add() and fetch_sub() member functions
+    - do atomic addition and subtraction on the stored address
+    - operators += and -=, and both pre- and post-increment and decrement with ++ and --
+    - operators work just as expected
+    - fetch_add() and fetch_sub() are slightly different in that they return the original value
+        - operation is also known as exchange-and-add
+        - it's an atomic read-modify-write operation
+        - return value is a plain T* value rather than a reference to the std::atomic<T*> object
+```
+class Foo{};
+Foo some_array[5];
+std::atomic<Foo*> p(some_array);
+Foo* x=p.fetch_add(2);
+assert(x==some_array);
+assert(p.load()==&some_array[2]);
+x=(p-=1);
+assert(x==&some_array[1]);
+assert(p.load()==&some_array[1]);
+```
+- function forms also allow the memory-ordering semantics to be specified as an additional function call argument
+```
+p.fetch_add(3,std::memory_order_release);
+```
+- fetch_add() and fetch_sub() can have any of the memory-ordering tags and can participate in a release sequence
+  because both are read-modify-write operations
+- specifying the ordering semantics isn't possible for the operator forms
+    - no way of providing the information
+    - always have memory_order_seq_cst semantics
+
+### Operations on standard atomic integral types
+- atomic integral types
+    - usual set of operations (load(), store(), exchange(), compare_ exchange_weak(), and compare_exchange_strong()
+    - fetch_add(), fetch_sub(), fetch_and(), fetch_or(), fetch_xor()
+    - compound-assignment forms of these operations (+=, -=, &=, |=, and ^=)
+    - pre- and post-increment and decrement (++x, x++, --x, and x--)
+    - only division, multiplication, and shift operators are missing
+- typically used either as counters or as bitmasks
+    - missing operators are not a big loss
+- additional operations can easily be done using compare_exchange_weak() in a loop
+- semantics match closely to fetch_add() and fetch_sub() for std::atomic<T*>
+    - named functions atomically perform their operation and return the old value
+    - compound-assignment operators return the new value
+    - pre- and post- increment and decrement work as usual
+        - result is a value of the associated integral type in both cases
+
+### The std::atomic<> primary class template
+- allows a user to create an atomic variant of a user-defined type
+    - can't use any user-defined type with std::atomic<>
+    - type must
+        - have a trivial copy-assignment operator
+            - must not have any virtual functions or virtual base classes and must use the compiler-generated
+              copy-assignment operator
+        - every base class and non-static data member of a user-defined type must also have a trivial
+          copy-assignment operator
+        - permits the compiler to use memcpy() or an equivalent operation for assignment operations
+            - no user-written code to run
+        - type must be bitwise equality comparable
+            - must be able to compare instances for equality using memcmp()
+            - required in order for compare/exchange operations to work
+- compiler isn't going to be able to generate lock-free code for std::atomic<UDT>, so it will have to use an internal
+  lock for all the operations
+    - would require passing a reference to the protected data as an argument to a user-supplied function if
+      user-supplied copy-assignment or comparison operators were permitted
+    - violates previous guideline - don't pass pointers and references to protected data outside the scope of the
+      lock by passing them as arguments to user-supplied functions
+- library is entirely at liberty to use a single lock for all atomic operations that need it
+    - allowing user-supplied functions to be called while holding that lock might cause deadlock or cause other
+      threads to block because a comparison operation took a long time
+- restrictions increase the chance that the compiler will be able to make use of atomic instructions directly for
+  std::atomic<UDT>
+    - can just treat the user-defined type as a set of raw bytes
+    - more likely to make a particular instantiation lock-free
+- built-in floating point types satisfy the criteria for use with memcpy and memcmp
+    - can use std::atomic<float> or std::atomic<double>
+    - behavior may be surprising in the case of compare_exchange_strong
+    - operation may fail even though the old stored value was equal in value to the comparand if the stored value
+      had a different representation
+    - NOTE: no atomic arithmetic operations on floating-point values
+- will get similar behavior with compare_exchange_ strong if using std::atomic<> with a user-defined type that
+  has an equality-comparison operator defined
+  - if operator differs from the comparison using memcmp operation may fail because the otherwise-equal values
+    have a different representation
+- most common platforms will be able to use atomic instructions for std::atomic<UDT> if your UDT is the same size
+  as (or smaller than) an int or a void*
+    - some platforms will also be able to use atomic instructions for user-defined types that are twice the size
+      of an int or void*
+    - platforms are typically those that support a so-called double-word-compare-and-swap (DWCAS) instruction
+      corresponding to the compare_exchange_xxx functions
+    - can be helpful when writing lock-free code
+- can't create a std::atomic<std:: vector<int>>
+    - can use it with classes containing counters or flags or pointers or even just arrays of simple data elements
+    - more complex the data structure, the more likely you'll want to do operations on it other than simple assignment
+      and comparison
+    - better off using a std::mutex to ensure that the data is appropriately protected for the desired operations
+- interface of std::atomic<T> is limited to the set of operations available for std::atomic<bool> when instantiated
+  with a user-defined type T
+    - load()
+    - store()
+    - exchange()
+    - compare_exchange_weak()
+    - compare_exchange_strong()
+    - assign- ment from and conversion to an instance of type T
+
+### Free functions for atomic operations
+- equivalent nonmember functions for all the operations on the various atomic types
+- table 5.3
+- named after the corresponding member functions but with an atomic_ prefix (for example, std::atomic_load())
+    - overloaded for each of the atomic types
+    - come in two varieties when a memory-ordering tag can be specified
+        - one without the tag
+        - one with an _explicit suffix and an additional parameter or parameters for the memory-ordering tag or
+          tags
+- all the free functions take a pointer to the atomic object as the first parameter
+- free functions are designed to be C-compatible
+    - use pointers rather than references in all cases
+- operations on std::atomic_flag do not follow pattern
+    - std::atomic_flag_test_and_set(), std::atomic_flag_clear()
+    - additional variants that specify the memory ordering alos have the _explicit suffix
+    - std::atomic_flag_test_and_set_explicit() and std::atomic_ flag_clear_explicit()
+- Standard Library also provides free functions for accessing instances of std::shared_ptr<> atomically
+- C++ Standards Committee felt it was sufficiently important to provide these extra functions. The
+- atomic operations available are load, store, exchange, and compare/exchange
+    - provided as overloads of the same operations on the standard atomic types
+    - take a std::shared_ptr<>* as the first argument
+```
+std::shared_ptr<my_data> p;
+void process_global_data()
+{
+    std::shared_ptr<my_data> local=std::atomic_load(&p);
+    process_data(local);
+}
+void update_global_data()
+{
+    std::shared_ptr<my_data> local(new my_data);
+    std::atomic_store(&p,local);
+}
+```
+- _explicit variants are provided to allow specification of the desired memory ordering
+    - std::atomic_is_lock_free() function can be used to check whether the implementation uses locks to 
+      ensure the atomicity
+- standard atomic types do more than just avoid the undefined behavior associated with a data race
+    - allow user to enforce an ordering of operations between threads
+    - enforced ordering is the basis of the facilities for protecting data and synchronizing operations such as 
+      std::mutex and std::future<>
+
+
+## 5.3 Synchronizing operations and enforcing ordering
+- two threads
+    - one populating a data structure to be read by the second
+    - to avoid a problematic race condition
+        - first thread sets a flag to indicate that the data is ready
+        - second thread doesn't read the data until the flag is set
+- Listing 5.2
+- sharing data between threads becomes impractical
+    - every item of data is forced to be atomic
+- undefined behavior to have nonatomic reads and writes accessing the same data without an enforced ordering
+- required enforced ordering comes from the operations on the std::atomic<bool> variable data_ready
+    - provide the necessary ordering by virtue of the memory model relations 
+    - happens-before and synchronizes-with
+        - write of the data happens-before the write to the data_ready flag 
+        - read of the flag B happens-before the read of the data when the value read from data_ready B is true
+        - write synchronizes-with read -> happens-before relationship
+            - happens-before is transitive
+        - write to the data d happens-before the write to the flag
+        - happens-before the read of the true value from the flag B
+        - happens-before the read of the data
+        - write of the data happens-before the read of the data 
+
+### The synchronizes-with relationship
+- can only get between operations on atomic types
+- operations on a data structure might provide this relationship if the data structure contains atomic types and 
+  the operations on that data structure perform the appropriate atomic operations internally
+- a suitably tagged atomic write operation W on a variable x synchronizes-with a suitably
+  tagged atomic read operation on x 
+    - reads the value stored by either 
+        - that write (W)
+        - a subsequent atomic write operation on x by the same thread that performed the initial write W
+        - a sequence of atomic read-modify-write operations on x (such as fetch_add() or compare_exchange_weak()) 
+          by any thread, where the value read by the first thread in the sequence is the value written by W 
+- all operations on atomic types are suitably tagged by default
+- if thread A stores a value and thread B reads that value, there's a synchronizes-with relationship between
+  the store in thread A and the load in thread B
+- C++ memory model allows various ordering constraints to be applied to the operations on atomic types
+    - this is the tagging
+
+### The happens-before relationship
+- basic building block of operation ordering in a program
+    - specifies which operations see the effects of which other operations for a single thread
+- if one operation is sequenced before another, then it also happens-before it
+    - if operation (A) occurs in a statement prior to another (B) in the source code, then A happens-before B
+- if the operations occur in the same statement, in general there's no happens-before relationship between them
+    - i.e. unordered or ordering is unspecified
+- Listing 5.3
+- circumstances where operations within a single statement are sequenced
+    - built-in comma operator is used
+    - result of one expression is used as an argument to another expression
+- operations within a single statement are nonsequenced in general
+    - no sequenced-before (and thus no happens-before) relationship between them
+- all operations in a statement happen before all of the operations in the next statement
+- interaction between threads
+    - if operation A on one thread inter-thread happens-before operation B on another thread, then A happens-before B
+- new relationship -> inter-thread happens-before
+    - if operation A in one thread synchronizes-with operation B in another thread, then A inter-thread happens-before B
+    - also transitive
+        - if A inter-thread happens-before B and B inter-thread happens-before C, then A inter-thread happens-before C
+    - also combines with the sequenced-before relation
+        - if operation A is sequenced before operation B, and operation B inter-thread happens-before operation C,
+          then A inter-thread happens-before
+    - if A synchronizes-with B and B is sequenced before C, then A inter-thread happens-before C
+    - sequenced-before and synchronizes-with combined mean that if a series of changes are made to data in a single
+      thread, only one synchronizes-with relationship is needed for the data to be visible to subsequent operations on
+      the thread that executed
+- additional nuances with data dependency
+
+### Memory ordering for atomic operations
+- memory_order_relaxed
+- memory_order_consume
+- memory_order_acquire
+- memory_order_release
+- memory_order_acq_rel
+- memory_order_seq_cst
+- default for all operations on atomic types is memory_order_seq_cst
+    - most stringent of the available options
+- six ordering options represent three models
+    - sequentially consistent ordering
+        - memory_order_seq_cst
+    - acquire-release ordering
+        - memory_order_consume
+        - memory_order_acquire
+        - memory_order_release
+        - memory_order_acq_rel
+    - relaxed ordering
+        - memory_order_relaxed
+- memory-ordering models can have varying costs on different CPU architectures
+    - systems based on architectures with fine control over the visibility of operations by processors other than
+      the one that made the change
+        - additional synchronization instructions can be required for sequentially consistent ordering over
+          acquire-release ordering or relaxed ordering and for acquire-release ordering over relaxed ordering
+    - if systems have many processors additional synchronization instructions may take a significant amount of time
+- CPUs that use the x86 or x86-64 architectures (Intel and AMD) don't require any additional instructions for
+  acquire-release ordering beyond those necessary for ensuring atomicity
+    - sequentially-consistent ordering doesn't require any special treatment for load operations
+        - small additional cost on stores
+- allows experts to take advantage of the increased performance of the more fine-grained ordering relationships
+    - allows the use of the default sequentially-consistent ordering for cases that are less critical
+        - easier to reason about
+
+#### Sequentially consistent ordering
+- implies that the behavior of the program is consistent with a simple sequential view of the world
+- behavior of a multithreaded program is as if all these operations were performed in some particular sequence by
+  a single thread
+    - easiest memory ordering to understand
+- can write down all the possible sequences of operations by different threads
+    - eliminate those that are inconsistent
+    - verify that your code behaves as expected in the others
+- operations can't be reordered
+- point of view of synchronization
+    - sequentially consistent store synchronizes-with a sequentially consistent load of the same variable that reads
+      the value stored
+- any sequentially consistent atomic operations done after that load must also appear after the store to other
+  threads in the system using sequentially consistent atomic operations
+- constraint doesn't carry forward to threads that use atomic operations with relaxed memory orderings
+    - can still see the operations in a different order
+    - must use sequentially consistent operations on all threads in order to get the benefit
+- can impose a noticeable performance penalty on a weakly ordered machine with many processors
+    - possibly requires extensive and expensive synchronization operations between the processors
+- some processor architectures (x86 and x86-64 architectures) offer sequential consistency relatively cheaply
+- Listing 5.4
+- implied ordering relationship between a load of a variable that returns false and the store to that variable
+    - because the semantics of memory_order_seq_cst require a single total ordering over all operations tagged
+      memory_order_seq_cst
+
+#### Non-sequentially consistent memory orderings
+- no longer a single global order of events
+    - different threads can see different views of the same operations
+    - mental model must be drastically changed
+- have to account for things happening truly concurrently
+- threads don't have to agree on the order of events
+- compiler can reorder the instructions
+- threads can disagree on the order of events because of operations in other threads in the absence of explicit
+  ordering constraints
+    - different CPU caches and internal buffers can hold different values for the same memory
+- threads don't have to agree on the order of events!!!
+- only requirement is that all threads agree on the modification order of each individual variable
+    - operations on distinct variables can appear in different orders on different threads
+    - values seen must be consistent with any additional ordering constraints imposed
+
+#### Relaxed ordering
+- (operations on atomic types performed with relaxed ordering)
+- don't participate in synchronizes-with relationships operations on the same variable within a single thread
+    - still obey happens-before relationships
+    - almost no requirement on ordering relative to other threads
+- accesses to a single atomic variable from the same thread can't be reordered
+    - once a given thread has seen a particular value of an atomic variable, a subsequent read by that thread can't
+      retrieve an earlier value of the variable
+- modification order of each variable is the only thing shared between threads that are using memory_order_relaxed
+  when theres is no additional synchronization
+- relaxed operations on different variables can be freely reordered provided they obey any happens-before relationships
+  they're bound by (for example, within the same thread)
+    - don't introduce synchronizes-with relationships
+- Listing 5.6
+- launching a thread is an expensive operation
+    - need an explicit delay to ensure ordering
+- many possible valid outcomes for relaxed operations
+
+#### Understanding relaxed ordering
+- separated units of execution with a shared log of data
+    - can message between UEs and log holder and either load or store (read or write) to entries in a log
+    - writes append to log
+    - messages to read result in a read from the log
+    - first read could be any value in log
+        - no subsequent read will be any higher than initial read
+    - write and subsequent read will result in either the value written or a value further down log
+    - reads can result in repeated reads of the same value
+    - after a write, all subsequent reads will return the value written until a new value is written
+    - additional threads can act on same log
+    - any log action is mutually exclusive, i.e. only one UE can be serviced at a time
+    - a write from one UE does not mean that value needs to be available to read from another UE
+        - reads for a UE can return any of the numbers after the previous value read for that UE in the log at any time
+        - some sort of implicit bookkeeping for previous read for each UE
+- shared log of data == shared atomic variables
+    - each variable has its own modification order but there's no relationship between them at all
+    - what happens when every operation uses memory_order_relaxed if each UE is a thread
+- additional operations on variables/logs
+    - exchange -> write a value and tell the value at the bottom of the log
+    - compare-and-exchange (strong) -> write a value and tell if the replaced value is equal, otherwise tell the
+      replaced value
+- relaxed atomic operations are difficult to deal with
+    - must be used in combination with atomic operations that feature stronger ordering semantics in order
+      to be useful for inter-thread synchronization
+- avoid relaxed atomic operations unless they're absolutely necessary
+    - use them only with extreme caution
+
+#### Acquire-release ordering
+- no total order of operations
+    - introduces some synchronization
+    - atomic loads are acquire operations (memory_order_acquire)
+    - atomic stores are release operations (memory_order_release)
+    - atomic read-modify-write operations (such as fetch_add() or exchange()) are either acquire, release,
+      or both (memory_order_acq_rel)
+- synchronization is pairwise
+    - a release operation synchronizes-with an acquire operation that reads the value written between the thread
+      that does the release and the thread that does the acquire
+- different threads can still see different orderings
+    - orderings are restricted
+- Listing 5.7
+- Listing 5.8
+- adding to log model in previous section
+    - every store that's done is part of some batch of updates
+        - a write includes a batch ID
+        - the last store in a batch is also recorded as the last store of the batch
+        - the UE ID initiating the batch operation is recorded as well
+    - models a store-release operation
+    - batch numbers are monotonically increasing (between single UE's?)
+    - for loads
+        - can either just ask for a value (relaxed load) -> value is returned
+        - can ask for a value and information about whether it's the last in a batch (load-acquire)
+        - given the batch information
+            - if value wasn't the last in a batch UE is informed that it is not last in the batch
+            - otherwise, UE is informed it is the last in the batch
+    - acquire-release semantics
+        - when requesting a load, if the log manager is informed of all the batches known to UE, the UE will either
+          be returned the last value from any of the known batches or a value further down the list
+        - how semantics are modeled
+            - thread a is writing to two variables, x and y, as part of a batch, writing x then y
+            - thread b is reading y and then reading x
+                - reads y and batch information in a loop until the expected value is returned
+                - reads x but tells log manager of all batches from thread a that the thread was informed about
+                  while reading y
+            - inter-thread happens-before is transitive
+                - if A inter-thread happens-before B and B inter-thread happens-before C, then A inter-thread
+                  happens-before C
+            - means that acquire-release ordering can be used to synchronize data across several threads, even when
+              the "intermediate" threads haven't actually touched the data
+
+#### Transitive synchronization with acquire-release ordering
+- need at least three threads to demonstrate transitive ordering
+    - thread 1 modifies some shared variables and does a store-release to one of them
+    - thread 2 then reads the variable subject to the store-release with a load-acquire and performs a
+      store-release on a second shared variable
+    - thread 3 does a load-acquire on that second shared variable provided that the load-acquire operations see
+      the values written by the store-release operations
+    - thread 3 can read the values of the other variables stored by the first thread, even if the intermediate thread
+      didn't touch any of them to ensure the synchronizes-with relationships
+- Listing 5.9
+- thread 2 only touches variable 1 and 2
+    - enough for synchronization between thread 1 and thread 3
+    - stores to data from thread 1 happens-before the store to variable 1
+        - they're sequenced-before it in the same thread
+    - load from variable 1 is in a while loop so it will eventually see the value stored from thread 1
+        - forms the second half of the release-acquire pair
+    - store to variable 1 happens-before the final load from 1 in the while loop
+        - load is sequenced-before (and thus happens-before) the store to variable 2
+            - forms a release-acquire pair with the final load from the while loop in thread 3
+    - store to variable 2 thus happens-before the load, which happens-before the loads from data
+    - stores to data happen-before the store to variable 1, which happens-before the load from variable 1,
+      which happens-before the store to variable 2, which happens-before the load from variable 2,
+      which happens-before the loads from data
+        - stores to data in thread 1 happen-before the loads from data in thread 3
+    - could combine variables 1 and 2 into a single variable by using a read-modify-write operation
+      with memory_order_acq_rel in thread 2
+- code sample
+- important to pick which semantics when using read-modify-write operations
+- if mixing acquire-release operations with sequentially consistent operations
+    - sequentially consistent loads behave like loads with acquire semantics
+    - sequentially consistent stores behave like stores with release semantics
+- sequentially consistent read-modify-write operations behave as both acquire and release operations
+- relaxed operations are still relaxed but are bound by the additional synchronizes-with and consequent happens-before
+  relationships introduced through the use of acquire-release semantics
+- locking a mutex is an acquire operation, and unlocking the mutex is a release operation
+    - must ensure that the same mutex is locked when reading a value as was locked when writing it
+- acquire and release operations have to be on the same variable to ensure an ordering
+- exclusive nature of a lock with a mutex means that the result is indistinguishable from what it would have been
+  had the lock and unlock been sequentially consistent operations
+    - using acquire and release orderings on atomic variables to build a simple lock behavior will appear
+      sequentially consistent, even though the internal operations are not
+- pair-wise synchronization of acquire-release ordering has the potential for a much lower synchronization
+  cost than the global ordering required for sequentially consistent operations
+    - trade-off is the mental cost required to ensure that the ordering works correctly and that the non-intuitive
+      behavior across threads isn't problematic
+
+#### Data dependency with acquire-release ordering and memory_order_consume
+- memory_order_consume requires special consideration
+    - based on data dependencies
+    - introduces data-dependency nuances to the inter-thread happens-before relationship
+- carries-a-dependency-to
+    - applies strictly within a single thread and essentially models the data dependency between operations
+    - if the result of an operation A is used as an operand for an operation B, then A carries-a-dependency-to B
+    - if the result of operation A is a value of a scalar type such as an int, then the relationship still applies
+    - if the result of A is stored in a variable, and that variable is then used as an operand for operation B
+      this operation is also transitive, so if A carries-a-dependency-to B, and B carries-a-dependency-to C, then
+      A carries-a-dependency-to C
+- dependency-ordered-before
+    - can apply between threads
+    - introduced by using atomic load operations tagged with memory_order_consume
+    - special case of memory_order_acquire that limits the synchronized data to direct dependencies
+    - a store operation A tagged with memory_order_release, memory_order_acq_rel, or memory_order_seq_cst is
+      dependency-ordered-before a load operation B tagged with memory_order_consume if the consume reads the value
+      stored
+        - in contrast with the synchronizes-with relationship that occurs if the load uses memory_order_acquire
+    - if this operation B then carries-a-dependency-to some operation C, then A is also dependency-ordered-before
+      C
+    - if A is dependency-ordered-before B, then A also inter-thread happens-before B
+- important use is where the atomic operation loads a pointer to some data
+    - memory_order_consume on the load and memory_order_release on the prior store
+    - ensures that the pointed-to data is correctly synchronized
+    - doesn't impose any synchronization requirements on any other nondependent data
+- Listing 5.10
+- sometimes the overhead of carrying the dependency around is not desirable
+    - compiler should be able to cache values in registers and reorder operations to optimize the code
+      rather than dealing with dependencies
+    - can use std::kill_dependency() to explicitly break the dependency chain
+- std::kill_dependency()
+    - function template that copies the supplied argument to the return value but breaks the dependency chain in
+      doing so
+    - e.g. with a global read-only array
+        - use std::memory_order_consume when retrieving an index into that array from another thread,
+       - can use std::kill_dependency() to let the compiler know that it doesn't need to reread the contents of
+         the array entry
+- code sample
+- shouldn't normally use std::memory_order_consume at all in simple scenarios
+    - can call on std::kill_dependency() in a situation with more complex code
+    - should only be used with care and where profiling has demonstrated the need for the optimization
+
+### Release sequences and synchronizes-with
+- can get a synchronizes-with relationship between a store to an atomic variable and a load of that atomic variable
+  from another thread
+    - even when there's a sequence of read-modify-write operations between the store and the load
+    - need all the operations to be suitably tagged
+- if a store is tagged with memory_order_release, memory_order_acq_rel, or memory_order_seq_cst
+    - load is tagged with memory_order_consume, memory_order_acquire, or memory_order_seq_cst
+    - each operation in the chain loads the value written by the previous operation
+    - chain of operations constitutes a release sequence
+        - initial store synchronizes-with the final load for memory_order_acquire or memory_order_seq_cst
+        - initial store is dependency-ordered-before the final load for memory_order_consume
+- any atomic read-modify-write operations in the chain can have any memory ordering (even memory_order_relaxed)
+- Listing 5.11
+- see listing and description for more details
+
+### Fences
+- operations that enforce memory-ordering constraints without modifying any data
+    - typically combined with atomic operations that use the memory_order_relaxed ordering constraints
+- global operations and affect the ordering of other atomic operations in the thread that executed
+  the fence
+- commonly called memory barriers
+    - put a line in the code that certain operations can't cross
+- relaxed operations on separate variables can usually be freely reordered by the compiler or the hardware
+    - fences restrict this freedom and introduce happens-before and synchronizes-with relationships that weren't
+      present before
+- Listing 5.12
+- general idea with fences
+    - if an acquire operation sees the result of a store that takes place after a release fence,
+      the fence synchronizes-with that acquire operation
+    - if a load that takes place before an acquire fence sees the result of a release operation, the release
+      operation synchronizes-with the acquire fence
+- can have fences on both sides
+    - if a load that takes place before the acquire fence sees a value written by a store that takes place after
+      the release fence, the release fence synchronizes-with the acquire fence
+- NOTE: the synchronization point is the fence itself even though the fence synchronization depends on the
+  values read or written by operations before or after the fence
+- code sample
+- real benefit to using atomic operations to enforce an ordering is that they can enforce an ordering
+  on nonatomic operations and thus avoid the undefined behavior of a data race
+
+### Ordering nonatomic operations with atomics
+- replace x from listing 5.12 with an ordinary nonatomic bool the behavior is guaranteed to be the same
+- Listing 5.13
+- fences still provide an enforced ordering of the stores and loads
+    - still a happens-before relationship between the store to x and the
+    - some stores/loads still have to be atomic
+- not just fences that can order nonatomic operations
+- memory_order_release/memory_order_consume pair ordering nonatomic accesses to a dynamically allocated object
+- many of the examples in this chapter could be rewritten with some of the memory_order_relaxed operations
+  replaced with plain nonatomic operations instead
+- ordering of nonatomic operations through the use of atomic operations is where the sequenced-before part of
+  happens-before becomes so important
+    - if a nonatomic operation is sequenced-before an atomic operation, and that atomic operation happens-before
+      an operation in another thread
+        - nonatomic operation also happens-before that operation in the other thread
+- basis for the higher-level synchronization facilities in the C++ Standard Library
+    - mutexes and condition variables
+- consider spinlock mutex from listing 5.1 - see text for description
+- basic principle is the same for mutexes even though various implementations will have different internal operations
+    - lock() is an acquire operation on an internal memory location
+    - unlock() is a release operation on that same memory location
+
+## 5.4 Summary
+- low-level details of
+    - C++11 memory model
+    - atomic operations that provide the basis for synchronization between threads
+- basic atomic types provided by specializations of the std::atomic<> class template
+- generic atomic interface provided by the primary std::atomic<> template
+- operations on these types
+- complex details of the various memory-ordering options
+- fences and how they can be paired with operations on atomic types to enforce an ordering
+- how the atomic operations can be used to enforce an ordering between nonatomic operations on separate threads
+
+
+
+# Ch. 6 - Designing lock-based concurrent data structures
+- the choice of data structure to use for a programming problem can be key
+- also required for parallel programming problems
+- if a data structure is to be accessed from multiple threads
+    - either must be completely immutable so the data never changes and no synchronization is necessary
+    - program must be designed to ensure that changes are correctly synchronized between threads
+- can use a separate mutex and external locking to protect the data
+- another is to design the data structure itself for concurrent access
+
+## 6.1 What does it mean to design for concurrency?
+- designing a data structure for concurrency means that multiple threads can access the data structure concurrently
+    - perform the same or distinct operations
+    - each thread will see a self-consistent view of the data structure
+    - no data will be lost or corrupted
+    - all invariants will be upheld
+    - no problematic race conditions
+- e.g. thread-safe
+- data structure will be safe only for particular types of concurrent access
+    - may be possible to have multiple threads performing one type of operation on the data structure concurrently
+        - another operation requires exclusive access by a single thread
+    - may be safe for multiple threads to access a data structure concurrently if they're performing
+      different actions
+        - multiple threads performing the same action would be problematic
+- means providing the opportunity for concurrency to threads accessing the data structure
+    - mutex provides mutual exclusion
+        - only one thread can acquire a lock on the mutex at a time
+    - protects a data structure by explicitly preventing true concurrent access to the data it protects
+    - e.g. serialization
+- some data structures have more potential for true concurrency than others
+    - smaller the protected region
+    - fewer operations serialized
+    - greater the potential for concurrency
+
+### 6.1.1 Guidelines for designing data structures for concurrency
+- in general
+    - ensure that no thread can see a state where the invariants of the data structure have been broken by the actions
+      of another thread
+    - take care to avoid race conditions inherent in the interface to the data structure by providing functions
+      for complete operations rather than for operation steps
+    - pay attention to how the data structure behaves in the presence of exceptions to ensure that the invariants
+       are not broken
+    - minimize the opportunities for deadlock when using the data structure by restricting the scope of locks and
+      avoiding nested locks where possible
+- what constraints to put on the users of the data structure
+    - which functions are safe to call from other threads if one thread is accessing the data structure through a
+      particular function
+- generally constructors and destructors require exclusive access to the data structure
+    - up to the user to ensure that they're not accessed before construction is complete or after
+      destruction has started
+    - if the data structure supports assignment, swap(), or copy construction then need to decide
+        - whether these operations are safe to call concurrently with other operations
+        - whether they require the user to ensure exclusive access even though the majority of functions for manipulating
+          the data structure may be called from multiple threads concurrently without problem
+- enabling genuine concurrent access
+    - can the scope of locks be restricted to allow some parts of an operation to be performed outside the lock?
+    - can different parts of the data structure be protected with different mutexes?
+    - do all operations require the same level of protection?
+    - can a simple change to the data structure improve the opportunities for concurrency without affecting the
+      operational semantics?
+- how to minimize the amount of serialization that must occur and enable the greatest amount of true concurrency?
+- not uncommon for concurrent access from multiple threads that just read
+    - a thread that can modify the data structure must have exclusive access
+    - supported by using constructs like boost::shared_mutex
+- common for a data structure to support concurrent access from threads performing different operations while
+  serializing threads that try to perform the same operation
+- simplest thread-safe data structures typically use mutexes and locks to protect the data
+
+## 6.2 Lock-based concurrent data structures
+- all about ensuring that the right mutex is locked when accessing the data and ensuring that the lock is held
+  for a minimum amount of time
+- issues are compounded if using separate mutexes to protect separate parts of the data structure
+    - also the possibility of deadlock if the operations on the data structure require more than one mutex to be locked
+
+### 6.2.1 A thread-safe stack using locks
+- Listing 6.1 A class definition for a thread-safe stack
+- basic thread safety is provided by protecting each member function with a lock on the mutex
+    - ensures that only one thread is actually accessing the data at any one time
+    -  no thread can see a broken invariant if each member function maintains the invariants
+    - potential for a race condition between empty() and either of the pop() functions
+        - race condition isn't problematic because code explicitly checks for the contained stack being empty while
+          holding the lock in pop()
+    - avoid a potential race condition by returning the popped data item directly as part of the call to pop()
+- potential sources of exceptions
+    - locking a mutex may throw an exception
+        - likely to be rare (because it indicates a problem with the mutex or a lack of system resources)
+        - safe because no data has been modified since it is also the first operation in each member function
+    - unlocking a mutex can't fail so it is always safe
+    - use of std::lock_guard<> ensures that the mutex is never left locked
+    - call to data.push() may throw an exception if either copying/moving the data value throws an exception
+      or not enough memory can be allocated to extend the underlying data structure
+    - might throw an empty_stack exception in the first overload of pop()
+        - safe because nothing has been modified
+    - creation of res might throw an exception
+        - call to std::make_shared might throw because it can't allocate memory for the new object and the
+          internal data required for reference counting
+        - copy constructor or move constructor of the data item to be returned might throw when copying/moving
+          into the freshly allocated memory
+        - C++ runtime and Standard Library ensure that there are no memory leaks and the new object (if any)
+          is correctly destroyed
+        - safe because underlying stack has not been modified
+    - empty() doesn't modify any data, so that's exception-safe
+- opportunities for deadlock here
+    - call user code while holding a lock
+        - copy constructor or move constructor
+        - copy assignment or move assignment operator on the contained data items
+        - potentially a user-defined operator new
+    - possibility of deadlock if these functions either call member functions on the stack that the item is being
+      inserted into or removed from or require a lock of any kind and another lock was held when the stack member
+      function was invoked
+    - OK to require that users of the stack be responsible for ensuring this
+    - safe for any number of threads to call the stack member functions because all the member functions use a
+      std::lock_guard<> to protect the data
+    - only member functions that aren't safe are the constructors and destructors
+        - object can be constructed only once and destroyed only once
+        - user must ensure that other threads aren't able to access the stack until it's fully constructed and
+          must ensure that all threads have ceased accessing the stack before it's destroyed
+- only one thread is ever actually doing any work in the stack data structure at a time
+    - serialization of threads can limit the performance of an application where there's significant contention
+        - thread isn't doing any useful work while waiting for the lock on the stack
+- doesn't provide any means for waiting for an item to be added
+    - if a thread needs to wait, it must periodically call empty() or just call pop() and catch the
+      empty_stack exceptions
+    - a waiting thread must either consume precious resources checking for data or the user must write external wait
+      and notification code
+        - might render the internal locking unnecessary and wasteful
+
+### A thread-safe queue using locks and condition variables
+- interface differs from that of the standard container adaptor because of the constraints of writing
+  a data structure that's safe for concurrent access from multiple threads
+- Listing 6.2 The full class definition for a thread-safe queue using condition variables
+- two overloads of try_pop() don't throw an exception if the queue is empty
+    - return either a bool value indicating whether a value was retrieved or a NULL pointer if no
+      value could be retrieved by the pointer-returning overload f
+- if more than one thread is waiting when an entry is pushed onto the queue, only one thread will be
+  woken by the call to data_cond.notify_one()
+    - if that thread then throws an exception in wait_and_pop(), such as when the new std::shared_ptr<>
+      is constructed, none of the other threads will be woken
+    - call can be replaced with data_cond.notify_all()
+        - will wake all the threads but at the cost of most of them then going back to sleep when they find that
+          the queue is empty
+    - have wait_and_pop() call notify_one() if an exception is thrown
+        - another thread can attempt to retrieve the stored value
+    - move the std::shared_ptr<> initialization to the push() call and store std::shared_ptr<> instances rather
+      than direct data values
+        - copying the std::shared_ptr<> out of the internal std::queue<> can't throw an exception
+        - wait_and_pop() is safe
+- Listing 6.3 A thread-safe queue holding std::shared_ptr<> instances
+- consequences of holding the data by std::shared_ptr<>
+    - pop functions that take a reference to a variable to receive the new value now have to dereference the stored
+      pointer
+    - pop functions that return a std::shared_ptr<> instance can just retrieve it from the queue before returning it
+      to the caller
+    - allocation of the new instance can be done outside the lock in push() if the data is held by std::shared_ptr<>
+        - previously had to be done while holding the lock in pop()
+        - memory allocation is typically quite an expensive operation
+        - because it reduces the time the mutex is held, allowing other threads to perform operations on the queue
+          in the meantime
+- use of a mutex to protect the entire data structure limits the concurrency
+    - multiple threads might be blocked on the queue in various member functions
+    - only one thread can be doing any work at a time
+- have essentially one data item that's either protected or not by using the standard container
+- can provide more fine-grained locking and thus allow a higher level of concurrency by taking control of the detailed
+  implementation of the data structure
+
+### A thread-safe queue using fine-grained locks and condition variables
+- need to look inside the queue at its constituent parts and associate one mutex with each distinct data item
+- simplest data structure for a queue is a singly linked list
+- data items are removed from the queue by replacing the head pointer with the pointer to the next item and
+    then returning the data from the old head
+- items are added to the queue at the other end
+    - queue also contains a tail pointer, which refers to the last item in the list
+- new nodes are added by changing the next pointer of the last item to point to the new node and then updating
+  the tail pointer to refer to the new item
+- when the list is empty, both the head and tail pointers are NULL
+- Listing 6.4 A simple single-threaded queue implementation
+- uses std::unique_ptr<node> to manage the nodes
+    - ensures that they (and the data they refer to) get deleted when they're no longer needed, without having to
+      write an explicit delete
+- ownership chain is managed from head, with tail being a raw pointer to the last node
+- works fine in a single-threaded context
+- problems when using fine-grained locking in a multi-threaded context
+    - could use two mutexes for head and tail
+    - push() can modify both head f and tail g, so it would have to lock both mutexes
+    - critical problem is that both push() and pop() access the next pointer of a node
+        - push() updates tail->next and try_pop() reads head->next
+        - single item in the queue -> head==tail
+            - both head->next and tail->next are the same object
+            - requires protection
+            - can't tell if it's the same object without reading both head and tail
+            - have to lock the same mutex in both push() and try_pop()
+
+#### Enabling concurrency by separating data
+- solve by preallocating a dummy node with no data to ensure that there's always at least
+  one node in the queue to separate the node being accessed at the head from that being accessed at the tail
+- for an empty queue, head and tail now both point to the dummy node rather than being NULL
+    - try_pop() doesn't access head->next if the queue is empty
+- head and tail now point to separate nodes if one node is added to the queue
+    - no race on head->next and tail->next
+- have to add an extra level of indirection to store the data by pointer in order to allow the dummy nodes
+- Listing 6.5 A simple queue with a dummy node
+- see text for description
+- push() now accesses only tail, not head
+- try_pop() accesses both head and tail, but tail is needed only for the initial comparison, so the lock is
+  short-lived
+- dummy node means try_pop() and push() are never operating on the same node, so you
+  no longer need an overarching mutex
+    - one mutex for head and one for tail
+- hold the locks for the smallest possible length of time
+- for push -> mutex needs to be locked across all accesses to tail, which means you lock the mutex after
+  the new node is allocated and before assigning the data to the current tail node
+    - lock needs to be held until the end of the function
+- for try_pop()
+    - need to lock the mutex on head and hold it until finished with head
+    - the mutex to determine which thread does the popping so pop first
+    - once head is changed, can unlock the mutex
+        - doesn't need to be locked when returning the result
+    - leaves access to tail needing a lock on the tail mutex
+        - need to access tail only once
+        - can just acquire the mutex for the time it takes to do the read
+        - best done by wrapping it in a function
+    - clearer to wrap code that needs the head mutex locked in a function also because it is only a subset of the member
+- Listing 6.6 A thread-safe queue with fine-grained locking
+- invariants
+    - tail->next == nullptr
+    - tail->data == nullptr
+    - head == tail implies an empty list
+    - A single element list has head->next == tail
+    - for each node x in the list
+        - where
+            - x!=tail
+            - x->data points to an instance of T
+            - x->next points to the next node in the list
+        - x->next==tail implies x is the last node in the list
+    - following the next nodes from head will eventually yield tail
+- for push
+    - only modifications to the data structure are protected by tail_mutex
+    - uphold the invariant because the new tail node is an empty node and data and next are correctly set
+      for the old tail node, which is now the last real node in the list
+- for try_pop()
+    - lock on tail_mutex is necessary to protect the read of tail itself
+    - also necessary to ensure that a data race doesn't result from reading the data from the head
+        - possible for a thread to call try_pop() and a thread to call push() concurrently without the mutex
+            - no defined ordering on their operations
+     - each member function holds a lock on a mutex but they hold locks on different mutexes
+      and they potentially access the same data
+        - all data in the queue originates from a call to push()
+        - because the threads would be potentially accessing the same data without a defined ordering this would be
+          a data race and undefined behavior
+     - lock on the tail_mutex in get_tail() solves problems
+        - defined order between the two calls because call to get_tail() locks the same mutex as the call to push()
+        - either
+            - call to get_tail() occurs before the call to push() -> sees the old value of tail
+            - occurs after the call to push() -> sees the new value of tail and the new data attached to the previous
+              value of tail
+    - important that the call to get_tail() occurs inside the lock on head_mutex
+        - otherwise call to pop_head() could be stuck in between the call to get_tail() and the lock on the
+          head_mutex
+- see text for more description of invariant handling
+- actual possibilities for concurrency
+    - data structure actually has considerably more potential for concurrency
+        - locks are more fine-grained and more is done outside the locks
+
+#### Waiting for an item to pop
+- wait_and_pop() implementation in an identical interface with fine-grained locking
+    - just adding the data_cond.notify_one() call at the end of the function to modify push()
+        - using fine-grained locking because you want the maximum possible amount of concurrency
+        - leaving the mutex locked across the call to notify_one() then if the notified thread wakes up before the
+          mutex has been unlocked, it will have to wait for the mutex
+        - unlocking the mutex before you call notify_one(), then the mutex is available for the waiting thread to
+          acquire when it wakes up (assuming no other thread locks it first)
+    - might be important in some cases
+- wait_and_pop()
+    - have to decide where to wait, what the predicate is, and which mutex needs to be locked
+    - condition is "queue not empty" (represented by head != tail)
+        - would require both head_mutex and tail_mutex to be locked
+        - only need to lock tail_mutex for the read of tail and not for the comparison itself
+        - making the predicate head!=get_tail()
+            - only need to hold the head_mutex
+            - can use lock on that for the call to data_cond.wait()
+    - with wait logic the implementation is the same as try_pop()
+- second overload of try_pop() and corresponding wait_and_pop()
+    - potential exception-safety issue arises from just replacing the return of the std::shared_ptr<> retrieved from
+      old_head with a copy assignment to the value parameter
+    - data item has been removed from the queue and the mutex unlocked
+        - just need to return the data to the caller
+    - if the copy assignment throws an exception data item is lost because it can't be returned to the queue in the
+      same place
+    - could use no-throw move-assignment operator or a no-throw swap operation for type T if provided but this is not
+      general
+    - have to move the potential throwing inside the locked region, before the node is removed from the list
+        - need an extra overload of pop_head() that retrieves the stored value prior to modifying the list
+
+- empty() is trivial
+    - just lock head_mutex and check for head == get_tail()
+- Listing 6.7 A thread-safe queue with locking and waiting: internals and interface
+- Listing 6.8 A thread-safe queue with locking and waiting: pushing new values
+- Listing 6.9 A thread-safe queue with locking and waiting: wait_and_pop()
+- Listing 6.10 A thread-safe queue with locking and waiting: try_pop() and empty()
+- unbounded queue
+    - threads can continue to push new values onto the queue as long as there's available memory, even if no
+      values are removed
+- bounded queue
+    - maximum length of the queue is fixed when the queue is created
+    - once full attempts to push further elements onto the queue will either fail or block until an element has been
+      popped from the queue to make room
+    - useful for ensuring an even spread of work when dividing work between threads based on tasks to be performed
+        - prevents the thread(s) populating the queue from running too far ahead of the thread(s) reading items
+          from the queue
+- unbounded queue implementation can easily be extended to limit the length of the queue by waiting on the condition
+  variable in push()
+    - wait for the queue to have fewer than the maximum number of items
+
+## 6.3 Designing more complex lock-based data structures
+- most data structures support a variety of operations
+    - can then lead to greater opportunities for concurrency
+    - also makes the task of protecting the data that much harder because the multiple access patterns
+      need to be taken into account
+- precise nature of the various operations that can be performed is important when designing such data structures
+  for concurrent access
+
+### 6.3.1 Writing a thread-safe lookup table using locks
+- associative containers
+    - std::map<>
+    - std::multimap<>
+    - std::unordered_map<>
+    - std::unordered_ multimap<>
+- lookup table might be modified rarely
+- interfaces of the standard containers aren't suitable when the data structure is to be accessed from multiple
+  threads concurrently
+    - there are inherent race conditions in the interface design
+    - need to be cut down and revised
+- biggest problem with the std::map<> interface are the iterators
+    - possible to have an iterator that provides safe access into a container even when other threads
+      can access (and modify) the container
+    - difficult
+    - have to deal with issues such as another thread deleting the element that the iterator is referring to
+- skip the iterators given that the
+- worth designing the interface from the ground up
+    - interface to std::map<> is heavily iterator-based
+- operations on a lookup table
+    - add a new key/value pair
+    - change the value associated with a given key
+    - remove a key and its associated value
+    - obtain the value associated with a given key if any
+- container-wide operations
+    - check on whether the container is empty
+    - snapshot of the complete list of keys
+    - snapshot of the complete set of key/value pairs
+- all of these operations are safe if sticking to basic approach
+    - don't return references
+    - put a simple mutex lock around the entirety of each member function
+- operations either come before some modification from another thread or come after it
+    - biggest potential for a race condition is when a new key/value pair is being added
+        - if two threads add a new value, only one will be first
+       - second will therefore fail
+- one possibility is to combine add and change into a single member function
+- what happens when there is no value for an input key?
+- one option is to allow the user to provide a "default" result that's returned in the case when the key isn't
+  present
+    - default-constructed instance of mapped_type could be used if the default_value wasn't explicitly
+      provided
+- could also be extended to return a std::pair<mapped_type,bool> instead of just an instance of mapped_type
+    - bool indicates whether the value was present
+- another option is to return a smart pointer referring to the value and return NULL if there was no value to return
+- simple lock around every member function would waste the possibilities for concurrency provided by the
+  separate functions for reading the data structure and modifying it
+- one option is to use a mutex that supports multiple reader threads or a single writer thread
+    - boost::shared_mutex
+    - would improve the possibilities for concurrent access
+    - only one thread could modify the data structure at a time
+
+#### Designing a map data structure for fine-grained locking
+- three common ways of implementing an associative container
+    - binary tree, such as a red-black tree
+    - sorted array
+    - hash table
+- binary tree doesn't provide much potential for extending the opportunities for concurrency
+    - every lookup or modification has to start by accessing the root node
+- sorted array is worse
+    - can't tell in advance where in the array a given data value is going
+    - need a single lock for the whole array
+- hash table
+    - assuming a fixed number of buckets, which bucket a key belongs to is purely a property of the key and its
+      hash function
+    - can safely have a separate lock per bucket
+    - increase the opportunities for concurrency N-fold, where N is the number of buckets if using a mutex that
+      supports multiple readers or a single writer
+    - need a good hash function for the key
+    - can use for this purpose std::hash<> template
+        - specialized for the fundamental types such as int and common library types such as std::string
+        - user can specialize it for other key types
+- take the type of the function object to use for doing the hashing as a template parameter
+    - user can choose whether to specialize std::hash<> for their key type or provide a separate hash function
+- Listing 6.11 A thread-safe lookup table
+- uses a std::vector<std::unique_ptr<bucket_type>> to hold the buckets
+    - allows the number of buckets to be specified in the constructor
+    - default to 19 (arbitrary prime number)
+    - hash tables work best with a prime number of buckets
+    - each bucket is protected with an instance of boost:shared_mutex to allow many concurrent reads or a single
+      call to either of the modification functions per bucket
+    - get_bucket() function can be called without any locking because the number of buckets is fixed
+    - the bucket mutex can be locked either for shared (read-only) ownership or unique (read/write) ownership
+    - all three functions make use of the find_entry_for() member function on the bucket to determine whether
+      the entry is in the bucket
+    - each bucket contains just a std::list<> of key/value pairs
+        - adding and removing entries is easy
+- exception safety?
+    - value_for is fine
+    - remove_mapping modifies the list with the call to erase
+        - guaranteed not to throw
+    - add_or_update_mapping
+        - might throw in either of the two branches of the if
+        - push_back is exception-safe and will leave the list in the original state if it throws
+        - problem is with the assignment in the case where you're replacing an existing value
+            - relying on it leaving the original unchanged if it throws
+            - doesn't affect the data structure as a whole and is entirely a property of the user-suppliedtype
+            - can safely leave it up to the user to handle this
+- retrieving a snapshot of the current state into
+    - requires locking the entire container in order to ensure that a consistent copy of the state is
+      retrieved
+    - no opportunity for deadlock if buckets are locked them in the same order every time
+- Listing 6.12 Obtaining contents of a threadsafe_lookup_table as a std::map<>
+- increases the opportunity for concurrency of the lookup table as a whole by locking each bucket separately
+  and by using a boost::shared_mutex to allow reader concurrency on each bucket
+
+### 6.3.2 Writing a thread-safe list using locks
+- lifetime of an STL-style iterator is completely outside the control of the container
+    - bad idea to support
+- alternative is to provide iteration functions such as for_each as part of the container itself
+- for_each must call user-supplied code while holding the internal lock to do anything useful
+    - must also pass a reference to each item to this user-supplied code in order for the
+      user-supplied code to work on this item
+    - could avoid this by passing a copy of each item to the user-supplied code
+        - expensive if the data items were large
+    - leave it up to the user to ensure that they don't cause deadlock by acquiring locks in
+      the user-supplied operations and don't cause data races by storing the references for access outside the
+      locks
+- operations to supply for the list
+    - add an item to the list
+    - remove an item from the list if it meets a certain condition
+    - find an item in the list that meets a certain condition
+    - update an item that meets a certain condition
+    - copy each item in the list to another container
+- add operations such as
+    - positional insert (unnecessary for your lookup table)
+- one mutex per node
+    - benefit here is that operations on separate parts of the list are truly concurrent
+        - each operation holds only the locks on the nodes it's actually interested in and unlocks each node as
+          it moves on to the next
+- Listing 6.13 A thread-safe list with iteration support
+- singly linked list
+    - each entry is a node structure
+- a default-constructed node is used for the head of the list, which starts with a NULL next pointer
+- new nodes are added with the push_front() function
+    - new node is constructed -> allocates the stored data on the heap while leaving the next pointer as NULL
+    - acquire the lock on the mutex for the head node in order to get the appropriate next value and insert the
+      node at the front of the list by setting head.next to point to the new node
+    - lock one mutex in order to add a new item to the list
+        - no risk of deadlock
+    - slow memory allocation happens outside the lock
+- for_each()
+    - takes a Function of some type to apply to each element in the list
+    - takes this function by value and will work with either a genuine function or an object of a type with a
+      function call operator
+    - function must accept a value of type T as the sole parameter
+- hand-over-hand locking
+    - lock the mutex on the head node
+        - then safe to obtain the pointer to the next node (using get() because you're not taking ownership of the
+          pointer)
+    - if that pointer isn't NULL
+        - lock the mutex on that node in order to process the data
+    - once that node is locked
+        - release the lock on the previous node and call the specified function
+    - once the function completes
+        - update the current pointer to the node you just processed and move the owership of the lock from next_lk
+          out to lk
+    - for_each passes each data item directly to the supplied Function
+        - can use this to update the items if necessary or copy them into another container
+- find_first_if()
+    - is similar to for_each()
+    - difference is that the supplied Predicate must return true to indicate a match or false to indicate no match
+    - once matched, just return the found data rather than continuing to search
+    - could do this with for_each(), but it would needlessly continue processing the rest of the list even
+      once a match had been found
+- remove_if()
+    - has to actually update the list
+    - if the Predicate returns true
+        - remove the node from the list by updating current->next
+        - can then release the lock held on the mutex for the next node
+        - node is deleted when the std::unique_ptr<node> you moved it into goes out of scope 2)
+        - don't update current because you need to check the new next node
+    - if the Predicate returns false
+        - just move on as before
+- no deadlocks or race conditions
+- iteration is always one way, always starting from the head node, and always locking the next mutex before
+  releasing the current one
+    - no possibility of different lock orders in different threads
+- only potential candidate for a race condition is the deletion of the removed node in remove_if()
+    - this is done after the mutex is unlocked (undefined behavior to destroy a locked mutex)
+    - safe
+        - still hold the mutex on the previous node (current)
+        - no new thread can try to acquire the lock on the node you're deleting
+- different threads can be working on different nodes in the list at the same time
+    - mutex for each node must be locked in turn, the threads can't pass each other
+    - if one thread is spending a long time processing a particular node, other threads will have to wait when they
+      reach that particular node
+- improves the possibilities for concurrency over using a single mutex
+
+## 6.4 Summary
+- designing data structures for concurrency
+- provides guidelines for doing so
+- stack
+- queue
+- hash map
+- linked list
+- implement them in a way designed for concurrent access
+- using locks to protect data and prevent data races
+
+
+# Ch. 7 -  Designing lock-free concurrent data structures
+- implementations of data structures designed for concurrency without using locks
+- techniques for managing memory in lock-free data structures
+- simple guidelines to aid in the writing of lock- free data structures
+- incorrect use of locks can lead to deadlock
+- granularity of locking can affect the potential for true concurrency
+- potential to avoid these problems by writing data structures that are safe for concurrent access without locks
+- lock-free data structure
+- memory-ordering properties of the atomic operations can be used to build lock-free data structures
+- take care when designing such data structures
+    - hard to get right
+    - conditions that cause the design to fail may occur very rarely
+
+## 7.1 Definitions and consequences
+- algorithms and data structures that use mutexes, condition variables, and futures to synchronize the data
+  are called blocking data structures and algorithms
+- application calls library functions that will suspend the execution of a thread until another thread
+  performs an action
+    - blocking calls because the thread can't progress past this point until the block is removed
+    - OS will suspend a blocked thread completely (and allocate its time slices to another thread) until it's
+      unblocked by the appropriate action of another thread
+        - unlocking a mutex
+        - notifying a condition variable
+        - making a future ready
+- data structures and algorithms that don't use blocking library functions are said to be nonblocking
+- nonblocking != lock-free
+
+### Types of nonblocking data structures
+- Listing 7.1 Implementation of a spin-lock mutex using std::atomic_flag
+- code doesn't call any blocking functions
+    - lock() just keeps looping until the call to test_and_set() returns false
+- any code that uses this mutex to protect shared data is nonblocking
+    - not lock-free
+    - still a mutex and can still be locked by only one thread at a time
+
+### Lock-free data structures
+- more than one thread must be able to access the data structure concurrently
+    - don't have to be able to perform the same operations
+    - if one of the threads accessing the data structure is suspended by the scheduler midway through its operation
+      the other threads must still be able to complete their operations without waiting for the suspended thread
+- algorithms that use compare/exchange operations on the data structure often have loops in them
+    - reason for using a compare/exchange operation is that another thread might have modified the data in the meantime
+        - code will need to redo part of its operation before trying the compare/exchange again
+    - can still be lock-free if the compare/exchange would eventually succeed if the other threads were suspended
+    - essentially have a spin lock otherwise
+        - nonblocking but not lock-free
+- lock-free algorithms with such loops can result in one thread being subject to starvation
+    - other thread might make progress while if another thread performs operations with the "wrong" timing
+    - first thread continually has to retry its operation
+- data structures that avoid this problem are wait-free as well as lock-free
+
+### Wait-free data structures
+- wait-free data structure is lock-free
+    - additional property that every thread accessing the data structure can complete its operation within a
+      bounded number of steps, regardless of the behavior of other threads
+- algorithms that can involve an unbounded number of retries because of clashes with other threads are thus
+  not wait-free
+- writing wait-free data structures correctly is extremely hard
+- have to ensure that each operation can be performed in a single pass and that the steps performed by one thread
+  don't cause an operation on another thread to fail
+    - can make the overall algorithms for the various operations considerably more complex
+- need some pretty good reasons to write one
+    - need to be sure that the benefit outweighs the cost
+
+### The pros and cons of lock-free data structures
+- primary reason for using lock-free data structures is to enable maximum concurrency
+- potential for one thread to have to block and wait for another to complete its operation before the first thread
+  can proceed with lock-based containers
+    - preventing concurrency through mutual exclusion is the entire purpose of a mutex lock
+- some thread makes progress with every step with a lock-free data structure
+- every thread can make forward progress, regardless of what the other threads are doing with a wait-free data structure
+    - no need for waiting
+- robustness
+    - if a thread dies while holding a lock, that data structure is broken forever with lock-based
+    - if a thread dies partway through an operation on a lock-free data structure, nothing is lost except that
+      thread's data
+        - other threads can proceed normally
+    - must be careful to ensure that the invariants are upheld or choose alternative invariants that can be upheld
+      also if threads can't be excluded from accessing the data structure
+    - must pay attention to the ordering constraints imposed on the operations
+- must use atomic operations for the modifications to avoid the undefined behavior associated with a data race
+- must also ensure that changes become visible to other threads in the correct order
+- is the possibility of live locks instead
+    - live lock occurs when two threads each try to change the data structure
+    - each thread the changes made by the other require the operation to be restarted
+    - both threads loop and try again
+- live locks are typically short lived because they depend on the exact scheduling of threads
+    - hurt performance rather than cause long-term problems
+- wait-free code can't suffer from live lock because there's always an upper limit on the number
+  of steps needed to perform an operation
+- algorithm is likely more complex than the alternative
+- another downside of lock-free and wait-free code
+    - can increase the potential for concurrency of operations on a data structure reduce the time an individual
+      thread spends waiting
+    - may decrease overall performance
+- atomic operations used for lock-free code can be much slower than nonatomic operations
+    - likely more of them in a lock-free data structure than in the mutex locking code for a lock-based data
+       structure
+- hardware must synchronize data between threads that access the same atomic variables
+    - cache ping-pong associated with multiple threads accessing the same atomic variables can be a significant
+      performance drain
+- important to check the relevant performance aspects both with a lock-based data structure and a lock-free one
+  before committing either way
+    - worst-case wait time
+    - average wait time
+    - overall execution time
+    - others
+
+## 7.2 Examples of lock-free data structures
+- TODO: add back sequential steps here
+- rely on the use of atomic operations and the associated memory-ordering guarantees in order to ensure that data
+  becomes visible to other threads in the correct order
+- default memory_order_seq_cst memory ordering for all atomic operations
+    - all memory_order_seq_cst operations form a total order
+- reduce some of the ordering constraints to memory_order_acquire for later examples
+    - memory_order_release
+    - memory_order_relaxed
+- only std::atomic_flag is guaranteed not to use locks in the implementation
+- simple lock-based data structure might actually be more appropriate on these platforms
+    - must identify program's requirements and profile the before choosing an implementation various options that meet
+      those requirements
+- writing a thread-safe stack without locks
+    - important to ensure that once a value is added to the stack it can safely be retrieved immediately by another
+      thread
+    - also important to ensure that only one thread returns a given value
+- what works fine for adding a node in a single-threaded context is not enough if other threads are also modifying
+  the stack in a multithreaded context
+    - sequential steps
+        1. create a new node
+        2. set the node's next pointer to the current head
+        3. set the head pointer to the new node
+    - race condition -> a second thread could modify the value of head between when thread reads it in step
+      2 and you update it in step 3
+    - results in the changes made by that other thread being discarded or even worse consequences
+    - NOTE: that once head has been updated to point to your new node, another thread could read that node
+        - necessary for new node to thoroughly prepared before head is set to point to it
+            - cannot modify it afterward
+- Listing 7.2 Implementing push() without locks
+- to handle race condition use an atomic compare/exchange operation at step 3 to ensure that head hasn't been modified
+  since you read it in step 2
+    1. create a new node
+    2. set the node's next pointer to the current head
+    3. set the head pointer to the new node
+    - ensured that the node by populating the data in the node structure itself from the node constructor
+    - use compare_exchange_weak() to ensure that the head pointer still has the same value as you stored
+      in new_node->next
+        - set it to new_node if so
+    - if it returns false to indicate that the comparison failed the value supplied as the first parameter
+      (new_node->next) is updated to the current value of head (highlights useful part compare/exchange functionality)
+    - don't have to reload head each time through the loop
+        - compiler handles
+    - can use compare_exchange_weak because looping directly on failure
+        - compare_exchange_strong may be better on some architectures
+    - only place that can throw an exception is the construction of the new node
+        - will clean up after
+        - list hasn't been modified yet
+        - safe
+    - no problematic race conditions here
+        - build the data to be stored as part of the node
+        - use compare_exchange_weak() to update
+        - node is on the list and ready for use once the compare/exchange succeeds
+    - no locks, so no possibility of deadlock
+- simplified view of pop (sequential process)
+    1. read the current value of head
+    2. read head->next
+    3. set head to head->next
+    4. return the data from the retrieved node
+    5. delete the retrieved node
+- both of two threads might read the same value of head at step 1 if there are two threads removing items from the
+  stack
+    - if one thread then proceeds all the way through to step 5 before the other gets to step 2, the second thread
+      will be dereferencing a dangling pointer
+    - memory management is one of the biggest issues in writing lock-free code
+        - for now just leave out step 5 and leak the nodes
+- if two threads read the same value of head, they'll return the same node
+    - violates the intent of the stack data structure
+    - use compare/exchange to update head
+        - if the compare/exchange fails, either a new node has been pushed on or another thread just popped the node
+          you were trying to pop
+    - need to return to step 1 (although the compare/exchange call rereads head for you) either way
+    - can be sure current thread is the only thread that's popping the given node off once the compare/exchange call
+      succeeds
+        - can safely execute step 4
+- code for first cut at pop
+- problems aside from the leaking node
+    - doesn't work on an empty list
+        - if head is a null pointer, it will cause undefined behavior as it tries to read the next pointer
+            - fixed by checking for nullptr in the while loop and either throwing an exception on an empty
+              stack or returning a bool to indicate success or failure
+    - second problem is an exception-safety issue
+        - if an exception is thrown when copying the return value, the value is lost
+        - cannot pass in a reference to the result in this case
+            - can only safely copy the data once sure current thread is the only thread returning the node
+                - means the node has already been removed from the queue
+            - passing in the target for the return value by reference is no longer an advantage
+                - might as well just return by value
+        - have to use the other option to return a (smart) pointer to the data value to return the value safely
+            - can just return nullptr to indicate that there's no value to return
+                - requires that the data be allocated on the heap
+        - no to do the heap allocation as part of the pop() because the heap allocation might throw an exception
+            - can allocate the memory when you push() the data onto the stack
+                - have to allocate memory for the node anyway
+        - returning a std::shared_ptr<> won't throw an exception so pop() is now safe
+- Listing 7.3 A lock-free stack that leaks nodes
+
+### Managing memory in lock-free data structures
+- TODO: check section number here
+- opted to leak nodes in order to avoid the race condition where one thread deletes a node while another thread
+  still holds a pointer to it that it's just about to dereference
+    - leaking memory isn't acceptable in any sensible C++ program
+- basic problem is
+- basic problem - need to free a node but you can't do so until certain there are no other threads that still hold
+  pointers to it
+    - OK if only one thread ever calls pop() on a particular stack instance
+        - push() doesn't touch the node once it's been added to the stack
+        - thread that called pop() must be the only thread that can touch the node
+            - it can safely delete it
+    - to handle multiple threads calling pop() on the same stack instance
+        - need some way to track when it's safe to delete a node
+        - means there is a need to write a special-purpose garbage collector just for nodes
+        - only requires checking for nodes which are accessed from pop()
+            - not worried about nodes in push()
+                - only accessible from one thread until they're on the stack
+        - safe to delete all the nodes currently awaiting deletion if there are no threads calling pop()
+            - can delete all nodes added to the "to delete" list when there are no threads calling pop() if they've
+              been added when the data was extracted
+        - count nodes to ensure no threads are calling pop
+            - increment a counter on entry and decrement counter on exit
+            - safe to delete the nodes from the "to be deleted" list when the counter is zero
+            - has to be an atomic counter so it can safely be accessed from multiple threads
+- Listing 7.4 Reclaiming nodes when no threads are in pop()
+- Listing 7.5 The reference-counted reclamation machinery
+- see text for code description
+- deleting a node is potentially a time-consuming operation
+    - want the window in which other threads can modify the list to be as small as possible
+    - may never be such a quiescent state in high-load situations
+
+### 7.2.3 Detecting nodes that can't be reclaimed using hazard pointers
+- hazard pointers
+    - technique discovered by Maged Michael
+    - deleting a node that might still be referenced by other threads is hazardous if other threads do indeed hold
+      references to that node and proceed to access the node through that reference results in undefined behavior
+    - thread first sets a hazard pointer to reference an object that another thread might want to delete if it is going
+      to access that object
+        - informs the other thread that deleting the object would indeed be hazardous
+        - hazard pointer is cleared once the object is no longer needed
+        - must first check the hazard pointers belonging to the other threads in the system when it wants to delete an
+          object
+        - object can safely be deleted if none of the hazard pointers reference the object
+        - list of objects that have been left until later is checked periodically to see if any of them can be deleted
+- need a location to store the pointer to the object being accessed, the hazard pointer
+    - must be visible to all threads
+    - need one of these for each thread that might access the data structure
+- assume there is a function get_hazard_pointer_for_current_thread() that returns a reference to hazard pointer
+    - set it when you read a pointer that you intend to dereference
+    - to do this in a while loop to ensure that the node hasn't been deleted between the reading of the
+     old head pointer and the setting of the hazard pointer
+    - during this window no other thread knows this particular node is being accessed
+    - if the old head node is going to be deleted, head itself must have changed
+    - can check this and keep looping until you know that the head pointer still has the same value you set
+      your hazard pointer
+- using hazard pointers like this relies on the fact that it's safe to use the value of a pointer after the
+  object it references has been deleted
+    - technically undefined behavior if you are using the default implementation of new and delete
+    - either need to ensure that your implementation permits it
+    - need to use a custom allocator that permits such usage
+- can proceed with the rest of pop() once hazard pointer is set knowing that no other thread will delete the nodes
+    - need to update the hazard pointer before you dereference every time the old head is read
+
+- can clear your hazard pointer once the node has been extracted from the list, you
+- if there are no other hazard pointers referencing your node, you can safely delete it
+- otherwise, add it to a list of nodes to be deleted later
+- Listing 7.6 An implementation of pop() using hazard pointers
+- Listing 7.7 A simple implementation of get_hazard_pointer_for_ current_thread()
+- Listing 7.8 A simple implementation of the reclaim functions
+
+- TODO: find where 7.2.4 starts
+
+#### Better reclamation strategies using hazard pointers
+- Listing 7.9 A lock-free stack using a lock-free std::shared_ptr<> implementation
+- Listing 7.10 Pushing a node on a lock-free stack using split reference counts
+
+### 7.2.5 Applying the memory model to the lock-free stack
+
+### 7.2.6 Writing a thread-safe queue without locks
+- Listing 7.13 A single-producer, single-consumer lock-free queue
+
+#### Handling multiple threads in push()
+- Listing 7.15 Implementing push() for a lock-free queue with a reference-counted tail
+- Listing 7.16 Popping a node from a lock-free queue with a reference-counted tail
+- Listing 7.17 Releasing a node reference in a lock-free queue
+- Listing 7.18 Obtaining a new reference to a node in a lock-free queue
+- Listing 7.19 Freeing an external counter to a node in a lock-free queue
+
+#### Making the queue lock-free by helping out another thread
+- Listing 7.20 pop()modifiedtoallowhelpingonthepush()side
+- Listing 7.21 A sample push() with helping for a lock-free queue
+
+## 7.3 Guidelines for writing lock-free data structures
+- general guidelines regarding concurrent data structures still apply
+    - need more than that
+
+### 7.3.1 Guideline: use std::memory_order_seq_cst for prototyping
+- std::memory_order_seq_cst is much easier to reason about than any other memory ordering because all such operations
+  form a total order
+- all the examples started with std::memory_order_seq_cst and only relaxed the memory-ordering constraints once the
+  basic operations were working
+    - using other memory orderings is an optimization
+    - avoid doing it prematurely
+- can only determine which operations can be relaxed when you can see the full set of code that can operate on the
+  guts of the data structure
+- just running the code isn't enough to test
+    - having an algorithm checker that can systematically test all possible combinations of thread
+      visibilities that are consistent with the specified ordering guarantees (such things do exist) is the only
+      way to have guarantees about the code
+
+### 7.3.2 Guideline: use a lock-free memory reclamation scheme
+- one of the biggest difficulties with lock-free code is managing memory
+    - essential to avoid deleting objects when other threads might still have references to them
+    - delete the object as soon as possible in order to avoid excessive memory consumption
+- three techniques for ensuring that memory can safely be reclaimed
+    - waiting until no threads are accessing the data structure and deleting all objects that are pending deletion
+    - using hazard pointers to identify that a thread is accessing a particular object
+    - reference counting the objects so that they aren't deleted until there are no outstanding references
+- key idea is to use some method to keep track of how many threads are accessing a particular object and only delete
+  each object when it's no longer referenced from anywhere
+- many other ways of reclaiming memory in lock-free data structures
+    - ideal scenario for using a garbage collector
+    - recycle nodes and only free them completely when the data structure is destroyed
+        - memory never becomes invalid because the nodes are reused so some of the difficulties in avoiding undefined
+          behavior go away
+
+### 7.3.3 Guideline: watch out for the ABA problem
+- ABA problem is something to be wary of in any compare/exchange–based algorithm
+- outline
+    1. thread 1 reads an atomic variable x and finds it has value A
+    2. thread 1 performs some operation based on this value
+        - dereferencing it (if it's a pointer)
+        - doing a lookup
+        - etc.
+    3. thread 1 is stalled by the operating system
+    4. another thread performs some operations on x that changes its value to B
+    5. a thread then changes the data associated with the value A such that the value held by thread 1 is no longer
+       valid this may be as drastic as freeing the pointed-to memory or just changing an associated value
+    6. a thread then changes x back to A based on this new data if this is a pointer
+        - may be a new object that just happens to share the same address as the old one
+    7. thread 1 resumes and performs a compare/exchange on x,
+        - comparing against A the compare/exchange succeeds (because the value is indeed A)
+        - this is the wrong A value the data originally read at step 2 is no longer valid
+        - thread 1 has no way of telling and will thus corrupt the data structure
+- easy to write lock-free algorithms that suffer from this problem
+- most common way to avoid the problem is to include an ABA counter alongside the variable x
+    - compare/exchange operation is then done on the combined structure of x plus the counter as a single unit
+    - every time the value is replaced, the counter is incremented
+    - even if x has the same value, the compare/exchange will fail if another thread has modified x
+- ABA problem is particularly prevalent in algorithms that use free lists or otherwise recycle nodes rather
+  than returning them to the allocator
+
+### 7.3.4 Guideline: identify busy-wait loops and help the other thread
+- a busy-wait loop is effectively a blocking operation and might as well use mutexes and locks
+- can remove the busy-wait by modifying the algorithm so that the waiting thread performs the incomplete steps if
+  it's scheduled to run before the original thread completes the operation
+    - operation is no longer blocking
+- queue example
+    - required changing a data member to be an atomic variable rather than a nonatomic variable
+    - using compare/exchange operations to set it
+- might require more extensive changes in more complex data structures it
+
+## 7.4 Summary
+- simple implementations of various lock-free data structures
+    - stack
+    - queue
+- must take care with the memory ordering on atomic operations to ensure that there are no data races and that
+  each thread sees a coherent view of the data structure
+- memory management becomes much harder for lock-free data structures than lock-based ones
+    - mechanisms for handling it
+- how to avoid creating wait loops by helping the thread that is being waited for to complete its operation
+- difficult and easy to make mistakes
+- have scalability properties that are important in some situations
+- better equipped to
+    - design your own lock-free data structure
+    - implement one from a research paper
+    - find the bug in the one your former colleague wrote just before leaving the company
+- need to think about the data structures used when data shared between threads
+    - how the data is synchronized between threads
+- can encapsulate that responsibility in the data structure by designing data structures for concurrency
+
+
+# Ch. 8 - Designing concurrent code
+- techniques for dividing data between threads
+- factors that affect the performance of concurrent code
+- how performance factors affect the design of data structures
+- exception safety in multithreaded code
+- scalability
+- example implementations of several parallel algorithms
+- more to designing concurrent code than the design and use of basic data structures
+- same principles apply at all scales of an application
+- vital to think carefully about the design of concurrent code
+- even more factors to consider with multithreaded code than with sequential code
+- usual encapsulation, coupling, and cohesion
+- also need to consider
+    - which data to share
+    - how to synchronize accesses to that data
+    - which threads need to wait for which other threads to complete certain operations
+    - etc
+- high-level (but fundamental) considerations of how many threads to use
+- which code to execute on which thread
+- how this can affect the clarity of the code
+- low-level details of how to structure the shared data for optimal performance
+
+## 8.1 Techniques for dividing work between threads
+- decide how many threads to use and what tasks they should be doing
+- decide whether to have "generalist" threads that do whatever work is necessary at any point in time or
+  "specialist" threads that do one thing well, or some combination
+- always need to make these decisions when dealing with concurrency
+    - will have a crucial effect on the performance and clarity of the code
+
+### Dividing data between threads before processing begins
+- easiest algorithms to parallelize are simple algorithms such as std::for_each that perform an operation
+  on each element in a data set
+- to parallelize
+    - assign each element to one of the processing threads
+- how the elements are best divided for optimal performance depends very much on the details of the data structure
+- simplest means of dividing the data is to allocate the first N elements to one thread, the next N elements
+  to another thread, and so on,
+- no matter how the data is divided, each thread then processes just the elements it has been assigned without
+  any communication with the other threads until it has completed its processing
+- common pattern in Message Passing Interface (MPI) or OpenMP2 frameworks
+    - task is split into a set of parallel tasks, the worker threads run these tasks independently,
+      and the results are combined in a final reduction step
+- both the parallel tasks and the final reduction step are accumulations
+- for a simple for_each, the final step is a no-op because there are no results to reduce
+    - identifying this final step as a reduction is important
+        - naive implementation will perform this reduction as a final serial step
+        - step can often be parallelized also
+- accumulate actually is a reduction operation itself
+    - could be modified to call itself recursively where the number of threads is larger than the
+      minimum number of items to process on a thread
+- worker threads could be made to perform some of the reduction steps as each one completes its task, rather than
+  spawning new threads each time
+- sometimes the data can't be divided neatly up front because the necessary divisions become apparent only as
+  the data is processed
+- apparent with recursive algorithms such as Quicksort
+    - need a different approach
+
+### 8.1.2 Dividing data recursively
+- need to make use of the recursive nature to parallelize Quicksort
+- recursive calls are entirely independent
+    - access separate sets of elements
+    - prime candidates for concurrent execution
+- used std::async() to spawn asynchronous tasks for the lower chunk at each stage
+- spawning a new thread for each recursion would quickly result in a lot of threads
+- having too many threads might actually slow down the application
+    - also a possibility of running out of threads if the data set is very large
+- need to keep better control on the number of threads
+- std::async() can handle this in simple cases
+- one alternative is to use the std::thread::hardware_concurrency() function to choose the number of threads,
+    - just push the chunk to be sorted onto a thread-safe stack rather than starting a new thread for the recursive
+      calls
+    - if a thread has nothing else to do, either because it has finished processing all its chunks or because it's
+      waiting for a chunk to be sorted, it can take a chunk from the stack and sort that
+- NOTE: this highlights an important flip in thinking -> managing threads and feeding work (push model) vs.
+  spawning threads and allowing them to grab work when necessary (pull model)
+- Listing 8.1 Parallel Quicksort using a stack of pending chunks to sort
+- have to wait for lower chunk to be ready because it might be handled by another thread
+    - try to process chunks from the stack on current thread while it is waiting
+        - pops a chunk off the stack and sort it storing the result in a promise
+        - promise is then picked up by the thread that posted the chunk on the stack
+- freshly spawned threads sit in a loop trying to sort chunks off the stack while the end_of_data flag
+  isn't set
+- in between checking, they yield to other threads to give them a chance to put some more work on the stack
+- code relies on the destructor of your sorter class to tidy up threads
+- no longer have the problem of unbounded threads that you have with a spawn_task that launches a new thread
+- no longer relying on the C++ Thread Library to choose the number of threads
+- limit the number of threads to the value of std::thread::hardware_concurrency() in order to avoid excessive task
+  switching
+- another potential problem
+    - the management of these threads and the communication between them add quite a lot of complexity to the code
+- all threads access the stack to add new chunks and remove chunks even though the threads are processing separate
+  data elements
+    - heavy contention can reduce performance
+    - even with a lock-free (and hence nonblocking) stack
+- approach is a specialized version of a thread pool
+    - set of threads that each take work to do from a list of pending work, do the work, and then go back to the
+      list for more
+- if the data is dynamically generated or is coming from external input, this approach doesn't work
+    - might make more sense to divide the work by task type rather than dividing based on the data
+
+### 8.1.3 Dividing work by task type
+- make the threads specialists
+    - each performs a distinct task,
+    - threads may or may not work on the same data
+    - if they do it's for different purposes
+- separating concerns with concurrency
+    - each thread has a different task, which it carries out independently of other threads
+    - other threads may occasionally give the current thread data or trigger events that it needs to handle
+    - in general each thread focuses on doing one thing well
+- each piece of code should have a single responsibility
+
+#### Dividing work by task type to separate concerns
+- migrating from single responsibility in sequential code to concurrent code
+    - if everything is independent and the threads have no need to communicate with each other, then it
+      is as easy as passing various tasks to different threads
+- two big dangers with separating concerns with multiple threads
+    - possibly end up separating the wrong concerns
+        - check for
+            - is there a lot of data shared between the threads
+            - do the different threads end up waiting for each other
+        - i.e. too much communication between threads
+        - look at the reasons for the communication
+            - if all the communication relates to the same issue, maybe that should be the key responsibility of a single
+              thread and extracted from all the threads that refer to it
+            - if two threads are communicating a lot with each other but much less with other threads
+              maybe they should be combined into a single thread
+- don't have to be limited to completely isolated cases
+    - can divide the work so each thread performs one stage from the overall sequence if multiple sets of input data
+      require the same sequence of operations to be applied
+
+#### Dividing a sequence of tasks between threads
+- can use a pipeline to exploit the available concurrency of the system if the task consists of applying the same
+  sequence of operations to many independent data items
+    - data flows in at one end through a series of operations (pipes) and out at the other end
+- create a separate thread for each stage in the pipeline—one thread for each of the operations in the sequence
+    - when the operation is completed, the data element is put on a queue to be picked up by the next thread
+- allows the thread performing the first operation in the sequence to start on the next data element while
+  the second thread in the pipeline is working on the first element
+- alternative to just dividing the data between threads
+- appropriate in circumstances where the input data itself isn't all known when the operation is started
+
+## 8.2 Factors affecting the performance of concurrent code
+- need to know what factors are going to affect the performance when using concurrency in order to improve the
+  performance of code on systems with multiple processors
+
+- need to ensure use of multiple doesn't adversely affect performance even if when just using multiple threads to
+  separate concerns
+- many factors affect the performance of multithreaded code
+
+### How many processors?
+- the number (and structure) of processors is the first big factor that affects the performance of a multithreaded
+  application
+- may know exactly what the target hardware is and can thus design with this in mind
+    - allows for taking real measurements on the target system or an exact duplicate
+- general don't have this advantage
+- may be a similar system, but the differences can be crucial
+    - behavior and performance characteristics of a concurrent program can vary considerably under such different
+      circumstances
+    - need to think carefully about what the impact may be and test things where possible
+- oversubscription - having more threads actually running (and not blocked, waiting for something) than available
+  based on hardware
+    - application will waste processor time switching between the threads
+- use std::thread::hardware_concurrency() to allow applications to scale the number of threads in line with the number
+  of threads the hardware can run concurrently
+    - code doesn't take into account any of the other threads that are running on the system unless you
+      explicitly share that information
+    - worst case - if multiple threads call a function that uses std::thread::hardware_concurrency() for scaling
+      at the same time, there will be huge oversubscription
+        - std::async() avoids this problem because the library is aware of all calls and can schedule appropriately
+        - careful use of thread pools can also avoid this problem
+    - still subject to the impact of other applications running at the same time even if you take into account all
+      threads running in your application
+- use of multiple CPU-intensive applications simultaneously is rare on single-user systems
+- some domains where it's more common
+- systems designed to handle this scenario typically offer mechanisms to allow each application to choose an
+  appropriate number of threads
+    - outside the scope of the C++ Standard
+- one option is for a std::async()-like facility to take into account the total number of asynchronous tasks
+  run by all applications when choosing the number of threads
+- another is to limit the number of processing cores that can be used by a given application
+    - limit should be reflected in the value returned by std::thread::hardware_concurrency() on such
+      platforms, although this isn't guaranteed
+- consult system documentation to see what options are available
+- ideal algorithm for a problem can depend on the size of the problem compared to the number of processing units
+- massively parallel system with many processing units, an algorithm that performs more operations
+  overall may finish more quickly than one that performs fewer operations, because each processor performs only
+  a few operations
+
+### 8.2.2 Data contention and cache ping-pong
+- problem
+    - multiple processors trying to access the same data if two threads are executing concurrently on different
+      processors and they're both reading the same data
+        - usually OK - data will be copied into their respective caches, and both processors can proceed
+    - modification of data has to propagate to the cache on the other core, which takes time
+    - such a modification may cause the second processor to stop in its tracks and wait for the change to propagate
+      through the memory hardware
+        - depending on the nature of the operations on the two threads, and the memory orderings used for the operations
+    - exact timing depends primarily on the physical structure of the hardware but may be very slow
+- high contention
+    - if processors rarely have to wait for each other, you have low contention
+- data passed back and forth between the caches many times is called cache ping-pong
+    - can seriously impact the performance of the application
+    - if a processor stalls because it has to wait for a cache transfer, it can't do any work in the meantime, even
+      if there are other threads waiting that could do useful work
+- problem example - acquiring a mutex in a loop
+    - in order to lock the mutex, another thread must transfer the data that makes up the mutex to its processor
+      and modify it
+    - when it's done, it modifies the mutex again to unlock it, and the mutex data has to be transferred to the
+      next thread to acquire the mutex
+    - transfer time is in addition to any time that the second thread has to wait for the first to release
+    - if the data and mutex really are accessed by more than one thread
+        - adding more cores and processors to the system makes it more likely that to get high contention and
+          one processor having to wait for another
+    - using multiple threads to process the same data more quickly, the threads are competing for the
+      data and thus competing for the same mutex
+- effects of contention with mutexes are usually different from the effects of contention with atomic operations
+    - use of a mutex naturally serializes threads at the operating system level rather than at the processor level
+    - operating system can schedule another thread to run while one thread is waiting for the mutex if there are enough
+      threads ready to run
+    - processor stall prevents any threads from running on that processor
+    - will still impact the performance of those threads that are competing for the mutex
+        - can only run one at a time
+    - rarely updated data structure can be protected with a single-writer, multiple-reader mutex
+- cache ping-pong effects can nullify the benefits of such a mutex if the workload is unfavorable
+    - all threads accessing the data (even reader threads) still have to modify the mutex itself
+    - contention on the mutex itself increases as the number of processors accessing the data goes up
+        - cache line holding the mutex must be transferred between cores
+        - potentially increases the time taken to acquire and release locks to undesirable levels
+- techniques to handle
+    - spread out the mutex across multiple cache lines
+    - must implement mutex otherwise subject to whatever the system provides
+- avoid cache ping-pong by doing everything to reduce the potential for two threads competing for the same memory
+  location
+    - can still get cache ping-pong even if a particular memory location is only ever accessed by one thread
+    - due to an effect known as false sharing
+
+### 8.2.3 False sharing
+- caches deal in blocks of memory called cache lines rather than individual memory locations
+    - typically 32 or 64 bytes in size
+    - exact details depend on the architecture
+- small data items in adjacent memory locations will be in the same cache line
+    - better for performance of the application if a set of data accessed by a thread is in the same cache line
+    - can cause performance problems if the data items in a cache line are unrelated and need to be accessed by
+      different threads
+- array of int values and a set of threads that each access and modify their own entry in the array repeatedly
+    - many array entries will be in the same cache line
+    - cache hardware still ping-pongs even though each thread only accesses its own array entry
+    - ownership of the cache line needs to be transferred to the processor running that thread every time the thread
+      accessing entry 0 needs to update the value
+    - then transferred to the cache for the processor running the thread for entry 1 when that thread needs to update
+      its data item
+    - none of the data is shared even though the cache line is
+    - false sharing
+- structure the data so that data items to be accessed by the same thread are close together in memory
+    - more likely to be in the same cache line
+    - data accessed by separate threads are far apart in memory and thus more likely to be in separate
+      cache lines
+
+### 8.2.4 How close is your data?
+- false sharing is caused by having data accessed by one thread too close to data accessed by another
+- data proximity
+    - another pitfall associated with data layout directly impacts the performance of a single thread
+    - likely data accessed by a single thread lies in separate cache lines if the data is spread out in memory
+    - data accessed by a single thread is more likely to lie on the same cache line if it is close together in memory
+    - if data is spread out, more cache lines must be loaded from memory onto the processor cache,
+    - can increase memory access latency and reduce performance compared to data that's located close together
+    - increased chance that a given cache line containing data for the current thread also contains data that's not
+      for the current thread if the data is spread out
+- important with single-threaded code but also impacts task switching
+    - each core runs multiple threads if there are more threads than cores in the system
+    - increases the pressure on the cache when attempting to avoid false sharing
+    - processor is more likely to have to reload the cache lines if each thread uses data spread across multiple cache
+      lines than if each thread's data is close together in the same cache line when switching threads
+    - OS might also choose to schedule a thread on one core for one time slice and then on another core for the next
+      time slice
+        - requires transferring the cache lines for that thread's data from the cache for the first core to the cache
+          for the second
+        - more time consuming for more cache lines that need transferring
+- OSes typically avoid this when they can but it does happen
+- task-switching problems are prevalent when lots of threads are ready to run as opposed to waiting i.e.
+  oversubscription
+
+### 8.2.5 Oversubscription and excessive task switching
+- typical to have more threads than processors in multithreaded systems
+    - unless running on massively parallel hardware
+- threads often spend time waiting for external I/O to complete or blocked on mutexes or waiting for
+  condition variables and so forth
+    - num threads vs processors is generally not a problem
+    - having extra threads enables the application to perform useful work rather than having processors sitting
+      idle while the threads wait
+    - not always good
+- will be more threads ready to run than there are available processors if there are too many additional threads
+    - operating system will have to start task switching quite heavily in order to ensure they all get a fair time slice
+    - can increase the overhead of the task switching as well as compound any cache problems resulting from lack of
+      proximity
+- oversubscription can arise
+    - when there is a task that repeatedly spawns new threads without limits
+    - where the natural number of threads when separating by task type is more than the number of processors and
+      the work is naturally CPU bound rather than I/O bound
+- spawning too many threads because of data division can limit the number of worker threads
+- not a lot that can be done if the oversubscription is due to the natural division of work
+- choosing the appropriate division may require more knowledge of the target platform
+    - only worth doing if performance is unacceptable and it can be demonstrated that changing the division of work
+      does improve performance
+- cost of cache ping-pong can vary quite considerably between two single-core processors and a single dual-core
+  processor
+
+## 8.3 Designing data structures for multithreaded performance
+- using techniques for dividing work between threads and knowledge of various factors that can affect the performance
+  of code
+    - layout of the data used by a single thread can have an impact
+- REMEMBER:
+    - contention
+    - false sharing
+    - data proximity
+- each can have a big impact on performance
+    - can often improve performance just by altering the data layout or changing which data elements are assigned to
+      which thread
+
+### 8.3.1 Dividing array elements for complex operations
+- for matrix multiplication need to pay careful attention to the data access patterns in order to get optimal
+  performance
+    - many ways work can be divided between threads
+- with more rows/columns than available processors
+    - could have each thread calculate the values for a number of columns in the result matrix
+    - could have each thread calculate the results for a number of rows
+    - could have each thread calculate the results for a rectangular subset of the matrix
+- better to access contiguous elements from an array rather random access
+    - reduces cache usage and the chance of false sharing
+- each thread needs to read every value from the first matrix and the values from the corresponding columns in the
+  second matrix when having each thread handle a set of columns
+    - only have to write the column values
+    - accessing N elements from the first row, N elements from the second, and so forth given that the matrices are
+      stored with rows
+      (where N is the number of columns being processed)
+    - should access adjacent columns since other threads will be accessing the other elements of each row
+        - N elements from each row are adjacent
+    - minimizes false sharing
+    - no false sharing if the space occupied by N elements is an exact number of cache lines
+        - threads will be working on separate cache lines
+    - each thread needs to read every value from the second matrix and the values from the corresponding rows of the
+      first matrix if it handles a set of rows
+        - only has to write the row values
+        - matrices are stored with the rows contiguous
+        - accessing all elements from N rows
+    - thread is the only thread writing to N rows when choosing adjacent rows
+        - has a contiguous block of memory that's not touched by any other thread
+        - probably an improvement over having each thread handle a set of columns
+        - only possibility of false sharing is for the last few elements of one block with the first few of the next
+    - time it!
+- third option
+    - divide into rectangular blocks
+- can be viewed as dividing into columns and then dividing into rows
+    - has the same false-sharing potential as division by columns
+- advantage to rectangular division from the read side
+    - don't need to read the entirety of either source matrix
+    - only need to read the values corresponding to the rows and columns of the target rectangle
+- important to profile various options on the target architecture
+- same principles apply to any situation when working with large blocks of data to divide between threads
+    - look at all the aspects of the data access patterns carefully
+    - identify potential causes of performance hits
+- may be similar circumstances in your problem domain where changing the division of work can improve performance
+  without requiring any change to the basic algorithm
+
+### 8.3.2 Data access patterns in other data structures
+- considerations when optimizing the data access patterns data structures
+    - try to adjust the data distribution between threads so that data that's close together is worked on by the
+      same thread
+    - try to minimize the data required by any given thread
+    - try to ensure that data accessed by separate threads is sufficiently far apart to avoid false sharing
+- not easy to apply to other data structures
+    - binary trees are inherently difficult to subdivide in any unit other than a subtree
+    - may not be useful, depending on how balanced the tree is
+    - nature of the trees means that the nodes are likely dynamically allocated and thus end up in different
+      places on the heap
+- having data end up in different places on the heap isn't a problem in itself
+    - means that the processor has to keep more things in cache
+    - can be beneficial if multiple threads need to traverse the tree
+        - all need to access the tree nodes
+    - processor only has to load the data from memory if it's actually needed if the tree nodes only contain pointers
+      to the real data held at the node
+    - can avoid the performance hit of false sharing between the node data itself and the data that provides the
+      tree structure if the data is being modified by the threads that need it
+- similar issue with data protected by a mutex
+    - simple class that contains a few data items and a mutex used to protect accesses from multiple threads
+    - ideal for a thread that acquires the mutex if the mutex and the data items are close together in memory
+        - data it needs may already be in the processor cache because it was just loaded in order to modify the mutex
+    - if other threads
+    - other threads will need access to that memory if they try to lock the mutex while it's held by the first thread
+- mutex locks are typically implemented as a read-modify-write atomic operation on a memory location within
+  the mutex to try to acquire the mutex
+    - followed by a call to the operating system kernel if the mutex is already locked
+    - read-modify-write operation may cause the data held in the cache by the thread that owns the mutex to be
+      invalidated
+    - thread isn't going to touch the mutex until it unlocks it so not a problem for mutex
+    - thread that owns the mutex can take a performance hit because another thread tried to lock the mutex if the mutex
+      shares a cache line with the data being used by the thread
+- to test for this kind of false sharing
+    - add large blocks of padding between the data elements that can be concurrently accessed by different threads
+    - know that false sharing was a problem if it improves performance
+        - leave the padding in or work to eliminate the false sharing in another way by rearranging the data accesses
+- more than just the data access patterns to consider when designing for concurrency
+
+## 8.4 Additional considerations when designing for concurrency
+- consider
+    - exception safety
+    - scalability
+- scalable if the performance (reduced speed of execution or increased throughput) increases as more processing
+  cores are added to the system
+    - ideal performance increase is linear
+- without exception safety
+    - can end up with broken invariants or race conditions
+    - application might terminate unexpectedly because an operation threw an exception
+
+### 8.4.1 Exception safety in parallel algorithms
+- essential aspect of good C++ code
+- parallel algorithms often require more care with regard to exceptions than normal sequential algorithms
+- sequential algorithm only has to worry about ensuring related state is cleaned up to avoid resource leaks and
+  broken invariants when an exception is thrown
+    - can allow the exception to propagate to the caller
+- when running operations on a separate thread in a parallel algorithm
+    - exception can't be allowed to propagate because it's on the wrong call stack
+    - application is terminated if a function spawned on a new thread exits with an exception
+- Listing 8.2 A naive parallel version of std::accumulate (from listing 2.8)
+- places where an exception can be thrown
+    - anywhere where function is called that can throw or you perform an operation on a user-defined type that may throw
+- no catch blocks
+    - exceptions will be left unhandled and cause the library to call std::terminate() and abort the application
+
+#### Adding exception safety
+- start by addressing exceptions thrown on new threads
+- trying to calculate a result to return while allowing for the possibility that the code might throw an exception
+    - this is what the combination of std::packaged_task and std::future is designed for
+- rearrange code to use std::packaged_task
+- Listing 8.3 A parallel version of std::accumulate using std::packaged_task
+- exceptions thrown in the worker threads are rethrown in the main thread
+    - if more than one of the worker threads throws an exception, only one will be propagated
+    - can use something like std::nested_exception to capture all the exceptions and throw that instead if it really
+      matters
+- remaining problem
+    - leaking threads if an exception is thrown between when first thread is spawned and when they are all joined
+    - simplest solution is just to catch any exceptions, join with the threads that are still joinable(), and
+      rethrow the exception
+- works but results in ugly try-catch blocks and duplicate code
+- see code for RAII-style resource clean-up in destructor similar to thread_guard extended for the whole vector of
+  threads
+- Listing 8.4 An exception-safe parallel version of std::accumulate
+
+#### Exception safety with std::async()
+- with std::async() library takes care of managing the threads
+    - any threads spawned are completed when the future is ready
+- NOTE: for exception safety, destructor will wait for the thread to complete when destroying the future without
+  waiting for it
+    - avoids the problem of leaked threads that are still executing and holding references to the data
+- Listing 8.5 An exception-safe parallel version of std::accumulate using std::async
+- uses recursive division of the data rather than pre-calculating the division of the data into chunks
+    - simpler
+    - exception safe
+- captured by the future if the asynchronous call throws
+    - call to get() will rethrow the exception
+
+### 8.4.2 Scalability and Amdahl's law
+- scalability
+    - ensure that application can take advantage of additional processors in the system it's running on
+- single-threaded application -> unscalable
+- other extreme -> something like the SETI@Home3 project
+- number of threads that are performing useful work will vary as the program runs for any given multithreaded program
+- application may initially have only one thread which will then have the task of spawning all the others
+- threads often spend time waiting for each other or waiting for I/O operations to complete
+- have a processor sitting idle that could be doing useful work every time one thread has to wait for something
+  unless there's another thread ready to take its place on the processor
+- divide the program into "serial" sections where only one thread is doing any useful work and "parallel" sections
+  where all the available processors are doing useful work
+- "parallel" sections will theoretically be able to complete more quickly when application is on a system with more
+  processors
+- Amdahl's law
+- tasks are rarely infinitely divisible in the way that would be required for the equation to hold
+- rare for everything to be CPU bound in the way that's assumed
+    - threads may wait for many things while executing
+- worth looking at the overall design of the application to maximize the potential for concurrency and ensure that
+  there's always useful work for the pro- cessors to be doing when using concurrency for performance
+    - reduce the size of the "serial" sections
+    - reduce the potential for threads to wait
+- alternatively provide more data for the system to process
+    - keep the parallel sections working
+    - reduces the serial fraction
+- scalability is about reducing the time it takes to perform an action or increasing the amount of data that can be
+  processed in a given time as more processors are added
+    - sometimes equivalent
+
+### 8.4.3 Hiding latency with multiple threads
+- threads frequently block while waiting for
+    - I/O
+    - to acquire a mutex
+    - waiting for another thread to complete some operation
+    - sleep for a period of time
+- having blocked threads means wasting CPU time
+- can make use of that spare CPU time by running one or more additional threads
+- work stealing, context management within application, etc.
+- at some point system will slow down again as it spends more and more time task switching
+- important to measure performance before and after any change in the number of threads
+    - optimal number of threads will be highly dependent on the nature of the work being done and the percentage of
+      time the thread spends waiting
+- might be possible to use up this spare CPU time without running additional threads
+- might make sense to use asynchronous I/O if that's available if a thread is blocked because it's waiting for an I/O
+  operation to complete
+    - thread can perform other useful work while the I/O is performed in the background
+- rather than blocking when a thread is waiting for another thread to perform an operation waiting thread might be
+  able to perform that operation itself
+- waiting thread might perform the task in entirety itself or another task that's incomplete if a thread is waiting
+  for a task to be completed and that task hasn't yet been started by any thread
+- sometimes pays to add threads to ensure that external events are handled in a timely manner rather than adding
+  threads to ensure that all available processors are being used,
+
+### 8.4.4 Improving responsiveness with concurrency
+- systems and GUIs often process events in an event loop
+- structure is generally the same even when details of APIs vary
+    - wait for an event
+    - processing event
+    - wait for the next event
+- can make long-running tasks hard to write in a single-threaded application
+- get_event()/process() code must be called with reasonable frequency to ensure that use input is handled in a
+  responsive way
+  - task must periodically suspend itself and return control to the event loop
+  - get_event()/process() code must be called from within the code at convenient points
+  - each option complicates the implementation of the task
+- can put the lengthy task on a whole new thread and leave a dedicated GUI thread to process the events
+    - separation of concerns
+- threads can then communicate through simple mechanisms rather than having to somehow mix the event-handling
+  code in with the task code
+- Listing 8.6 Separating GUI thread from task thread
+- responsiveness is key to the user experience when using an application
+- dedicated event-handling thread allows the GUI to handle GUI-specific messages without interrupting the execution of
+  the time-consuming processing
+    - still passes on the relevant messages where they do affect the long-running task
+- most considerations will become second nature over time when working with multithreaded code
+
+## 8.5 Designing concurrent code in practice
+- extent to which each of the issues described previously will need to be considered will depend on the task
+- implementations demonstrate particular techniques
+    - not state-of-the-art implementations
+    - more advanced implementations that make better use of the available hardware concurrency
+      may be found in the academic literature on parallel algorithms or in specialist multithreading libraries such
+      as Intel's Threading Building Blocks
+
+### 8.5.1 A parallel implementation of std::for_each
+- Listing 8.7 A parallel version of std::for_each template<typename Iterator,typename Func>
+- Listing 8.8 A parallel version of std::for_each using std::async
+
+### 8.5.2 A parallel implementation of std::find
+- Listing 8.9 An implementation of a parallel find algorithm
+- Listing 8.10 An implementation of a parallel find algorithm using std::async
+
+### 8.5.3 A parallel implementation of std::partial_sum
+- Listing 8.11 Calculating partial sums in parallel by dividing the problem
+
+#### Implementing the incremental pairwise algorithm for partial sums
+- (SIMD) instructions allow processors to execute additions in lockstep
+    - it is rare to be able to limit execution to architectures where this is definitely available
+- must design code for the general case
+    - explicitly synchronize the threads at each step
+- barrier
+    - synchronization mechanism that causes threads to wait until the required number of threads has reached the barrier
+    - once all the threads have reached the barrier, they're all unblocked and may proceed
+- none in C++11 Thread Library
+- Listing 8.12 A simple barrier class
+- Listing 8.13 A parallel implementation of partial_sum by pairwise updates
+
+## 8.6 Summary
+- various techniques for dividing work between threads
+    - dividing the data beforehand
+    - using a number of threads to form a pipeline
+- issues surrounding the performance of multithreaded code from a low-level perspective
+    - false sharing
+    - data contention
+    - how the patterns of data access can affect the performance of code
+- additional considerations in the design of concurrent code
+    - exception safety and scalability
+- parallel algorithm implementations
+- idea of a thread pool
+    - preconfigured group of threads that run tasks assigned to the pool
+    - a lot of thought goes into the design of a good thread pool
+
+
+# Ch. 9 - Advanced thread management
+- thread pools
+- handling dependencies between pool tasks
+- work stealing for pool threads
+- interrupting threads
+- previously explicitly managing threads by creating std::thread objects for every thread
+    - have to manage the lifetime of the thread objects
+    - determine the number of threads appropriate to the problem and to the current hardware
+    - etc.
+- ideal ->
+    - divide the code into the smallest pieces that can be executed concurrently
+    - pass to the compiler and library
+    - parallelize this for optimal performance
+- might use several threads to solve a problem
+    - require that they finish early if some condition is met
+    - threads need to be
+        - sent a stop request so that they can give up on the task they were given
+        - clean up
+        - finish ASAP
+- mechanisms for managing threads and tasks
+    - automatic management of the number of threads and the division of tasks between them
+
+## 9.1 Thread pools
+- impractical to have a separate thread for every task that can potentially be done in parallel with other tasks
+  on most systems
+    - want to take advantage of the available concurrency where possible
+- thread pool allows this
+    - tasks that can be executed concurrently are submitted to the pool
+    - puts them on a queue of pending work
+    - each task is taken from the queue by one of the worker threads
+        - executes the task before looping back to take another from the queue
+- several key design issues when building a thread pool
+    - number of threads to use
+    - most efficient way to allocate tasks to threads
+    - possibility of waiting for a task to complete
+
+### 9.1.1 The simplest possible thread pool
+- fixed number of worker threads
+    - typically the same number as the value returned by std::thread::hardware_concurrency()
+    - process work when there is work to do
+- call a function to put work on the queue of pending work
+- each worker thread
+    - takes work off the queue
+    - runs the specified task
+    - goes back to the queue for more work
+- simplest case -> no way to wait for the task to complete
+    - programmer has to manage the synchronization
+- Listing 9.1 Simple thread pool
+- vector of worker threads
+    - thread-safe queue to manage the queue of work
+    - users can't wait for the tasks
+    - can't return any values
+    - use std::function<void()> to encapsulate tasks
+    - submit() function then wraps whatever function or callable object is supplied inside a std::function<void()>
+      and pushes it on the queue 1@
+    - threads are started in the constructor
+        - std::thread::hardware_concurrency() to tell how many concurrent threads the hardware can support
+        - create that many threads running your worker_thread() member function
+    - starting a thread can fail by throwing an exception
+        - need to ensure that any threads you've already started are stopped and cleaned up
+        - achieved with a try-catch block that sets the done flag when an exception is thrown
+        - instance of the join_threads class (ch. 8) to join all the threads
+    - works with the destructor
+        - just set the done flag join_threads instance will ensure that all the threads have completed
+          before the pool is destroyed
+    - order of declaration of the members is important
+        - done flag and the worker_queue must be declared before the threads vector
+        - threads vector must be declared before the joiner
+        - ensures that the members are destroyed in the right order;
+            - can't destroy the queue safely until all the threads have stopped
+    - worker_thread function is simple
+        - sits in a loop waiting until the done flag is set e
+        - pulls tasks off the queue and executes them
+    - calls std::this_thread::yield() if there are no tasks on the queue and give another thread a chance to put
+      some work on the queue before it tries to take some off again the next time around
+- simple thread pool will suffice for many purposes such
+    - if the tasks are entirely independent and don't return any values or perform any blocking operations
+- many circumstances where such a simple thread pool may not adequately address needs
+- others where it can cause problems such as deadlock
+- may be better served using std::async in the simple cases
+
+### 9.1.2 Waiting for tasks submitted to a thread pool
+- master thread always waited for the newly spawned threads to finish in the examples in chapter 8 that
+  explicitly spawned threads
+    - done after dividing the work between threads
+    - ensures that the overall task was complete before returning to the caller
+- need to wait for the tasks submitted to the thread pool to complete with thread pools
+    - similar to the way that the std::async-based waited for the futures
+- have to do this manually using condition variables and futures with the simple thread pool
+    - adds complexity
+- better to wait for the tasks directly by moving that complexity into the thread pool itself
+- can wait for the tasks directly
+    - have the submit() function return a task handle of some description
+    - can then use to wait for the task to complete
+- task handle wraps the use of condition variables or futures
+    - simplifies code
+- special case
+    - main thread needs a result computed by the task
+    - e.g. parallel_accumulate()
+- can combine the waiting with the result transfer through the use of futures
+- can't use std::function<> since std::packaged_task<> instances are not copyable, just movable
+    - requires that the stored function objects are copy-constructible
+    - must use a custom function wrapper that can handle move-only types
+    - simple type-erasure class with a function call operator
+    - only need to handle functions that take no parameters and return void
+- Listing 9.2 A thread pool with waitable tasks
+- modified submit() function returns a std::future<>
+    - holds the return value of the task
+    - allows caller to wait for the task to complete
+    - requires definite return type for the supplied function
+        - std::result_of<FunctionType()>::type is the type of the result of invoking an instance of type FunctionType
+          with no arguments
+        - use the same std::result_of<> expression for the result_type typedef inside the function
+        - wrap the function f in a std::packaged_task<result_type()>
+    - can get future from the std::packaged_task<> before pushing the task onto the queue and returning the future
+    - NOTE: have to use std::move() when pushing the task onto the queue
+        - std::packaged_task<> isn't copyable
+        - queue stores function_wrapper objects rather than std::function<void()> objects to handle this
+    - pool allows waiting for tasks and return of results
+- Listing 9.3 parallel_accumulate using a thread pool with waitable tasks
+- working with number of blocks to use rather than the number of threads
+- need to divide the work into the smallest blocks worth working with concurrently to make the most use of the
+  scalability of the thread pool
+    - each thread will process many blocks when there are only a few threads in the pool
+    - number of blocks processed in parallel will also grow as the number of threads grows with the hardware
+    - NOTE: be careful when choosing the smallest blocks
+        - inherent overhead to submitting a task to a thread pool, having the worker thread run it, and passing
+          the return value through a std::future<>
+        - for small tasks it's not worth overhead
+    - code may run more slowly with a thread pool than with one thread if the task size is too small
+    - don't have to worry about packaging the tasks, obtaining the futures, or storing the std::thread objects to join
+      with the threads later if the block size is well chosen
+    - just call submit() with the task
+    - thread pool handles exception safety
+        - any exception thrown by the task gets propagated through the future returned from submit()
+        - thread pool destructor abandons any not-yet-completed tasks and waits for the pool threads to finish if the
+          function exits with an exception
+- works well for simple cases when the tasks are independent
+- not good for situations where the tasks depend on other tasks also submitted to the thread pool
+
+### 9.1.3 Tasks that wait for other tasks
+- std::async for quicksort works well because each task is either running on its own thread or will be invoked
+  when required
+- alternative structure (ch 8) that used a fixed number of threads related to the available hardware concurrency
+    - used a stack of pending chunks that needed sorting
+    - each thread added a new chunk to the stack for one of the sets of data and then sorted the other one directly
+      as each thread partitioned the data it was sorting
+    - could end up in a situation where all of the threads were waiting for chunks to be sorted and no threads were
+      actually doing any sorting
+    - addressed by having the threads pull chunks off the stack and sort them while the particular chunk they were
+      waiting for was unsorted
+- same problem if substituting a simple thread pool for std::async
+    - limited number of threads
+    - might end up all waiting for tasks that haven't been scheduled because there are no free threads
+- need to use a solution similar to the one used in ch 8
+    - process outstanding chunks while waiting for current chunk to complete
+    - don't have access to the task list if using the thread pool to manage the list of tasks and their association
+      with threads
+    - need to modify the thread pool to do this automatically
+- simplest way to do this is to add a new function on the thread pool to run a task from the queue and manage
+  the loop manually
+- advanced thread pool implementations might add logic into the wait function or additional wait functions
+  to handle this case
+    - possibly prioritize the task being waited for
+- Listing 9.4 An implementation of run_pending_task()
+- Listing 9.5 A thread pool–based implementation of Quicksort
+- simpler than the corresponding version from listing 8.1 because all the thread-management logic has been moved
+  to the thread pool
+- addressed the crucial deadlock-causing problem with tasks that wait for other tasks
+    - still not ideal
+- every call to submit() and every call to run_pending_task() accesses the same queue
+
+### 9.1.4 Avoiding contention on the work queue
+- every time a thread calls submit() on a particular instance of the thread pool, it has to push a new item
+  onto the single shared work queue
+    - worker threads are continually popping items off the queue in order to run the tasks
+    - increasing contention on the queue
+- cache ping-pong can be a substantial time sink even if when using a lock-free queue
+- one way to avoid cache ping-pong is to use a separate work queue per thread
+    - each thread then posts new items to its own queue and takes work from the global work queue only if there's
+      no work on its own individual queue
+- Listing 9.6 A thread pool with thread-local work queues
+- std::unique_ptr<> to hold the thread-local work queue to keep non-pool threads from having one
+    - initialized in the worker_thread() function before the processing loop
+- submit() checks to see if the current thread has a work queue
+    - if it does, it's a pool thread
+        - can put the task on the local queue
+    - otherwise need to put the task on the pool queue as before
+- similar check in run_pending_task()
+    - also need to check to see if there are any items on the local queue
+    - can take the front one and process it
+    - local queue can be a plain std::queue<> only ever accessed by the one thread
+    - try the pool queue as before if there are no tasks on the local queue
+- works fine for reducing contention
+- can result in one thread having a lot of work on its queue while the others have no work do to when the distribution
+  of work is uneven
+    - defeats the purpose of using a thread pool
+- solution -> allow the threads to steal work from each other's queues if there's no work in their queue and no work
+  in the global queue
+
+### 9.1.5 Work stealing
+- queue must be accessible to the thread doing the stealing to allow a thread with no work to do to take work from
+  another thread with a full queue
+    - requires that each thread register its queue with the thread pool or be given one by the thread pool
+    - must ensure that the data in the work queue is suitably synchronized and protected
+        - invariants must be protected
+- possible to write a lock-free queue that allows the owner thread to push and pop at one end while other
+  threads can steal entries from the other
+    - beyond scope of the book
+- stick to using a mutex to protect the queue's data
+    - little contention on the mutex if work stealing is a rare event
+- Listing 9.7 Lock-based queue for work stealing
+- simple wrapper around a std::deque<function_wrapper> that protects all accesses with a mutex lock
+- each call to do_sort() pushes one item on the stack and then waits for it
+    - ensure that the chunk needed for the current call to complete is processed before the chunks needed for the
+      other branches by processing the most recent item first
+    - reduces the number of active tasks and the total stack usage
+    - try_steal() takes items from the opposite end of the queue to try_pop() in order to minimize contention
+    - can use the techniques (ch 6 and 7) to enable concurrent calls to try_pop() and try_steal()
+- Listing 9.8 A thread pool that uses work stealing
+- demonstrates work integration of thread pool and work queue that permits stealing
+- working thread pool that's good for many potential uses
+    - still many ways to improve
+- one aspect that hasn't been explored is the idea of dynamically resizing the thread pool to ensure that there's
+  optimal CPU usage even when threads are blocked waiting for something such as I/O or a mutex lock
+
+## 9.2 Interrupting threads
+- often desirable to signal to a long-running thread that it's time to stop
+    - worker thread for a thread pool and the pool is now being destroyed
+    - work being done by the thread has been explicitly canceled by the user
+- need to signal from one thread that another should stop before it reaches the natural end of its processing
+    - need to do this in a way that allows that thread to terminate nicely rather than abruptly stopping
+- C++11 Standard doesn't provide such a mechanism
+
+### 9.2.1 Launching and interrupting another thread
+- same interface as for std::thread with an additional interrupt() function
+    - use std::thread to manage the thread itself internally
+    - use some custom data structure to handle the interruption
+    - need an interruption point for the thread
+    - needs to be a simple function that can be called without any parameters (so no additional data is passed down)
+        - interruption_point()
+    - interruption-specific data structure needs to be accessible through a thread_local variable
+        - set when the thread is started
+        - when a thread calls interruption_point() it checks the data structure for the currently executing thread
+- thread_local flag is the primary reason a plain std::thread can't be used to manage the thread
+    - needs to be allocated in a way that the interruptible_thread instance and the thread can access it
+    - can do this by wrapping the supplied function before you pass it to std::thread to actually launch the thread
+      in the constructor
+- Listing 9.9 Basic implementation of interruptible_thread
+- supplied function is wrapped in a lambda function that holds a copy of the function and a reference to the local
+  promise
+    - sets the value of the promise to the address of the this_thread_interrupt_flag (declared thread_local)
+      for the new thread before invoking the copy of the supplied function
+    - calling thread then waits for the future associated with the promise to become ready and stores the result
+      in the flag member variable
+    - NOTE:
+        - lambda is running on the new thread
+        - has a dangling reference to the local variable
+        - OK because the interruptible_thread constructor waits until the promise is no longer referenced by the new
+          thread before returning
+    - NOTE: implementation doesn't take account of handling joining with the thread, or detaching it
+    - ensure that the flag variable is cleared when the thread exits, or is detached, to avoid a dangling
+      pointer
+- interrupt() function
+    - have a valid pointer to an interrupt flag
+    - have a thread to interrupt
+    - can just set the flag
+    - up to the interrupted thread to handle the interruption
+
+### 9.2.2 Detecting that a thread has been interrupted
+- setting the interruption flag doesn't do any good if the thread doesn't actually check whether it's being interrupted
+- can do this with an interruption_point() function
+    - call it at a point where it's safe to be interrupted
+    - throw a thread_interrupted exception if the flag is set
+    - can use such a function by calling it at convenient points within your code
+- works but not ideal
+    - best places for interrupting a thread are where it's blocked waiting for something
+    - means the thread isn't running in order to call interruption_point()
+- need a means for waiting for something in an interruptible fashion
+
+### 9.2.3 Interrupting a condition variable wait
+- can detect interruptions at carefully chosen places in your code with explicit calls to interruption_point()
+- doesn't help do a blocking wait
+    - e.g. waiting for a condition variable to be notified
+- need a new function that can be overloaded for the various reasons to wait
+    - interruptible_wait()
+    - need to work out how to interrupt the waiting
+- to be able to interrupt a wait on a condition variable
+    - notify the condition variable once the interrupt flag has been set
+    - put an interruption point immediately after the wait
+    - have to notify all threads waiting on the condition variable in order to ensure that the thread of interest wakes
+      up for this to work
+- waiters have to handle spurious wake-ups
+    - other threads would handle this the same as a spurious wake-up
+        - wouldn't be able to tell the difference
+- interrupt_flag structure needs to be able to store a pointer to a condition variable so that it can be notified in
+  a call to set()
+- Listing 9.10 A broken version of interruptible_wait for std::condition_variable
+- assumes functions for setting and clearing an association of a condition variable with an interrupt flag
+- checks for interruption
+- associates the condition variable with the interrupt_flag for the current thread
+- waits on the condition variable
+- clears the association with the condition variable
+- checks for interruption again
+- interrupting thread will broadcast the condition variable and wake current thread from the wait if the thread is
+  interrupted during the wait on the condition variable
+    - can check for interruption
+- code is broken
+    - std::condition_ variable::wait() can throw an exception
+        - might exit the function without removing the association of the interrupt flag
+        - easily fixed with a structure that removes the association in its destructor
+    - there's a race condition
+        - if the thread is interrupted after the initial call to interruption_point(), but before the call to wait(),
+           then it doesn't matter whether the condition variable has been associated with the interrupt flag
+        - the thread isn't waiting and so can't be woken by a notify on the condition variable
+        - need to ensure that the thread can't be notified between the last check for interruption and the call
+          to wait()
+- only one way of doing that without delving into the internals of std::condition_variable
+    - use mutex held by lk to protect it too
+    - requires passing it in on the call to set_condition_variable()
+    - creates problems
+        - passing a reference to a mutex with unknown lifetime to another thread (the thread doing the interrupting)
+          for that thread to lock (in the call to interrupt())
+        - don't know whether that thread has locked the mutex already when it makes the call
+    - has the potential for deadlock and the potential to access a mutex after it has already been destroyed
+- too restrictive to not be able to reliably interrupt a condition variable wait
+- can put a timeout on the wait
+    - use wait_for() rather than wait() with a small timeout value (such as 1 ms)
+    - puts an upper limit on how long the thread will have to wait before it sees the interruption (subject
+      to the tick granularity of the clock)
+    - waiting thread will see rather more "spurious" wakes resulting from the timeout
+- Listing 9.11 Using a timeout in interruptible_wait for std::condition_variable
+- 1 ms timeout can be completely hidden inside the predicate loop if the predicate being waited for is available
+    - results in the predicate being checked more often than it might otherwise be
+        - easily used in place of a plain call to wait()
+- handles std::condition_variable waits
+- need to handle std::condition_variable_any waits
+
+### 9.2.4 Interrupting a wait on std::condition_variable_any
+- std::condition_variable_any differs from std::condition_variable in that it works with any lock type rather
+  than just std::unique_lock<std::mutex>
+    - makes interrupting easier
+- can build custom lock type that locks/unlocks both the internal set_clear_mutex in the interrupt_flag and the lock
+  supplied to the wait call
+- Listing 9.12 interruptible_wait for std::condition_variable_any
+- custom lock type acquires the lock on the internal set_clear_mutex when it's con- structed
+    - sets the thread_cond_any pointer to refer to the std::condition_variable_any passed in to the constructor
+    - Lockable reference is stored for later
+        - must already be locked
+- can check for an interruption without worrying about races
+    - interrupt flag was set before the lock was acquired on set_clear_mutex if it is set at this point
+    - unlock the Lockable object and the internal set_clear_mutex when the condition variable calls your unlock()
+      function inside wait()
+        - allows threads that are trying to interrupt current thread to acquire the lock on set_clear_mutex and check
+          the thread_cond_any pointer once inside the wait() call but not before
+- once wait() has finished waiting (either because it was notified or because of a spurious wake), it will call
+  the lock() function
+    - acquires the lock on the internal set_clear_mutex and the lock on the Lockable object
+    - can check again for interruptions that happened during the wait() call before clearing the thread_cond_any
+      pointer in your custom_lock destructor
+    - also unlock the set_clear_mutex
+
+### 9.2.5 Interrupting other blocking calls
+- other blocking waits
+    - mutex locks
+    - waiting for futures
+    - etc
+- in general go for the timeout option used for std::condition_variable
+    - no way to interrupt the wait short of aside from fulfilling the condition being waited for
+        - (without access to the internals of the mutex or future)
+- can loop within the interruptible_wait() function because what is being waited on is known
+- code example
+
+### 9.2.6 Handling interruptions
+- interruption is just a thread_interrupted exception from the point of view of the thread being interrupted
+    - can be handled just like any other exception
+- can catch the interruption, handle it in some way, and then carry on regardless
+    - if another thread calls interrupt() again, current thread will be interrupted again the next time it calls an
+      interruption point
+- may do this if thread is performing a series of independent tasks
+    - interrupting one taskwill cause that task to be abandoned
+    - thread can then move on to performing the next task in the list
+- all usual exception-safety precautions must also be taken because thread_interrupted is an exception
+- to ensure that resources aren't leaked and data structures are left in a coherent state when calling code that can
+  be interrupted often
+    - let the interruption terminate the thread
+    - let the exception propagate up
+- letting exceptions propagate out of the thread function passed to the std::thread constructor causes std::terminate()
+  to be called
+    - whole program will be terminated
+- put catch block inside the wrapper used for initializing the interrupt_flag to avoid having to remember to put a
+  catch (thread_interrupted) handler in every function you pass to interruptible_thread
+    - makes it safe to allow the interruption exception to propagate unhandled
+        - will then terminate just that individual thread
+
+### 9.2.7 Interrupting background tasks on application exit
+- main thread/background thread needs to run for the entire lifetime of an application (e.g. GUI example)
+    - be started as part of the application initialization and left to run until the application is shut down
+    - typically only when the machine itself is being shut down
+        - application needs to run the whole time in order to maintain an up-to-date index
+- need to close down the background threads in an orderly manner when the application is being shut down
+    - can do this by interrupting them
+- Listing 9.13 Monitoring the filesystem in the background
+- background threads are launched at startup
+    - main thread then proceeds with handling the GUI
+    - background threads are interrupted when the user has requested that the application exit
+    - main thread waits for each background thread to complete before exiting
+    - background threads sit in a loop
+        - check for disk changes and update the index
+        - check for interruption by calling interruption_point()
+- interrupt all the threads before waiting for any rather than interrupting each and then waiting for it before
+  moving on to the next for concurrency
+    - threads will likely not finish immediately when they're interrupted
+        - have to proceed to the next interruption point and then run any destructor calls and exception-handling
+          code necessary before exiting
+    - cause the interrupting thread to wait by joining with each thread immediately
+        - still has useful work it could do
+    - interrupt the other threads only when there is no more work to do and then wait
+    - allows all the threads being interrupted to process their interruptions in parallel and potentially
+      allows them to finish sooner
+- interruption mechanism easily extended to add further interruptible calls or to disable interruptions across a
+  specific block of code
+
+## 9.3 Summary
+- "advanced" thread-management techniques
+    - thread pools
+    - interrupting threads
+- use of local work queues and work stealing to
+    - reduce the synchronization overhead
+    - potentially improve the throughput of the thread pool
+- running other tasks from the queue while waiting for a subtask to complete can eliminate the potential for deadlock
+- various ways of allowing one thread to interrupt the processing of another
+    - use of specific interruption points
+    - functions that perform what would otherwise be a blocking wait in a way that can be interrupted
+
+
+# Ch. 10 - Testing and debugging multithreaded applications
+- concurrency-related bugs
+- locating bugs through testing and code review
+- designing multithreaded tests
+- testing the performance of multithreaded code
+- testing and debugging concurrent code is hard
+
+## 10.1 Types of concurrency-related bugs
+- any sort of bug in concurrent code
+- concurrency-related bugs typically fall into two primary categories
+    - unwanted blocking
+    - race conditions
+
+### Unwanted blocking
+- thread is blocked when it's unable to proceed because it's waiting for something
+- why is this blocking unwanted?
+    - because some other thread is also waiting for the blocked thread to perform some action, and so that thread
+      in turn is blocked
+- several variations
+    - deadlock
+        - one thread is waiting for another, which is in turn waiting for the first
+        - if your threads deadlock, the tasks they're supposed to be doing won't get done
+    - livelock
+        - similar to deadlock in that one thread is waiting for another, which is in turn waiting for the first
+        - key difference here is that the wait is not a blocking wait but an active checking loop, such as a spin lock
+        - in serious cases, the symptoms are the same as deadlock except that the CPU usage is high because
+          threads are still running but blocking each other
+        - in not-so-serious cases, the livelock will eventually resolve because of the random scheduling, but there
+          will be a long delay in the task that got livelocked, with a high CPU usage during that delay
+    - blocking on I/O or other external input
+        - If your thread is blocked waiting for exter- nal input,
+        - thread can't proceed if it is blocked waiting for external input,even if the waited-for input is never
+          going to come
+        - undesirable to block on external input from a thread that also performs tasks that other threads
+          may be waiting for
+
+### Race conditions
+- most common cause of problems in multithreaded code
+    - many deadlocks and livelocks only manifest because of a race condition
+- not all race conditions are problematic
+    - a race condition occurs anytime the behavior depends on the relative scheduling of operations in separate threads
+- often cause the following types of problems
+    - data races
+        - the specific type of race condition that results in undefined behavior because of unsynchronized
+          concurrent access to a shared memory location
+        - usually occur through incorrect usage of atomic operations to synchronize threads or through access to
+          shared data without locking the appropriate mutex.
+    - broken invariants
+        - e.g.
+            - dangling pointers (because another thread deleted the data being accessed)
+            - random memory corruption (due to a thread reading inconsistent values resulting from partial updates)
+            - double-free (such as when two threads pop the same value from a queue, and so both delete some associated
+              data)
+        - the invariants being broken can be temporal- as well as value-based
+            - if operations on separate threads are required to execute in a particular order,
+               incorrect synchronization can lead to a race condition in which the required order is sometimes violated
+    - lifetime issues
+        - separate category from broken invariants
+        - thread outlives the data that it accesses, so it is accessing data that has been deleted or otherwise
+          destroyed, and potentially the storage is even reused for another object
+        - typically get lifetime issues where a thread references local variables that go out of scope before the
+          thread function has completed, but they aren't limited to that scenario
+        - potential for data to be destroyed before the thread has finished whenever the lifetime of the thread and the
+          data it operates on aren't tied together in some way
+    - need to ensure that the call to join() can't be skipped if an exception is thrown when manually calling join()
+      in order to wait for the thread to complete
+- problematic race conditions that are the serious issues to beware of
+    - application appears to hang and become completely unresponsive or takes too long to complete a task with deadlock
+      and  livelock
+        - can often attach a debugger to the running process to identify which threads are involved in the deadlock
+          or livelock and which synchronization objects they're fighting over
+    - visible symptoms of the problem can manifest anywhere with data races, broken invariants, and lifetime
+        - code may overwrite memory used by another part of the system that isn't touched until much later
+        - fault will manifest in code completely unrelated to the location of the buggy code
+            - possibly much later in the execution of the program
+- difficutly of shared memory systems
+    - any thread can overwrite the data being used by any other thread in the application
+
+## 10.2 Techniques for locating concurrency-related bugs
+- for finding bugs the most obvious and straightforward thing to do is look at the code
+    - difficult to do in a thorough way
+    - easy for programmer to read what they intended to write rather than what's actually there
+- tempting to just give it a quickly read code when doing a code review
+    - really need to go through the code thoroughly
+        - think about the concurrency issues
+
+### 10.2.1 Reviewing code to locate potential bugs
+- review code throughly and get someone else to review it
+- requires time
+- most concurrency bugs require more than a quick glance
+- take a break and come back to code
+- try to explain how it works in detail
+- write detailed notes
+- ask questions about the code and explain the answers
+
+#### Questions to think about when reviewing multithreaded code
+- which data needs to be protected from concurrent access?
+- how do you ensure that the data is protected?
+- where in the code could other threads be at this time?
+- which mutexes does this thread hold?
+- which mutexes might other threads hold?
+- are there any ordering requirements between the operations done in this thread and those done in another?
+- how are those requirements enforced?
+- is the data loaded by this thread still valid?
+- could it have been modified by other threads?
+- if you assume that another thread could be modifying the data, what would that mean and how could you ensure that
+  this never happens?
+- think about the relationships between the threads
+- assume the existence of a bug related to a particular line of code
+    - track down the cause
+- consider every corner case and possible ordering
+- public data and data for which other code can readily obtain a pointer or reference has to be heavily scrutinized
+- must assume that other threads may have modified the shared data any time a mutex is released and then reacquired
+- may unintentionally be done if the mutex locks aren't immediately visible (e.g. because they're internal to an object)
+
+### 10.2.2 Locating concurrency-related bugs by testing
+- testing multithreaded code is harder
+    - precise scheduling of the threads is indeterminate and may vary from run to run
+- correctly runs with the same input data may fail at other times if there's a race condition lurking in the code
+- pays to design tests carefully
+- each test should run the smallest amount of code that could potentially demonstrate a problem
+    - isolate the code that's faulty if the test fails
+- can help to think about how code should be tested when designing it
+- worth eliminating the concurrency from the test in order to verify that the problem is concurrency-related
+- particularly important when trying to track down a bug that occurs "in the wild" as opposed to being
+  detected in test harnesses
+- can eliminate concurrency as a cause if it is possible to reduce the application to a single thread
+- if the problem goes away on a single-core system (even with multiple threads running) but is present on multicore
+  systems or multiprocessor systems
+    - definitely have a race condition and possibly a synchronization or memory-ordering issue
+- structure of the test is important
+- test environment is important
+- think through all possible scenarios, e.g. number of threads calling various methods in various timing configurations
+- consider additional factors about the test environment
+    - what is meant by "multiple threads" in each case
+    - whether there are enough processing cores in the system for each thread to run on its own core
+    - which processor architectures the tests should be run on
+    - how to ensure suitable scheduling for the "while" parts of the tests
+- think about additional factors specific to the particular situation
+
+### 10.2.3 Designing for testability
+- in general, code is easier to test if the following factors apply:
+    - the responsibilities of each function and class are clear
+    - functions are short and to the point
+    - tests can take complete control of the environment surrounding the code being tested
+    - the code that performs the particular operation being tested is close together rather than spread throughout
+      the system
+- even more important to pay attention to the testability of multithreaded code
+- one of the best ways to design concurrent code for testing is to eliminate the concurrency
+- those parts of the application that operate on data that's being accessed by only that one thread can
+  be tested using the normal single-threaded techniques
+- dividing code into multiple blocks of read shared data/transform data/update shared data allows for
+  testing the transform data portions using all the usual single-threaded techniques
+    - hard problem of testing a multithreaded transformation will be reduced to testing the reading and updating of the
+      shared data
+- library calls can use internal variables to store state
+    - becomes shared if multiple threads use the same set of library calls
+    - not immediately apparent that the code accesses shared data
+
+### 10.2.4 Multithreaded testing techniques
+
+#### Brute-force testing
+- stress the code to see if it breaks
+    - run the code many times, possibly with many threads running at once
+    - more times the code is run the more likely hidden bugs are to appear
+- combine fine-grained tests with tests that have a larger scope (end-to-end or integration)
+- brute-force testing might lead to false confidence
+- worst example is where problematic circumstances can't occur on the test system because of the configuration of
+  the particular system
+    - classic example here is testing a multithreaded application on a single-processor system
+- different processor architectures provide different synchronization and ordering facilities
+    - atomic load operations are always the same, whether tagged memory_order_relaxed or memory_order_seq_cst
+      on x86 and x86-64 architectures
+    - relaxed memory ordering may work on systems with an x86 architecture
+    - would fail on a system with a finer-grained set of memory-ordering instructions such as SPARC
+- use careful thought for test design
+    - choice of unit for the code being tested
+    - design of the test harness
+    - choice of testing environment
+- ensure that as many of the code paths as possible are tested and as many of the possible thread
+  interactions as feasible
+- need to know which options are covered and which are left untested
+
+#### Combination simulation testing
+- run code with a special piece of software that simulates the real runtime environment of the code
+    - similar to software that allows running multiple virtual machines on a single physical computer
+        - characteristics of the virtual machine and its hardware are emulated by the supervisor software
+- simulation software records the sequences of data accesses, locks, and atomic operations from each thread in addition
+  to emulating the system
+    - uses the rules of the C++ memory model to repeat the run with every permitted combination of operations
+      to identify race conditions and deadlocks
+- guaranteed to find all the problems the system is designed to detect
+- takes a huge amount of time
+- best reserved for fine-grained tests of individual pieces of code rather than an entire application
+- relies on the availability of simulation software that can handle the operations used in your code
+- third option is to use a library that detects problems as they occur in the running of the tests
+
+#### Detecting problems exposed by tests with a special library
+- can identify many problems by using a special implementation of the library synchronization primitives such as
+  mutexes, locks, and condition variables
+- can verify that the appropriate mutex was locked if it is possible to check which mutexes are locked when a particular
+  piece of data is accessed
+    - done by the calling thread when the data was accessed and report a failure if specific mutex was not lock
+- allow the library to check by marking data in some way
+- can also record the sequence of locks if more than one mutex is held by a particular thread at once
+    - if another thread locks the same mutexes in a different order, this could be recorded as a potential deadlock
+      even if the test didn't actually deadlock while running
+- another type of special library where the implementations of the threading primitives such as mutexes and
+  condition variables give the test writer control over which thread gets the lock when multiple threads are
+  waiting or which thread is notified by a notify_one() call on a condition variable
+    - can set up particular scenarios and verify that the code works as expected in those scenarios
+- some facilities need to be supplied as part of the C++ Standard Library implementation
+- others can be built on top of the Standard Library as part of the test harness
+
+### 10.2.5 Structuring multithreaded test code
+- issue
+    - need to arrange for a set of threads to each be executing a chosen piece of code at a specified time
+- need to identify the distinct parts of each test
+    - the general setup code that must be executed before anything else
+    - the thread-specific setup code that must run on each thread
+    - the actual code for each thread that needs to be run concurrently
+    - the code to be run after the concurrent execution has finished
+        - possibly includes assertions on the state of the code
+- Listing 10.1 An example test for concurrent push() and pop() calls on a queue
+- necessary to use something like this to have the best chance of testing what actually needs to be tested
+    - requires a lot of boilerplate code
+- actually starting a thread can be quite a time-consuming process so need control over when threads are run in relation
+  to others
+- relatively straightforward to create new tests in the same pattern once the basic structure is set
+- readily extended to additional threads
+
+### 10.2.6 Testing the performance of multithreaded code
+- important to actually test code to confirm that the performance does improve
+- scalability
+    - don't want code that runs twice as fast on a dual-core machine but is actually slower on a 24-core machine
+- limited by linearization points or required serial sections of code
+- worth looking at the overall design of the code before starting to test
+    - know what factor of improvement is being pursued
+- contention between processors for access to a data structure can have a big performance impact
+- something that scales nicely with the number of processors when that number is small may actually perform
+   badly when the number of processors is much larger because of the huge increase in contention
+- best to check the performance on systems with as many different configurations as possible
+- ought to test on a single-processor system and a system with as many processing cores as will be available
+
+## 10.3 Summary
+- various types of concurrency-related bugs
+    - deadlocks
+    - livelocks
+    - data races
+    - other problematic race conditions
+- techniques for locating bugs
+- issues to think about during code reviews
+- guidelines for writing testable code
+- how to structure tests for concurrent code
+- utility components that can help with testing
