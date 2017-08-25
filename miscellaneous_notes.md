@@ -228,3 +228,13 @@ status: active
     - dependency disappears
     - packet loss
     - corruption
+
+
+# Interesting compiler-related links
+- http://duartes.org/gustavo/blog/post/anatomy-of-a-program-in-memory/
+- https://linux.die.net/man/5/elf
+- https://linux.die.net/man/1/nm
+- https://www.codeproject.com/Articles/1388/Calling-Conventions-Demystified
+- https://blogs.msdn.microsoft.com/oldnewthing/20040102-00/?p=41213/
+- https://www.technovelty.org/c/position-independent-code-and-x86-64-libraries.html
+- http://www.lurklurk.org/linkers/linkers.html

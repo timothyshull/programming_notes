@@ -397,3 +397,62 @@ setenv PKG_CONFIG_PATH /usr/lib/pkgconfig:/usr/local/lib/pkgconfig
     - Python
     - SWIG code
     - assembly -> TODO: more here
+
+# x86-64 Assembly
+- using lldb
+- r (run the program)
+- s (step in)
+- n (step over)
+- finish (step out)
+- c (continue)
+- q (quit the program)
+- b <label> - break on a jump to a label
+- d - stack frame dump
+- bt - backtrace
+- up - view upper stack frame
+- down - down to breakpoint stack frame
+- register read - dump values of registers
+- register read <register> - (no %)
+- disassemble - show disassembly for current function (only when using debug symbols)
+
+# Mozilla rr
+- can record and step backwards
+
+# Remote debug with LLDB
+- lldb-server platform --listen *:1234
+- on local system
+    - platform list
+    - platform select remote-linux
+    - platform connect connect://host:port
+        - process attach
+        - target create
+        - process launch
+        - get-file
+        - put-file
+        - mkdir
+        - platform shell
+
+# LLDB watchpoints
+- set a watchpoint on a variable when it is written to
+    - watchpoint set variable global_var
+    - wa s v global_var
+
+- set a watchpoint on a memory location when it is written into.
+    - watchpoint set expression -- my_ptr
+    - wa s e -- my_ptr
+
+- set a condition on a watchpoint
+    - watch set var global
+    - watchpoint modify -c '(global==5)'
+    - c
+
+- list all watchpoints
+    - watchpoint list
+    - watch l
+
+- delete a watchpoint
+    - watchpoint delete 1
+    - watch del 1
+
+# Hex Editor
+- http://www.wxhexeditor.org/
