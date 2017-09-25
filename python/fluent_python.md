@@ -1,4 +1,4 @@
-# 1. The Python Data Model
+# Ch. 1 - The Python Data Model
 
 ## How Special Methods Are Used
 - meant to be called by Python interpreter and not programmer
@@ -414,3 +414,315 @@ my_dict[ key]. append( new_value)
 
 ## Mappings with Flexible Key Lookup
 
+
+# Ch. 2 - An Array of Sequences
+
+## Overview of Built-In Sequences
+- container sequences - items of different types (references)
+    - list
+    - tuple
+    - collections.deque
+- flat sequences - items of one type (physically store value in memory space)
+    - str
+    - bytes
+    - bytearray
+    - memoryview
+    - array.array
+- mutable
+    - list
+    - bytearray
+    - array.array
+    - collections.deque
+    - memoryview
+- immutable
+    - tuple
+    - str
+    - bytes
+
+- inheritance (see diagram for methods)
+```
+MutableSequences -> Sequence -> Container
+                             -> Iterable
+                             -> Sized
+```
+
+## List Comprehensions and Generator Expressions
+- listcomps and genexps often faster and more readable
+- tip - can build multiline lists, listcomps, and genexps within `[], {}, or ()`
+- listcomps previously leaked variable names into the surrounding scope (e.g. overrode
+  variable values of the same variable name)
+    - fixed in Python 3
+
+- map and filter are not necessarily faster
+-
+```
+# arranged by color then size
+[(color, size) for color in colors for size in sizes]
+
+# arranged in same order as list from above
+for color in colors:
+    for size in sizes:
+        print((color, size))
+
+# ordered by size as the second element then color
+[(color, size) for size in sizes for color in colors]
+```
+- listcomps only build lists
+    - use genexps to fill up sequence types
+
+- genexp
+    - can build tuple, array, and other types of sequences
+    - enclosed in parens rather than brackets
+    - saves memory
+        - yields items one by one using the iterator protocol instead of
+          building a whole list just to feed another constructor
+```
+# no paren duplication
+tuple(ord( symbol) for symbol in symbols)
+
+# paren duplication due to multi-arg ctor
+array.array('I', (ord( symbol) for symbol in symbols))
+```
+- can use in for loops
+```
+for tshirt in ('% s %s' % (c, s) for c in colors for s in sizes):
+    print( tshirt)
+```
+- saves the expense of building lists to feed the for loop
+
+## Tuples Are Not Just Immutable Lists
+- immutable lists and records with no field names
+- as records
+    - each item in the tuple holds the data for one field and the position of the
+      item gives its meaning
+- tuple unpacking can be done
+    - to assign elements to variables
+    - to assign elements to a format string
+    - works with any iterable object
+        - only requirement is iterable yields one item per variable in the receiving tuple
+        - unless using * to capture excess items
+    - tuple unpacking == iterable unpacking
+    - can use to unpack as args to function
+- can use to swap
+```
+b, a = a, b
+```
+- can use as return value from function
+- can use _ as a placeholder variable but be careful when writing internationalized
+  software (used as an alias to gettext.gettext)
+- can use * for excess items, and can appear in any position
+```
+a, b, *rest = range(5)
+```
+- works with nested structures
+    - could define functions with nested tuples in formal parameters in Python 2
+    - cannot in Python 3
+- use collections.namedtuple for debugging and more
+    - same memory consumed as regular tuple and less than a class
+    - two parameters to create a named tuple
+        - class name
+        - list of field names
+            - iterable of strings
+            - single space-delimited string
+- tuples as immutable lists
+    - see table for list of similar functionality
+
+## Slicing
+- slices and range use [0,n) range functionality
+    - easy to see length of a slice or range when only the stop position is given
+        - `range(3)` and `list[:3]` produce three items
+    - easy to compute the length of a slice or range when start and stop are given
+        - subtract stop - start
+    - easy to split a sequence in two parts at any index x without overlap
+        - `list[:x] and list[x:]`
+- stride for third element causes skip or items in reverse
+    - uses `slice(start, stop, step)` object and a seq calls `seq.__getitem__(slice(start, stop, step))`
+- can use slice objects (notation for `seq[start:stop:step]` is only valid in `[]`)
+```
+s1 = slice(0, 6)
+elems = items[s1]
+```
+- `[]` operator can take multiple indices or slices separated by comma
+    - can use with numpy.ndarray to get 2-dim slices
+    - calls `a.__getitem__(( i, j))` to evaluate `a[i, j]`
+- `...` is a token and is an Ellipsis object - can be used to represent `[:]` in
+  intermediate dimensions of a multi-dimensional array/list
+
+- slices can be used to assign/modify and delete (using `del`)
+```
+l = list(range(10))
+l[2:5] = [20, 30]
+del l[5:7]
+l[3::2] = [11, 22]
+l[2: 5] = 100  # error - needs iterable
+l[2:5] = [100]  # just assigns 100 to index 2
+```
+
+## Using + and * with Sequences
+- operands to + and * for sequences must be of the same sequence type and produce
+  a new sequence without modifying the originals
+- expressions like a * n when a is a sequence containing mutable items have unexpected results
+    - trying to initialize a list of lists as `l = [[]] * 3` results in a list with
+      three references to the same inner list
+- list of lists
+```
+# proper method
+[['_'] * 3 for i in range(3)]
+
+# equivalent to
+board = []
+for i in range(3):
+    row = ['_'] * 3
+    board.append(row)
+
+
+
+# list with references to the same lists
+[['_'] * 3] * 3
+
+# equivalent to
+row = ['_'] * 3
+board = []
+for i in range(3):
+    board.append(row)
+```
+
+## Augmented Assignment with Sequences
+- += and *= operators behave differently depending on the mutability of the first
+  argument
+- special method for += is `__iadd__` (in-place add) with a fallback to `__add__`
+  when it isn't implemented
+- for mutable sequences `__iadd__` is most likely implemented and += most likely happens
+  in place
+    - in place is not possible for immutable sequences
+- *= -> `__imul__`
+    - for mutable - after multiplication the sequence is the same object with items
+      appended
+    - for immutable - after multiplication a new sequence is created
+- repeated concatenation of immutable sequences is inefficient because of a large
+  number of copies in the interpreter
+
+- NOTE: can use dis module to disassemble Python code (for CPython)!!!
+- corner case example lessons
+    - do not put mutable items in tuples
+    - augmented assignment is not an atomic operation
+        - can throw an exception after doing part of the operation
+    - can easily inspect Python bytecode
+        - often helpful to see what is going on under the hood
+
+## list.sort and the sorted Built-In Function
+- list.sort sorts in place and returns None
+    - convention - functions or methods that modify in-place should return None
+    - cannot cascade calls to these methods
+        - see Wiki Fluent Interface
+- sorted creates a new list and returns it
+    - accepts any iterable object and always returns a sorted list
+- both list.sort and sorted take two optional keyword args
+    - reverse - True or False for reversed order sort
+    - key - one arg function used to produce the sorting key (default is compare items)
+        - can also be used with the min() and max() built-ins and more
+
+## Managing Ordered Sequences with bisect
+- standard binary search in `bisect` module
+    - haystack - first arg and sorted sequence (ascending order)
+    - needle - second arg to search for
+- can use the result of bisect(haystack, needle) as the index argument to
+  haystack.insert( index, needle)
+    - using insort does both steps, and is faster
+- see https://code.activestate.com/recipes/577197-sortedcollection/ for an
+  easy to use sorted collection
+- can fine-tune bisect behavior
+    - pair of optional arguments lo and hi can be used to narrow the region in the
+      sequence to be searched when inserting
+        - lo defaults to 0
+        - hi to len() of the sequence
+     - bisect is an alias for bisect_right
+        - sister function called bisect_left
+        - difference is apparent only when the needle compares equal to an item in
+          the list
+            - bisect_right returns an insertion point after the existing item
+            - bisect_left returns the position of the existing item so insertion
+              would occur before it
+            - if the sequence contains objects that are distinct yet compare equal,
+              then it may be relevant
+- bisect.insort(seq, item) can be used to insert new items in a sorted sequence in
+  sorted order
+    - takes optional lo, hi
+    - also has insort_left
+
+## When a List is Not the Answer
+- better options than list for specific use cases
+- array is better for storing large amounts of numeric data
+    - does not hold full numeric objects
+    - holds packed byte representation of values
+- collections.deque is better for constantly adding and removing data from the
+  ends of a sequence
+- array supports all mutable sequence types and additional methods for fast
+  loading (`.frombytes` and `.tofile`)
+    - as minimal as a C-style array
+- `.tofile` and `.fromfile` are very fast (nearly 60x and 7x) and saves a large amount
+  of disk memory
+- can use pickle also (not as fast for numeric data, but handles almost all built-in
+  types)
+- use bytes and bytearray for numeric arrays that represent binary data (images, etc)
+- see Table 2-2 for comparison of the features of list and array.array
+- array does not have an `array.sort` - use the sorted built-in and bisect.insort
+```
+a = array.array( a.typecode, sorted( a))
+```
+
+- built-in memoryview class
+    - shared-memory sequence type that allows handling slices of arrays without copying bytes
+    - essentially a generalized NumPy array structure in Python itself (without the math)
+    - allows sharing memory between data-structures (things like PIL images, SQLlite databases,
+      NumPy arrays, etc.) without copying
+    - very important for large data sets
+    - memoryview.cast method allows changing the way multiple bytes are read or written as units
+      without moving bits around (just like the C cast operator)
+        - returns another memoryview object, always sharing the same memory
+```
+numbers = array.array('h', [-2, -1, 0, 1, 2])
+memv = memoryview(numbers)
+len(memv) 5
+memv[0] -2
+memv_oct = memv.cast('B')
+```
+
+- use numpy and scipy for complex numerical/scientific operations on sequences types
+    - `numpy.ndarray`
+
+- can use a list as a stack or queue using `.append` or `.pop` but inserting or
+  removing from the left (0 index) of a list is costly
+    - use collections.deque
+- deque is thread-safe and double-ended
+    - can also be bounded
+    - implements most of the list methods, and adds a few specific to its design, like
+      popleft and rotate
+    - hidden cost - removing items from the middle of a deque is not as fast
+        - optimized for appending and popping from the ends
+    - append and popleft are atomic so safe for multithreaded applications
+- see table 2-3 for features of deque
+
+- additional modules for list-like data structures
+    - queue
+        - provides the synchronized (i.e., thread-safe) classes Queue, LifoQueue, and PriorityQueue
+        - used for safe communication between threads
+        - can be bounded by providing a maxsize argument greater than 0 to the constructor
+        - don’t discard items to make room as deque does
+            - when the queue is full the insertion of a new item blocks — i.e., it waits until some other
+              thread makes room by taking an item from the queue
+            - useful to throttle the number of live threads
+    - multiprocessing
+        - bounded Queue (similar to queue.Queue) but designed for interprocess communication
+        - specialized multiprocessing.JoinableQueue is also available for easier task management
+    - asyncio
+        - New to Python 3.4
+        - provides Queue, LifoQueue, PriorityQueue, and JoinableQueue with APIs inspired by
+          the classes contained in the queue and multiprocessing modules
+        - adapted for managing tasks in asynchronous programming
+    - heapq
+        - heapq does not implement a queue class
+        - provides functions like heappush and heappop
+        - allow use of a mutable sequence as a heap queue or priority queue
+
+# Ch. 3 - Dictionaries and Sets
