@@ -726,3 +726,476 @@ memv_oct = memv.cast('B')
         - allow use of a mutable sequence as a heap queue or priority queue
 
 # Ch. 3 - Dictionaries and Sets
+- much of the Python engine is implemented using dictionaries under the hood
+- hash tables are used to implement Python dicts
+
+## Generic Mapping Types
+- `collections.abc` provides Mapping and MutableMapping
+```
+MutableMapping -> Mapping -> Container
+                          -> Iterable
+                          -> Sized
+```
+- custom mapping types often extend dict or `collections.UserDict`
+- best to check with
+```
+isinstance(instance, abc.Mapping)
+```
+- all std lib mapping types use dict and so keys must be hashable
+- an object is hashable if it
+    - has a hash value which never changes during its lifetime
+        - needs a __hash__() method
+    - can be compared to other objects
+        - needs an __eq__() method
+    - hashable objects which compare equal must have the same hash value
+- atomic immutable types (str, bytes, numeric types) are all hashable
+- frozenset is always hashable, because its elements must be hashable by definition
+- tuple is hashable only if all its items are hashable
+    - other than that, all immutable built-in objects are hashable
+- user-defined types are hashable by default because their hash value is their id()
+  and they all compare not equal
+    - if an object implements a custom __eq__ that takes into account its internal
+      state, it may be hashable only if all its attributes are immutable
+
+## dict Comprehensions
+- dictcomp builds a dict instance by producing key:value pair from any iterable
+```
+d = {key: val for key_v, value_v in seq}
+```
+
+## Overview of Common Mapping Methods
+- dict, defaultdict and OrderedDict (in collections)
+- see table 3-1
+
+- setdefault
+    - dict access with `d[k]` raises an error when k is not an existing key
+    - `d.get(k, default)` is an alternative to `d[k]` when a default value is more
+      convenient than handling KeyError
+    - when updating the value found (if it is mutable), using
+      either `__getitem__` or `get` is awkward and inefficient
+- setdefault only performs one lookup whereas `if key not in d:` performs 2 or 3 lookups
+```
+# prefer
+d.setdefault(key, val)
+
+# over
+if key not in d:
+```
+
+## Mappings with Flexible Key Lookup
+- defaultdict is configured to create items on demand whenever a missing key is searched
+    - on creation, user provides a callable that is used to produce a default value
+      when `__getitem__` is passed a nonexistent key argument
+    - e.g. `dd = defaultdict(list)` if 'new_key' is not in dd, `dd['new_key']`
+        - calls list() to create a new list
+        - inserts the list into dd using 'new_key' as key
+        - returns a reference to that list
+    - callable that produces the default values is held in an instance attribute called
+      default_factory
+    - uses `__missing__` to call default_factory
+- `__missing__` special method
+    - not defined in the base dict class
+    - subclass dict and provide a `__missing__` method, the standard `dict.__getitem__` will
+      call it whenever a key is not found, instead of raising KeyError
+    - just called by `__getitem__` (i.e., for the `d[k]` operator)
+        - presence of a `__missing__` method has no effect on the behavior of other
+          methods that look up keys, such as get or `__contains__` (which implements
+          the in operator)
+        - why default_factory of defaultdict works only with `__getitem__`
+- `k in my_dict.keys()` is efficient in Python 3 even for very large mappings because
+  dict.keys() returns a view (similar to a set)
+    - containment checks in sets are as fast as in dictionaries
+        - see "Dictionary" view objects section of the documentation
+    - in Python 2, dict.keys() returns a list which is not efficient for large
+      dictionaries, because k in my_list must scan the list
+
+## Variations of dict
+- collections.OrderedDict
+    - maintains keys in insertion order, allowing iteration over items in a predictable order
+    - popitem method of an OrderedDict pops the last item by default, but if called as
+      my_odict.popitem(last = False), it pops the first item added
+- collections.ChainMap
+    - holds a list of mappings that can be searched as one
+    - lookup is performed on each mapping in order, and succeeds if the key is found
+      in any of them
+    - useful to interpreters for languages with nested scopes, where each mapping represents
+      a scope context
+- collections.Counter
+    - mapping that holds an integer count for each key
+    - updating an existing key adds to its count
+    - can be used to count instances of hashable objects (the keys) or as a multiset — a set
+      that can hold several occurrences of each element
+    - implements the + and - operators to combine tallies
+    - has other useful methods such as most_common([n])
+        - returns an ordered list of tuples with the n most common items and their counts
+- collections.UserDict
+    - pure Python implementation of a mapping that works like a standard dict
+
+## Subclassing UserDict
+- prefer over dict
+    - built-in dict has methods that are shortcuts
+    - corresponding methods in UserDict work without begin overridden
+- UserDict does not inherit from dict but uses dict for internal data attribute
+    - undesired recursion when coding special methods like `__setitem__`
+    - simplifies coding of `__contains__`
+- methods to note
+    - `__missing__`
+    - `__contains__`
+    - `__setitem__`
+    - `MutableMapping.update`
+    - `Mapping.get`
+- see PEP 455 and TransformDict as well
+
+## Immutable Mappings
+- Python 3.3 - `types.MappingProxyType` returns `mappingproxy` which is a dynamic
+  read-only view into a mapping type
+
+## Set Theory
+- set and frozenset - unique collections of objects
+    - elements must be hashable
+    - set is not hashable
+    - frozenset is hashable so a set may contain frozensets
+    - implement the set operations as infix operators
+        - given two sets a and b
+        - a | b returns their union
+        - a & b computes the intersection
+        - a - b the difference
+    - use of set operations can reduce both the line count and the runtime of Python programs
+- can write set literals as `{1, 2, 3}` but must use `set()` for an empty set
+    - `{}` is an empty dict
+    - set literal construction is faster and more readable than calling the constructor
+- frozenset must be constructed with the constructor
+```
+frozenset([1, 2, 3, 4])
+```
+
+- setcomps can be constructed as dictcomps, using `{}`
+- see table 3-2 for set operations and methods
+
+## dict and set Under the Hood
+- dicts and sets are fast
+    - searches are fastest in set, then dict, then list
+- C code has many optimizations
+- hash table
+    - sparse array (i.e., an array that always has empty cells)
+        - cells in a hash table are often called "buckets"
+    - dict hash table
+        - bucket for each item, and it contains two fields
+            - a reference to the key
+            - a reference to the value of the item
+        - all buckets have the same size
+        - access to an individual bucket is done by offset
+    - Python tries to keep at least 1/ 3 of the buckets empty
+        - if too dense, copied to resize
+    - for insert, the first step is to calculate the hash value of the item key
+        - done with the hash() built-in function
+- hash() built-in function works directly with built-in types and falls back to calling
+  `__hash__` for user-defined types
+    - if two objects compare equal, their hash values must also be equal
+    - otherwise the hash table algorithm does not work
+    - starting with Python 3.3, a random salt value is added to the hashes of str, bytes,
+      and datetime objects
+        - salt value is constant within a Python process but varies between interpreter runs
+        - random salt is a security measure to prevent a DOS attack
+- for get
+    - Python calls `hash(search_key)` to obtain the hash value of search_key and uses
+      the least significant bits of that number as an offset to look up a bucket in the
+      hash table
+    - the number of bits used depends on the current size of the table
+    - if the found bucket is empty, KeyError is raised
+    - otherwise, the found bucket has an item
+        - then Python checks whether search_key == found_key
+        - on match the found value is returned
+        - if search_key and found_key do not match, this is a hash collision
+            - happens because a hash function maps arbitrary objects to a small number of
+              bits and the hash table is indexed with a subset of those bits
+        - to resolve the collision
+            - algorithm then takes different bits in the hash
+            - massages them in a particular way, and uses the result as an offset to look up
+              a different bucket
+            - if empty KeyError is raised
+            - otherwise return item value or repeat collision resolution
+    - same process for insert or update
+- consequences
+    - keys must be hashable objects
+        - supports the hash() function via a `__hash__()` method that always returns the
+          same value over the lifetime of the object
+        - supports equality via an `__eq__()` method
+        - if a == b is True then hash(a) == hash( b) must also be True
+    - dicts have significant memory overhead
+        - must be sparse
+        - better to use list of tuples or named tuples
+            - removes overhead of one hash table per record
+            - does not store each field name again with each record
+    - key search is very fast
+        - trades space for time
+    - key ordering depends on insertion order
+        - when a hash collision happens, the second key ends up in a position that it would not
+          normally occupy if it had been inserted first
+        - dict built as dict([(key1, value1), (key2, value2)]) compares equal to dict([(key2, value2), (key1, value1)])
+        - key ordering may not be the same if the hashes of key1 and key2 collide
+    - adding items to a dict may change the order of existing keys
+- practical consequences of sets
+    - also use hash tables
+    - dict consequences above apply
+        - set elements must be hashable objects
+        - sets have a significant memory overhead
+        - membership testing is very efficient
+        - element ordering depends on insertion order
+        - adding elements to a set may change the order of other elements
+
+
+# Ch. 4 - Text versus Bytes
+- definition of character complicates definition of string
+    - character is generally Unicode character
+    - Python 3
+        - `bytes` is raw bytes
+        - `str` is Unicode chars
+    - Python 2
+        - `str` is raw bytes
+        - `unicode` obj is Unicode chars
+- Unicode standard
+    - identity of a character (code point)
+        - number from 0 to 1,114,111 (base 10)
+        - shown in the Unicode standard as 4 to 6 hexadecimal digits with a "U +" prefix
+        - about 10% of the valid code points have characters assigned to them in Unicode
+          6.3, the standard used in Python 3.4
+    - encoding is an algorithm that converts code points to byte sequences and vice versa
+        - actual bytes that represent a character depend on the encoding in use
+        - code point for A (U + 0041) is encoded as the single byte \x41 in the UTF-8 encoding,
+    - converting from code points to bytes is encoding
+    - converting from bytes to code points is decoding
+- Python 3 str is pretty much the Python 2 unicode type
+- Python 3 bytes is not the old str renamed
+    - closely related bytearray type
+
+## Byte Essentials
+- there are two basic built-in types for binary sequences
+    - immutable bytes type introduced in Python 3
+    - mutable bytearray, added in Python 2.6
+    - Python 2.6 also introduced bytes
+        - just an alias to the str type
+        - does not behave like the Python 3 bytes type
+- each item in bytes or bytearray is an integer from 0 to 255
+    - not a one-character string like in the Python 2 str
+- a slice of a binary sequence always produces a binary sequence of the same type
+- `b[0]` returns an int but `b[:1]` returns a bytes object of length 1
+    - only sequence type where `s[0] == s[:1]` is the str type
+    - for every other sequence, `s[i]` returns one item, and `s[i:i + 1]` returns a
+      sequence of the same type with the `s[i]` item inside it
+-  are really sequences of integers, their
+- literal notation of binary sequences (as integers) reflects the fact that
+  ASCII text is often embedded in them
+    - three different displays are used, depending on each byte value
+        - bytes in the printable ASCII range the ASCII character itself is used
+        - bytes corresponding to tab, newline, carriage return, and \, the escape
+          sequences \t, \n, \r, and \\ are used
+        - for every other byte value, a hexadecimal escape sequence is used
+          (e.g., \x00 is the null byte)
+- both bytes and bytearray support every str method
+    - except formatting (format, format_map)
+    - others that depend on Unicode data, including casefold, isdecimal, isidentifier, isnumeric, isprintable,
+      and encode
+- regular expression functions in the re module also work on binary sequences, if the regex is compiled from
+  a binary sequence instead of a str
+- % operator does not work with binary sequences in Python 3.0 to 3.4 but is beyond
+- has `.fromhex` method
+- means of construction
+    - str and an encoding keyword argument
+    - iterable providing items with values from 0 to 255
+    - single integer, to create a binary sequence of that size initialized with null bytes
+      (deprecated in Python 3.5 and removed in Python 3.6)
+    - an object that implements the buffer protocol (e.g., bytes, bytearray, memoryview, array.array)
+        - copies the bytes from the source object to the newly created binary sequence
+
+- struct module provides functions to parse packed bytes into a tuple of fields of different types and to
+  perform the opposite conversion, from a tuple into packed bytes
+    - used with bytes, bytearray, and memoryview objects
+- memoryview class does not allow creation or storage of byte sequences
+    - provides shared memory access to slices of data from other binary sequences, packed arrays,
+      and buffers such as Python Imaging Library (PIL) images, without copying the bytes
+    - slicing returns a new memoryview without copying bytes
+- NOTE: use mmap for memory-mapped files
+
+## Basic Encoders/Decoders
+- bundles more than 100 codecs with aliases
+- latin1 a.k.a. iso8859_1
+    - important because it is the basis for other encodings, such as cp1252 and Unicode itself
+      (note how the latin1 byte values appear in the cp1252 bytes and even in the code points)
+- cp1252
+    - a latin1 superset by Microsoft
+    - adds useful symbols like curly quotes and the € (euro)
+    - some Windows apps call it "ANSI"
+    - never a real ANSI standard
+- cp437
+    - original character set of the IBM PC, with box drawing characters
+    - incompatible with latin1, which appeared later
+- gb2312
+    - legacy standard to encode the simplified Chinese ideographs used in mainland China
+    - one of several widely deployed multibyte encodings for Asian languages
+- utf-8
+    - most common 8-bit encoding on the Web
+   - backward-compatible with ASCII (pure ASCII text is valid UTF-8)
+- utf-16le
+    - one form of the UTF-16 16-bit encoding scheme
+    - all UTF-16 encodings support code points beyond U + FFFF through escape sequences called "surrogate pairs"
+
+## Understanding Encode/Decode Problems
+- generic UnicodeError exception
+- reported error is almost always more specific
+    - UnicodeEncodeError - when converting str to binary sequences
+    - UnicodeDecodeError - when reading binary sequences into str
+- can get a SyntaxError when loading Python modules when the source encoding is
+  unexpected
+  . We’ll show how to handle all of these errors in the next sections.
+  Tip The first thing to note
+- when receiving a Unicode error, note the exact type of the exception
+- dealing with UnicodeEncodeError
+    - most non-UTF codecs handle only a small subset of the Unicode characters
+    - can use `error='ignore'` (generally bad to do) in encode call
+    - can use `error='replace'` or `errors =' xmlcharrefreplace'` to automatically replace
+      in encode call
+- dealing with UnicodeDecodeError
+    - not every byte holds a valid ASCII character
+    - not every byte sequence is valid UTF-8 or UTF-16
+    - many legacy 8-bit encodings like 'cp1252', 'iso8859_1', and 'koi8_r' are able to decode any
+      stream of bytes, including random noise, without generating errors
+    - if the program assumes the wrong 8-bit encoding, it will silently decode garbage
+    - can also pass `errors='replace'` here
+- dealing with SyntaxError when loading modules with unexpected encoding
+    - UTF-8 is the default source encoding for Python 3
+    - ASCII was the default for Python 2 (starting with 2.5)
+    - loading a .py module containing non-UTF-8 data and no encoding declaration
+    - UTF-8 is widely deployed in GNU/Linux and OSX systems
+        - possible to open a .py file created on Windows with cp1252
+    - error happens in Python for Windows, because the default encoding for Python 3 is UTF-8 across all platforms
+    - add a magic coding comment at the top of the file to fix this problem
+      `# coding: cp1252`
+    - Python 3 source code is no longer limited to ASCII and defaults to the excellent UTF-8 encoding, the best “fix” for source code in legacy encodings like 'cp1252' is to convert them to UTF-8 already, and not bother with the coding comments. If your editor does not support UTF-8, it’s time to switch.
+- must be told what the encoding of a byte sequence is
+    - can use libraries like Chardet to determine within a confidence level
+- BOM - byte order mark or bytes denoting endianness of CPU where encoding was performed
+
+## Handling Text Files
+- best practice for handling text
+    - bytes should be decoded to str as early as possible on input (e.g., when opening a file for reading)
+    - text handling should be done exclusively on str objects within business logic of program
+        - never encode or decode in the middle of other processing
+    - str objects should be encoded to bytes as late as possible on output
+- in Python 3, open built-in handles the decoding and encoding on read and write
+- code that has to run on multiple machines should never depend on encoding defaults
+    - always pass an explicit encoding argument when opening text files
+    - default may change from one machine to the next
+- do not open text files in binary mode unless analyzing the file contents to determine
+  encoding
+    - prefer Chardet for analyzing the the file contents
+
+- encoding defaults
+```
+locale.getpreferredencoding()
+type(my_file)
+my_file.encoding
+sys.stdout.isatty()
+sys.stdout.encoding
+sys.stdin.isatty()
+sys.stdin.encoding
+sys.stderr.isatty()
+sys.stderr.encoding
+sys.getdefaultencoding()
+sys.getfilesystemencoding()
+```
+- Linux and macOS returned same results, Windows was very different
+    - Linux and macOS are set to UTF-8 by default
+    - locale.getpreferredencoding() is the most important setting
+    - text files use locale.getpreferredencoding() by default
+    - output is going to the console, so sys.stdout.isatty() is True
+        - sys.stdout.encoding is the same as the console encoding
+- if the encoding argument is omitted when opening a file, default is given by
+  locale.getpreferredencoding()
+- encoding of sys.stdout/stdin/stderr is given by PYTHONIOENCODING env var
+    - if not set, inherited from console or defined by locale.getpreferredencoding()
+      if IO is going to/from a file
+- sys.getdefaultencoding() is used internally to convert binary to/from str
+    - setting cannot be changed
+- sys.getfilesystemencoding() is used to encode/decode filenames (but not file contents)
+- NOTE: do not rely on encoding defaults!!!
+
+## Normalizing Unicode for Saner Comparisons
+- Unicode has combining chars like diacritics
+- use unicodedata.normalize
+    - on of four strings 'NFC', 'NFD', 'NFKC', 'NFKD' as first arg
+    - normalization Form C (NFC) composes the code points to produce the shortest
+      equivalent string
+    - NFD decomposes, expanding composed characters into base characters and separate
+      combining characters
+    - NFKC and NFKD — the letter K stands for "compatibility"
+        - stronger forms of normalization, affecting "compatibility characters"
+        - some Unicode characters appear more than once for compatibility with preexisting standards
+        - each compatibility character is replaced by a "compatibility decomposition" of one or
+          more characters that are considered a preferred representation
+        - done even if there is some formatting loss
+    - use NFKC and NFKD only for special cases like search and indexing because they cause
+      data loss
+
+- can use `str.casefold()` which returns different characters for 116 of 110,122 named
+  characters in Unicode 6.3
+
+```
+from unicodedata import normalize
+def nfc_equal(str1, str2):
+    return normalize('NFC', str1) == normalize('NFC', str2)
+
+def fold_equal(str1, str2):
+    return (normalize('NFC', str1).casefold() == normalize('NFC', str2).casefold())
+```
+
+- Google search ignores diacritics in certain contexts
+```
+def remove_diacritics(txt):
+    norm_txt = unicodedata.normalize('NFD', txt)
+    shaved = ''.join(c for c in norm_txt if not unicodedata.combining(c))
+    return unicodedata.normalize('NFC', shaved)
+```
+- see text for more moderate examples
+    - different languages have different rules for removing diacritics
+
+## Sorting Unicode Text
+- Python sort compares items one-by-one, e.g. code points for strings
+    - causes issues when using non-ASCII chars
+- use local.strxfrm to make local-aware comparisons
+    - must first set the local using `local.setlocal()`
+    - calling setlocale in a library is not recommended because locale settings are global
+        - application or framework should set the locale when the process starts
+        , and should not change it afterwards.
+    - locale must be installed on the OS, otherwise setlocale raises a locale.Error: unsupported
+    - local name must be spelled correctly
+        - They are pretty much
+        - standardized in the Unix derivatives as 'language_code.encoding',
+        - syntax is more complicated on Windows - Language Name-Language Variant_Region Name.codepage
+    - local must be correctly implemented by OS (incorrect on macOS)
+- can use PyUCA
+
+## The Unicode Database
+- DB mapping code points to character names and metadata about relationships between characters
+- `unicodedata` module
+
+## Dual-Mode str and bytes APIs
+- re and os modules (plus more) have functions that accept str or bytes
+- \d, \w, etc used in regexes with bytes only match ASCII
+    - when used with str matches Unicode digits and letters beyond ASCII
+- many filenames on Linux may have byte sequences that cannot be decoded to str
+    - common on servers with clients from a variety of OSes
+- all os module functions that accept filenames or pathnames take arguments as str or bytes
+    - called with a str argument
+        - argument will be automatically converted using the codec named by sys.getfilesystemencoding()
+        - OS response will be decoded with the same codec
+    - can pass bytes arguments to the os functions to get bytes return values
+- fsencode(filename)
+    - encodes filename (can be str or bytes) to bytes using the codec named by sys.getfilesystemencoding()
+     if filename is of type str, otherwise returns the filename bytes unchanged
+- fsdecode(filename)
+    - decodes filename (can be str or bytes) to str using the codec named by sys.getfilesystemencoding() if
+      filename is of type bytes, otherwise returns the filename str unchanged
+      . On Unix-derived platforms,
+- these functions use the surrogateescape error handler to avoid issues with unexpected bytes on Unix systems
+- strict error handler is used on Windows
