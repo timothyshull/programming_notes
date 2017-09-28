@@ -358,11 +358,15 @@ update
 ```
 - keys must be hashable
     - an object is hashable if it has a hash value which never changes during its lifetime
-      (it needs a __hash__() method), and can be compared to other objects (it needs an __eq__() method)
+      (it needs a `__hash__()` method), and can be compared to other objects (it needs an __eq__() method)
     - hashable objects which compare equal must have the same hash value
     - the atomic immutable types (str, bytes, numeric types) are all hashable
     - a frozenset is always hashable, because its elements must be hashable by definition
     - a tuple is hashable only if all its items are hashable
+    - user-defined types are hashable by default because their hash value is their id
+      () and they all compare not equal
+        - if an object implements a custom `__eq__` that takes into account its internal state
+          it may be hashable only if all its attributes are immutable
 
 ## dict Comprehensions
 - dictcomp added in Python 2.7
@@ -1199,3 +1203,663 @@ def remove_diacritics(txt):
       . On Unix-derived platforms,
 - these functions use the surrogateescape error handler to avoid issues with unexpected bytes on Unix systems
 - strict error handler is used on Windows
+
+# Ch. 5 - First-Class Functions
+- first-class object is a program entity that can be
+    - created at runtime
+    - assigned to a variable or element in a data structure
+    - passed as an argument to a function
+    - returned as the result of a function
+
+## Treating a Function Like an Object
+- can use `__doc__` attribute for help text and call `help(func)`
+- functions also have other accessible attributes
+- can assign functions to vars and call
+- can pass as args to other functions
+
+## Higher-Order Functions
+- function that takes other functions as arguments, e.g. map, sorted
+- functional paradigm
+    - map
+    - filter
+    - reduce
+    - apply (deprecated in favor of *args and **kwargs)
+- prefer listcomps, gencomps, etc over map and filter
+- map & filter return generators in Python 3
+- reduce was moved from built-in to functools
+    - prefer sum
+- all(iterable)
+    - returns True if every element of the iterable is truthy
+    - `all([])` returns True
+- any(iterable)
+    - returns True if any element of the iterable is truthy
+    - `any([])` returns False
+
+## Anonymous Functions
+- use lambda
+    - body must be pure, e.g. cannot make assignments or use statements such as
+      while, try, etc.
+- rarely useful
+- see https://docs.python.org/3/howto/functional.html
+
+## The Seven Flavors of Callable Objects
+- use the `callable()` built-in to determine if an object is callable
+- callable types
+    - user-defined functions
+        - created with def statements or lambda expressions
+    - built-in functions
+        - a function implemented in c (for CPython), like len or time.strftime
+    - built-in methods
+        - methods implemented in C, like dict.get. methods functions defined in the
+          body of a class
+    - classes
+        - when invoked, a class runs its __new__ method to create an instance, then __init__ to initialize it, and
+          finally the instance is returned to the caller
+        - because there is no new operator in python, calling a class is like calling a function
+           (usually calling a class creates an instance of the same class, but other behaviors are
+           possible by overriding __new__)
+    - class instances
+        - if a class defines a __call__ method, then its instances may be invoked as functions
+    - generator functions
+        - functions or methods that use the yield keyword
+        - when called, generator functions return a generator object
+        - generator functions are unlike other callables in many respects
+
+## User-Defined Callable Types
+- instances of Python objects can be made to behave like functions by implementing
+  a `__call__` instance method
+- good for storing state across invocations
+- also useful for decorators that need to store state (for example memoization)
+- see also closures
+
+## Function Introspection
+- use `dir` built-in to see attributes
+- uses `__dict__` to store user attributes assigned to it
+- not common to assign attributes to functions, but is a practice used by Django
+- attributes specific to functions
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| __annotations__ | dict | parameter and return annotations |
+| __call__ | method-wrapper | implementation of the () operator; a.k.a. the callable object protocol |
+| __closure__ | tuple | the function closure, i.e., bindings for free variables (often is None) |
+| __code__ | code | function metadata and function body compiled into bytecode |
+| __defaults__ | tuple | default values for the formal parameters |
+| __get__ | method-wrapper | implementation of the read-only descriptor protocol |
+| __globals__ | dict | global variables of the module where the function is defined |
+| __kwdefaults__ | dict | default values for the keyword-only formal parameters |
+| __name__ | str | the function name |
+| __qualname__ | str | the qualified function name, e.g., Random.choice (see PEP-3155) |
+
+## From Positional to Keyword-Only Parameters
+- keyword only args and * and ** to "explode" args
+- prefixing an argument with * captures any number of arguments as a tuple
+- prefixing an argument with ** captures any number of arguments as a dict
+- can support keyword only positional arguments with f(a, *, b)
+    - keyword-only positional arguments can be required by not defining a default
+      value for it
+
+## Retrieving Information About Parameters
+- `__defaults__` attribute holds a tuple with the default values of positional and keyword
+  arguments
+- defaults for keyword-only arguments appear in `__kwdefaults__`
+- names of the arguments are found within the `__code__` attribute
+    - a reference to a code object with many attributes of its own
+- `__defaults__`, `__code__.co_varnames`, and `__code__.co_argcount`
+- see examples 5-16 and 5-17 for extracting function arg info
+- inspect.signature returns an inspect.Signature object
+    - has a parameters attribute
+        - can read an ordered mapping of names to inspect.Parameter objects
+    - each Parameter instance has attributes such as name, default, and kind
+    - special value inspect._empty denotes parameters with no default
+    - kind attribute holds one of five possible values from the _ParameterKind class
+        - POSITIONAL_OR_KEYWORD
+            - a parameter that may be passed as a positional or as a keyword argument
+            (most Python function parameters are of this kind).
+        - VAR_POSITIONAL
+            - a tuple of positional parameters
+        - VAR_KEYWORD
+            - a dict of keyword parameters
+        - KEYWORD_ONLY
+            - a keyword-only parameter
+            (new in Python 3).
+        - POSITIONAL_ONLY
+            - a positional-only parameter
+            - currently unsupported by Python function declaration syntax, but
+              shown by existing functions implemented in C — like divmod — that do
+              not accept parameters passed by keyword
+    - also has an annotation attribute that is usually inspect._empty but
+      may contain function signature metadata provided via the new
+      annotations syntax in Python 3
+
+## Function Annotations
+- Python 3 special syntax to attach metadata to the parameters of a function
+  declaration and its return value
+- annotation goes between the argument name and the = sign with default values
+- add -> and another expression between the ) and the : at the tail of the function declaration
+  to annotate the return value
+- expressions may be of any type
+- most common types used in annotations are classes, like str or int, or strings, like
+  'int > 0'
+- no processing is done with annotations
+    - merely stored in the __annotations__ attribute of the function
+- only thing Python does with annotations is to store them in the `__annotations__` attribute of
+  the function
+    - annotations have no meaning to the Python interpreter
+    - metadata that may be used by tools, such as IDEs, frameworks, and decorators
+
+## Packages for Functional Programming
+- operator module
+    - functions for common operators, functions to pick items from sequences, read
+      attributes from object (itemgetter, attrgetter)
+- functools
+    - reduce
+    - partial
+        - allows partial application of a function
+        - takes a callable and keyword and positional arguments to bind
+    - partialmethod
+        - same as partial but used with methods
+
+
+# Ch. 6 - Design Patterns with First-Class Functions
+- design patterns can be drastically modified or obsolete in dynamic languages
+
+## Case Study: Refactoring Strategy
+- classic pattern performs actions based on the specific instance of a polymorphic type
+  passed and a method called on that instance
+- can easily replace with functions when functions are first-class
+- skipping material here
+- NOTE: simplest way to declare an ABC is to subclass abc.ABC in Python 3.4
+    - must use the metaclass = keyword in the class statement from Python 3.0 to 3.3
+    - e.g., class Promotion(metaclass = ABCMeta):
+- modules are also first-class
+    - can encapsulate strategies in modules
+- use the inspect module for introspection of modules
+
+## Command
+- decouple an object that invokes an operation (the Invoker) from the provider object
+  that implements it (the Receiver)
+    - each invoker is a menu item in a graphical application, and the receivers are
+      the document being edited or the application itself
+    - put a Command object between the Invoker and Receiver
+    - Command implements an interface with a single method, execute, which calls
+      some method in the Receiver to perform the desired operation
+    - Invoker does not need to know the interface of the Receiver
+    - different receivers can be adapted through different Command subclasses
+    - Invoker is configured with a concrete command and calls its execute method to
+      operate it
+    - may store sequence of commands
+    - "Commands are an object-oriented replacement for callbacks"
+- to simplify the pattern, can simply give the Invoker a function instead of a Command instance
+    - Invoker can just call command() instead of calling command.execute()
+- more advanced uses of the Command pattern may need more than a simple callback function
+- Python alternatives
+    - a callable instance can keep whatever state is necessary, and provide extra methods in addition to `__call__`
+    - a closure can be used to hold the internal state of a function between calls
+
+# Ch. 7 - Function Decorators and Closures
+## Decorators 101
+- callable that takes another function as argument (the decorated function)
+    - performs processing with the decorated function
+    - returns function or replaces it with another function or callable object
+```
+@decorate
+def target():
+    print('running target()')
+
+# equivalent to
+
+def target():
+    print('running target()')
+
+target = decorate(target)
+```
+- just syntactic sugar
+- usually executed immediately when a module is loaded
+
+## When Python Executes Decorators
+- decorators run after decorated function is defined - usually at import time
+- decorated function only run when explicitly invoked
+- import time vs. runtime
+
+## Decorator-Enhanced Strategy Pattern
+- cleans up over previous examples
+    - do not need to use special names
+    - makes it easier to modify all decorated functions at once and highlight purpose
+    - can define decorated functions within any module
+
+## Variable Scope Rules
+- variables within a function that are ASSIGNED (important) to and not explicitly declared
+  global are designated as local variables when Python compiles the body of the function
+    - can be observed in generated byte code
+- Python does not require variables to be declared
+    - assumes that a variable assigned in the body of a function is local
+- use the global declaration to treat a global variable as global
+
+## Closures
+- closures are sometimes confused with anonymous functions
+    - the use of anonymous functions is what historically led to the definition of functions
+      inside functions
+    - closures are important when using nested functions
+- a closure is a function with an extended scope that encompasses nonglobal
+  variables referenced in the body of the function but not defined there
+    - inconsequential whether function is anonymous or not
+    - important aspect is whether function can access nonglobal variables that are
+      defined outside of its body
+- free variable - technical term meaning a variable that is not bound in the local scope
+    - often used in closures to reference variables in the enclosing function
+    - can inspect free variables in `__code__.co_freevars`
+- summary
+    - a closure is a function that retains the bindings of the free variables that exist
+      when the function is defined
+    - free variables can then be used later when the function is invoked and the defining
+      scope is no longer available
+
+## The nonlocal Declaration
+- `count += 1` is actually `count = count + 1` (when count is a number or immutable type)
+  so the variable becomes local
+- can only read to free vars that are immutable types (numbers, strings, tuples, etc)
+    - update/assignment implicitly creates a local variable
+- `nonlocal` keyword added in Python 3 to tag free variables
+    - to handle the lack of nonlocal in Python 2
+        - store the variables the inner functions need to change (e.g., count, total)
+          as items or attributes of some mutable object, like a dict or a simple instance,
+          and bind that object to a free variable
+        - see third code snippet of PEP 3104
+
+## Implementing a Simple Decorator
+
+## Decorators in the Standard Library
+- three built-in decorators - property, classmethod, staticmethod
+- functools.wraps helps to build well-behaved decorators
+- functools.lru_cache
+    - implements memoization - optimization technique that works by saving the results of
+      previous invocations of an expensive function, avoiding repeat computations on previously used
+      arguments
+    - uses an LRU cache
+- functools.singledispatch
+    - new decorator in Python 3.4
+    - transforms a function into a single-dispatch generic function
+    - to define a generic function, decorate it with the @singledispatch decorator
+        - dispatch happens on the type of the first argument
+    - use the register() attribute of the generic function to add overloaded implementations to the function
+        - it is a decorator and takes a type parameter and decorating a function implementing the operation for that type
+    - decorating a plain function causes it to become a generic function or a group of functions to perform
+      the same operation in different ways, depending on the type of the first argument
+    - singledispatch package is available on PyPI as a backport compatible with Python 2.6 to 3.3
+    - register the specialized functions to handle ABCs (abstract classes) instead of concrete implementations when possible
+        - allows your code to support a greater variety of compatible types
+       - allows code to support existing or future classes that are either actual or virtual
+         subclasses of those ABCs
+    - can register specialized functions anywhere in the system in any module
+    - offers much more functionality (see PEP 443)
+    - @singledispatch is not designed to bring Java-style method overloading to Python
+        - a single class with many overloaded variations of a method is better than a
+          single function with many if/else blocks
+        - both are flawed because they concentrate too much responsibility in a single code unit (class or function)
+        - the advantage of @singledispath is support of modular extension
+            - each module can register a specialized function for each type it supports
+- single dispatch
+    - form of generic function dispatch where the implementation is chosen based on the type of
+      a single argument
+- generic function
+    - function composed of multiple functions implementing the same operation for different
+      types
+        - the implementation that should be used during a call is determined by the dispatch algorithm
+
+## Stacked Decorators
+```
+@d1
+@d2
+def f():
+    print('f')
+
+# equivalent to
+def f():
+    print('f')
+
+f = d1(d2(f))
+```
+
+## Parameterized Decorators
+- decorator takes decorated function as first arg
+- can pass more args by making a decorator factory that takes args and
+  returns a decorator which is then applied to the function in question
+- see book code for examples
+
+
+# Ch. 8 - Object References, Mutability, and Recycling
+## Variables are Not Boxes
+- conceptualize Python variables as labels and the label refers to an object
+    - as opposed to a box in which objects/values are deposited and updated
+- similar to Java references
+- good to think of it as the variable is assigned to the object rather than
+  the object is assigned to the variable
+- always read the right-hand side first
+    - rhs is where the object is created or retrieved
+    - after that the variable on the left is bound to the object
+    - similar to a label stuck to the object
+- an object can have several labels assigned to it (aliasing)
+
+## Identity, Equality, and Aliases
+- every object has an identity, a type and a value
+- an object’s identity never changes once it has been created
+- `is` operator compares the identity of two objects
+- `id()` function returns an integer representing its identity
+    - the meaning of an object’s ID is implementation-dependent
+    - id() returns the memory address of the object in CPython
+    - may be something else in another Python interpreter
+- ID is guaranteed to be a unique numeric label that will never change during the life of
+  the object
+- use of the `id()` function while programming is rare
+    - identity checks are most often done with the `is` operator
+
+### Choosing Between == and is
+- the `==` operator compares the values of (data held by) objects
+- `==` appears more frequently than `is` in Python code
+- when comparing a variable to a singleton use `is`
+- most common case is checking whether a variable is bound to None
+    - use `x is None` or `x is not None`
+    - `is` operator is faster than `==` because it cannot be overloaded
+        - no need for interpreter to find and invoke special methods to evaluate it
+        - computing is as simple as comparing two integer IDs
+- `a == b` is syntactic sugar for `a.__eq__(b)`
+    - `__eq__` method inherited from object compares object IDs, so it produces the
+      same result as `is`
+    - most built-in types override `__eq__` with more meaningful implementations that
+      take into account the values of the object attributes
+- equality checks may be expensive (collections, nested structures)
+
+### The Relative Immutability of Tuples
+- tuples hold references to objects
+    - if the referenced items may change (if mutable) even if the tuple doesn't
+    - immutability of tuples means the specific references contained in the tuple
+      and not the references themselves
+    - what never changes in a tuple is the identities of the items they contain
+
+## Copies Are Shallow by Default
+- easiest copy method for mutable collections is to use the built-in constructor
+    - shortcut `l2 = l1[:]` also makes a copy
+- produces a shallow copy where outermost container is duplicated but copy is filled
+  with references to same items held by the original container
+    - saves memory and doesn't not cause problems with immutable items
+    - leads to issues with mutable items where aliases can cause unexpected modification
+
+### Deep and Shallow
+- copy modules provides `deepcopy` and `copy`
+- copy.copy(x) - return a shallow copy of x
+- copy.deepcopy(x) - return a deep copy of x
+- both raise exception copy.error for module specific errors
+- difference between shallow and deep copying is only relevant for compound objects
+  (objects that contain other objects, like lists or class instances)
+    - shallow copy constructs a new compound object and then inserts references into it
+      to the objects found in the original (as able)
+    - deep copy constructs a new compound object and recursively inserts copies into it
+      of the objects found in the original
+- deep copy problems
+    - recursive objects (compound objects that, directly or indirectly, contain a reference to themselves)
+      may cause a recursive loop
+    - deep copy may copy too much
+- deepcopy() avoids problems by
+    - keeping a "memo" dictionary of objects already copied during the current copying
+      pass
+    - letting user-defined classes override the copying operation or the set of components
+      copied
+- can control the behavior of both copy and deepcopy by implementing the __copy__() and __deepcopy__()
+  special methods as described in the copy module documentation
+
+## Function Parameters as References
+- Python passes parameters using call by sharing (e.g. pass by reference)
+    - each formal parameter of the function gets a copy of each reference in the
+    - parameters inside the function become aliases of the actual arguments
+- actual arguments passed to functions may behave in different ways depending on
+  the mutability of the arguments
+    - with an assignment
+        - number is unchanged
+        - list is changed
+        - tuple is unchanged
+- avoid mutable objects as default values to function parameters
+    - each default value is evaluated when the function is defined (usually on module load)
+      and then become attributes of the function object
+    - changes to the default value are shared across function calls
+- carefully consider ownership and the resulting ability to modify a mutable variable
+  passed to a function
+    - with lists, for example, instead of using a default empty list, use None
+        - first check for None and then create an empty list if None
+        - otherwise construct a new list (or deepcopy) using the `list(arg)` ctor
+    - avoids the potential to mutate the parameter unknowingly or share a default
+
+## del and Garbage Collection
+- objects are never explicitly destroyed
+    - when they become unreachable they may be garbage-collected
+- del statement deletes names, not objects
+    - del command may cause an object to be garbage collected
+        - if the variable deleted holds the last reference to the object
+        - if the object becomes unreachable
+- rebinding a variable may also cause the number of references to an object to reach
+  zero
+- `__del__` special method does not cause the disposal of the instance
+    - should not be called by code
+    - invoked by the Python interpreter when the instance is about to be destroyed
+      to give it a chance to release external resources
+    - rarely necessary to implement
+- proper use of `__del__` is difficult
+    - see the `__del__` special method documentation in "Data Model" Python Reference
+    . In CPython, the
+- primary algorithm for garbage collection in CPython is reference counting
+    - each object keeps count of how many references point to it
+    - object is destroyed when refcount reaches zero
+        - `__del__` method is called (if defined)
+        - memory allocated to the object is destroyed
+        . In CPython 2.0,
+- a generational garbage collection algorithm was added in CPython 2.0 to detect groups
+  of objects involved in reference cycles which may be unreachable when all the mutual references
+  are contained within the group
+- other implementations of Python have more sophisticated garbage collectors that do not
+  rely on reference counting
+    - see "PyPy, Garbage Collection, and a Deadlock"
+- REMEMBER: `del` does not delete objects but objects may be deleted after a call to
+  `del` if the refcount drops to 0
+
+## Weak References
+- references keep an object alive in memory
+    - garbage collector disposes of an object when the refcount drops to 0
+- sometimes useful to have a reference to an object that does not increment refcount (extending lifetime)
+    - common use case is a cache
+    - don't want the cached objects to be kept alive just because they are referenced by the cache
+- target of a reference is called the referent
+- a weak reference does not prevent the referent from being garbage collected
+- can use `weak_ref is None` to check if object is alive
+- memory management under the hood often contains hidden implicit assignments that create
+  new references
+    - _ console variable
+    - traceback objects
+- weakref.ref class is a low-level interface intended for advanced uses
+    - most programs are better served by the use of the weakref collections and
+      finalize
+    - consider using WeakKeyDictionary, WeakValueDictionary, WeakSet, and finalize
+      (which use weak references internally) instead
+- WeakValueDictionary implements a mutable mapping where the values are weak references
+  to objects
+    - corresponding key is automatically removed from WeakValueDictionary when a referred
+      object is garbage collected elsewhere in the program
+    - commonly used for caching
+- a temporary variable may cause an object to last longer than expected by holding a
+  reference to it
+    - usually not a problem with local variables which are destroyed when the function returns
+    - be careful with global variables and loops
+- WeakKeyDictionary - keys are weak references
+    - can be used to associate additional data with an object owned by other parts of
+      an application without adding attributes to those objects
+    - can be useful with objects that override attribute accesses
+- WeakSet - set class that keeps weak references to its elements
+    - element will be discarded when no strong reference to it exist any more
+    - can be used to build a class that is aware of every one of its instances
+        - class attribute with a WeakSet to hold the references to the instances
+        - instances would never be garbage collected with a regular set
+- not every Python object may be the target, or referent, of a weak reference
+    - basic list and dict instances may not be referents
+        - plain subclass of either can be
+    - a set instance can be a referent
+    - user-defined types can be referents
+    - int and tuple instances cannot be targets of weak references, even if subclasses of those types are
+      created
+    - limitations are implementation details of CPython
+
+ ## Tricks Python Plays with Immutables
+- for a tuple t, `t[:]` does not make a copy
+    - it returns a reference to the same object
+    - `tuple(t)` also returns a reference to the same object
+- same behavior can be observed with instances of str, bytes, and frozenset
+    - (frozenset is not a sequence, so `fs[:]` does not work if fs is a frozenset)
+    - fs.copy() has the same behavior
+- sharing of string literals is an optimization technique called interning
+    - CPython uses the same technique with small integers to avoid unnecessary
+      duplication of common numbers like 0, –1, and 42
+    - CPython does not intern all strings or integers
+- NOTE: never depend on str or int interning!!!
+    - always use == and not is to compare them for equality
+- these tricks save memory and make the interpreter faster and are not important for
+  everyday programming
+
+# Ch. 9 - A Pythonic Object
+- user-defined types can behave like built-in types without inheritance
+    - duck typing - just implement the methods needed
+
+## Object Representations
+- two methods for getting string representation
+    - repr() - developer's view of an object (uses `__repr__`)
+    - str() - user's view of an object (uses `__str__`)
+- two additional methods for representations
+    - `__bytes__` - analogous to str but used to the object represented as
+      a byte string
+    -  `__format__` - called by `format()` and `str.format()` to get string displays
+       of objects using special formatting codes
+
+## Vector Class Redux
+- see code for details
+
+## An Alternative Constructor
+- when supporting encoding as bytes, need to have ability to decode as bytes
+    - see `array.array.frombytes`
+    - good to use as a classmethod
+
+## classmethod Versus staticmethod
+- use classmethod to define a method that operates on the class and not on instances
+    - changes the way the method is called
+    - receives the class as the first argument instead of an instance
+    - most commonly used for alternative constructors
+        - often returns an instance using the class argument
+    - first parameter of a class method should be named cls (by convention)
+- staticmethod decorator changes a method so that it receives no special first argument
+    - like a plain function that happens to live in a class body
+- compelling use cases for staticmethod are hard to find
+    - just define functions in the module
+
+## Formatted Displays
+- `format()` built-in and `str.format()` delegate formatting to each type by
+  calling `.__format__(format_spec)`
+    - format_spec is a formatting specifier, either
+        - second argument in format(my_obj, format_spec)
+        - whatever appears after the colon in a replacement field delimited
+          with {} inside a format string used with str.format()
+- see Format Spec Mini-Languages and Format String Syntax in docs
+
+## A Hashable Vector2d
+- implement `__hash__` and `__eq__`
+    - if an object implements a custom `__eq__` that takes into account its internal state
+      it may be hashable only if all its attributes are immutable
+    - must make vector instances immutable
+- restricting access to attributes
+    - NOTE: use two leading underscores to make an attribute private!!!
+    - define a function with the attribute name (without underscores) and decorate
+      with the @property decorator - the most simple case is just returning the
+      private attribute
+    - for methods that only read the value, prefer accessing the public property
+```
+self.__x = val
+
+@property
+def x(self):
+    return self.__x
+```
+- define `__hash__` (can use the hash built-in and XOR the components of an object)
+    - see docs for `__hash__` special method
+
+## Private and "Protected" Attributes in Python
+- no real protection, just a method for preventing overwriting of "private" attributes
+  in a subclass
+- name an instance attribute with two leading underscores and zero or at most one trailing underscore
+    - Python stores the name in the instance `__dict__` prefixed with a leading underscore
+      and the class name (`_Class__attribute`)
+    - name mangling in Python
+        - designed to prevent accidental access, but not designed for security
+- some prefer to use just one underscore prefix to "protect" attributes (e.g. `self._x`)
+    - some believe accidental attribute clobbering should be addressed by naming
+      conventions rather than double-underscore mangling
+    - some explicitly state not to use double-underscore for private
+- single underscore prefix has no special meaning to the Python interpreter when
+  used in attribute names
+    - strong convention among Python programmers that these attributes should not be accessed
+      outside of the class
+- single underscore prefixed attributes are sometimes called "protected", some call them
+  "private"
+- NOTE: no way to really make attributes private and immutable
+
+## Saving Space with the `__slots__` Class Attribute
+- Python stores instance attributes in a per-instance dict named `__dict__`
+    - dictionaries have a significant memory overhead
+- `__slots__` class attribute can save a lot of memory by letting the interpreter store the
+  instance attributes in a tuple instead of a dict
+    - good for dealing with many objects
+- NOTE: `__slots__` attribute inherited from a superclass has no effect
+    - Python only takes into account `__slots__` attributes defined in each class
+- create a class attribute with the name `__slots__` and assign it an iterable of str with
+  identifiers for the instance attributes
+    - good to use a tuple because it conveys the message that the `__slots__` definition
+      cannot change
+      By defining __slots__ in the class, you are telling the interpreter: “
+- effectively tells interpreter that the specified attributes are all the instance attributes in
+  this class
+- stored in a tuple-like structure in each instance
+    - avoids the memory overhead of the per-instance `__dict__`
+- NOTE: use numpy arrays if handling millions of objects with numeric data
+    - memory-efficient
+    - have highly optimized functions for numeric processing
+- class instances will not be allowed to have any other attributes when __slots__ is specified in a class
+    - considered bad form to use __slots__ just to prevent users of your class from creating
+      new attributes in the instances if they want to
+    - use for optimization, not for programmer restraint
+    - can add the `__dict__` name to the `__slots__`
+        - instances will keep attributes named in __slots__ in the per-instance tuple
+        - will also support dynamically created attributes which will be stored in the
+          usual `__dict__`
+        - may defeat the purpose
+- the `__weakref__` attribute is necessary for an object to support weak references
+    - present by default in instances of user-defined classes
+    - need to include `__weakref__` in `__slots__` if instances may need to be targets
+      of weak references
+- problems with `__slots__`
+    - must remember to redeclare `__slots__` in each subclass
+        - inherited attributes are ignored by the interpreter
+    - instances will only be able to have the attributes listed in `__slots__`
+        - unless including `__dict__` in `__slots__` which may negate the memory savings
+    - instances cannot be targets of weak references unless `__weakref__` is included in `__slots__`
+- mainly beneficial and to be considered for working with a large number of instances
+
+## Overriding Class Attributes
+- class attributes can be used as default values for instance attributes
+- writing to an instance attribute that does not exist creates a new instance attribute
+    - a class attribute by the same name is untouched
+    - any code reading that attribute from that point on will read the instance attribute
+      rather than the class attribute (shadowing the class attribute name)
+    - allows for customizing individual instances by overriding a class attribute
+- to change a class attribute, set it on the class specifically rather than through
+  an instance
+- common practice to inherit from a class just to override a class attribute (see Django)
+- can read the class name rather than hardcoding with
+```
+class_name = type(self).__name__
+```
+
+# Ch. 10 - Sequence Hacking, Hashing, and Slicing
