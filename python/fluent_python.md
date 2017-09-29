@@ -2269,7 +2269,7 @@ P.method(i)
     - a restriction applied to ABCs and not mixins
         - concrete methods implemented in an ABC should only collaborate with methods
           of the same ABC and its superclasses
-6. don’t subclass from more than one concrete class concrete
+6. don't subclass from more than one concrete class concrete
     - classes should have zero or at most one concrete superclass
     - all but one of the superclasses of a concrete class should be ABCs or mixins
 7. provide aggregate classes to users
@@ -2295,7 +2295,7 @@ P.method(i)
 - limitations in Python
     - cannot overload operators for the built-in types
     - cannot create new operators, only overload existing ones
-    - some operators can’t be overloaded - is, and, or, not (but the bitwise &, |, ~, can)
+    - some operators can't be overloaded - is, and, or, not (but the bitwise &, |, ~, can)
 
 ## Unary Operators
 - `-(__neg__)`
@@ -2404,5 +2404,496 @@ P.method(i)
 
 
 # Ch. 14 - Iterables, Iterators, and Generators
+- abstracting away the Iterator pattern required changing the language
+    - the yield keyword was added in Python 2.2
+        - allows the construction of generators, which work as iterators
+- NOTE: every generator is an iterator
+    - generators fully implement the iterator interface
+        - an iterator retrieves items from a collection
+        - a generator can produce items
+            - good for producing an infinite series of numbers that cannot be stored
+              in a collection
+- the Python community treats iterator and generator as synonyms most of the time
+- Python 3 prefers generators where possible
+    - range() is a generator (must use `list(range(n))`)
+- every collection in Python is iterable
+    - iterators are used to support
+        - for loops
+        - collection types construction and extension
+        - looping over text files line by line
+        - list, dict, and set comprehensions
+        - tuple unpacking
+        - unpacking actual parameters with * in function calls
+
+## Sentence Take #1: A Sequence of Words
+- see book for code of Sentence class
+- sequences are iterable because of the iter function
+    - interpreter automatically calls `iter(x)` to iterate over an object
+- the iter built-in
+    - checks whether the object implements `__iter__`
+    - calls it to obtain an iterator
+    - if `__iter__` is not implemented but `__getitem__` is
+        - Python creates an iterator that attempts to fetch items in order from index 0
+    - Python raises TypeError if that fails
+- any Python sequence is iterable because they implement `__getitem__`
+    - standard sequences also implement `__iter__`
+    - special handling of `__getitem__` exists for backward compatibility reasons and
+      may be gone in the future
+      (although it is not deprecated as I write this).
+      As mentioned in “Python Digs Sequences”,
+      this is an extreme form of duck typing:
+- an object is considered iterable when it implements the special method `__iter__` and/or
+  when it implements `__getitem__` (assuming `__getitem__` accepts int keys starting from 0)
+- definition for an iterable is simpler but not as flexible in goose typing
+    - an object is considered iterable if it implements the `__iter__` method
+- NOTE: check for iterables by calling `iter(x)` and handle TypeError
+    - prefer to just try to iterate and handle TypeError
+
+## Iterables Versus Iterators
+- iterable
+    - any object from which the iter built-in function can obtain an iterator
+    - objects implementing an `__iter__` method returning an iterator are iterable
+    - sequences are always iterable
+    - objects implementing a `__getitem__` method that takes 0-based indexes are also
+      iterable
+- Python obtains iterators from iterables
+- the general process of the `for` loop
+    - build an iterator from the iterable
+    - repeatedly call next on the iterator to obtain the next item
+    - iterator raises `StopIteration` when there are no further items
+    - discard iterator object
+    - exit the loop
+- StopIteration signals that the iterator is exhausted
+    - handled internally in for loops and other iteration contexts like list
+      comprehensions, tuple unpacking, etc.
+- standard interface for an iterator has two methods
+    - `__next__`
+        - returns the next available item, raising StopIteration when there are no more items
+    - `__iter__`
+        - returns self
+        - allows iterators to be used where an iterable is expected
+- formalized in the collections.abc.Iterator ABC
+    - defines `__next__` abstract method
+    - subclasses Iterable where the abstract `__iter__` method is defined
+- Iterable and Iterator ABCs
+    - a concrete `Iterable.__iter__` should return a new Iterator instance
+    - a concrete Iterator must implement `__next__`
+    - `Iterator.__iter__` method just returns the instance itself
+    - Iterator implements __iter__ by returning self
+        - allows an iterator to be used wherever an iterable is required
+- return the next item from the iterator
+- the Iterator ABC abstract method is `it.__next__()` in Python 3 and `it.next()` in Python 2
+    - avoid calling special methods directly
+    - use `next(it)` which does the right thing in Python 2 and 3
+- code comments suggest to use hasattr to check for both `__iter__` and `__next__`
+    - the `__subclasshook__` method of the abc.Iterator ABC does this
+    - the best way to check if an object is an iterator is to call `isinstance(x, abc.Iterator)`
+    - test works even if the class is not a real or virtual subclass of Iterator due to `Iterator.__subclasshook__`
+- the only methods required of an iterator are `__next__` and `__iter__`
+- no way to check whether there are remaining items other than to call next() and catch StopInteration
+    - not possible to reset an iterator
+    - need to call iter() on the iterable again rather than on the iterator
+- iterator definition
+    - any object that implements the `__next__` no-argument method that returns the next
+      item in a series or raises `StopIteration` when there are no more items
+    - Python iterators also implement the `__iter__` method so they are iterable as well
+
+## Sentence Take #2: A Classic Iterator
+- uses `__iter__` special method, which is how the iterator design pattern is described
+  in GOF
+- a common cause of errors in building iterables and iterators is to confuse the two
+    - iterables have an `__iter__` method that instantiates a new iterator every time
+    - iterators implement a `__next__` method that returns individual items and an `__iter__`
+      method that returns self
+- iterators are iterable -> iterables are not iterators
+- it is a bad idea to make the sentence class an iterator
+    - common anti-pattern
+- GOF - use the Iterator pattern
+    - to access an aggregate object's contents without exposing its internal representation
+    - to support multiple traversals of aggregate objects
+    - to provide a uniform interface for traversing different aggregate structure i.e. polymorphic iteration
+- must be possible to obtain multiple independent iterators from the same iterable instance to support multiple traversals
+    - each iterator must keep its own internal state
+    - proper implementation of the pattern requires each call to `iter(it)` to create a
+      new independent iterator
+- NOTE: an iterable should never act as an iterator over itself
+    - iterables must implement `__iter__` but not `__next__`
+    - iterators should always be iterable
+        - `__iter__` should just return self
+
+## Sentence #3: A Generator Function
+- How a Generator Function Works
+- any Python function that has the yield keyword in its body is a generator function
+    - a function which, when called, returns a generator object
+    - i.e. a generator factory
+- NOTE: the only syntax distinguishing a plain function from a generator function is
+  the fact that the latter has a yield keyword somewhere in its body
+- the body of a generator function usually has a loop (not necessarily)
+    - can have multiple calls to yield
+- the written function is a function object
+- the invoked function returns a generator object
+- generators are iterators that produce the values of the expressions passed to yield
+- can assign returned value (an iterator, essentiall) to a variable
+    - calling `next()` on this variable will produce the next yielded result
+    - generator object raises a StopIteration when the body of the function completes
+- a generator function builds a generator object that wraps the body of the function
+    - invoking `next(...)` on the generator object causes execution to advance to the next yield
+      in the function body
+        - evaluates to the value yielded when the function body is suspended
+     - when the function body returns, the enclosing generator object raises StopIteration
+- NOTE: often more clear to say a generator yields or produces values rather than returning
+  values
+
+## Sentence Take #4: A Lazy Implementation
+- the Iterator interface is designed to be lazy
+    - `next(it)` produces one item at a time
+- eager is the opposite
+    - lazy evaluation and eager evaluation are technical terms in programming language theory
+- building a list is eager
+- building a full list to iterate over does more work than necessary when building
+- often a method for remodeling something in a lazy way in Python 3
+    - re.finditer function is a lazy version of re.findall and saves a lot of memory
+
+## Sentence Take #5: A Generator Expression
+- simple generator functions can often be replace by generator expressions
+- genexps can be understood as a lazy list comprehension
+    - returns a generator that will lazily produce items on demand rather than eagerly
+      building a list
+- list comprehension == factory of lists
+- generator expression == factory of generators.
+
+## Generator Expressions: When to Use Them
+- list comprehensions generally work were generator expressions can be used where
+    - listcomps use more memory to store intermediate list values
+- generator functions are more flexible than generator expressions
+    - can code complex logic
+    - can use as coroutines
+- genexp is easier to use and read
+- rule of thumb: prefer a generator function when a generator expression spans more than
+  a couple of lines
+
+## Another Example: Arithmetic Progression Generator
+- see code for ArithmeticProgression
+- itertools has many generator functions that can be combined
+    - count can count from 0 or take a start and step
+        - infinite - do not call `list(count())`
+     - takewhile produces a generator that consumers another generator and stops when
+       a given predicate evaluates to False
+
+## Generator Functions in the Standard Library
+- see text for lists of generator functions
+
+## New Syntax in Python 3.3: yield from
+- `yield from` can yield each element from a given iterable without manually looping
+  through the iterable
+
+## Iterable Reducing Functions
+- reducing == folding == accumulating
+- see table 14-6 for reducing functions
+- all can be implemented with `functools.reduce` but functions like `all` and `any`
+  short-circuit
+- sorted builds an actual list whereas reversed is a generator function
+
+## A Closer Look at the iter Function
+- iter can be called with two arguments to create an iterator from a regular function or
+  any callable object
+    - first argument must be a callable to be invoked repeatedly (with no arguments)
+      to yield values
+    - second argument is a marker value which, when returned by the callable, causes
+      the iterator to raise StopIteration instead of yielding the sentinel
+    - must rebuild the iterator by invoking `iter(...)` again to start over
+- see the iter function built-in documentation
+
+## Case Study: Generators in a Database Conversion Utility
+- see isis2json.py script
+
+## Generators as Coroutines
+- PEP 342 — Coroutines via Enhanced Generators was implemented in Python 2.5
+    - added extra methods and functionality to generator objects (`.send()`)
+- `.send()` causes the generator to advance to the next yield
+    - also allows the client using the generator to send data into it
+        - any argument passed to .send() becomes the value of the corresponding yield
+          expression inside the generator function body
+     - `.send()` allows two-way data exchange between the client code and the generator
+     - `.__next__()` which only lets the client receive data from the generator
+- changes the nature of generators
+    - become coroutines when used in this way
+- differences from David Beazley
+    - generators produce data for iteration
+    - coroutines are consumers of data
+    - don't mix the two concepts (for simplicity)
+    - coroutines are not related to iteration
+    - use case for having yield produce a value in a coroutine
+        - not tied to iteration
 
 
+# Ch. 15 - Context Managers and else Blocks
+## Do This, Then That: else Blocks Beyond if
+- else clause can be used in if statements and in for, while, and try statements
+- different semantics of for/else, while/else, and try/else than if/else
+Initially the word else actually hindered my understanding of these features,
+but eventually I got used to it. Here are the
+- rules
+    - for
+        - else block will run only if and when the for loop runs to completion (i.e., not
+          if the for is aborted with a break)
+    - while
+        - else block will run only if and when the while loop exits because the condition
+          became falsy (i.e., not when the while is aborted with a break)
+    - try
+        - else block will only run if no exception is raised in the try block
+        - exceptions in the else clause are not handled by the preceding except clauses
+- else clause (in all cases) is also skipped if an exception or a return, break, or continue statement causes
+  control to jump out of the main block of the compound statement
+- NOTE: then may be a better keyword replacement for else in this case
+- using else with these statements often makes the code easier to read and saves the trouble
+  of setting up control flags or adding extra if statements
+
+## Context Managers and with Blocks
+- context manager objects exist to control a with statement
+- the with statement was designed to simplify the try/finally pattern
+    - guarantees that some operation is performed after a block of code even if the block
+      is aborted because of an exception, a return or sys.exit() call
+- a finally clause usually releases a critical resource or restores some previous state
+  that was temporarily changed
+- the context manager protocol consists of the `__enter__` and `__exit__` methods
+    - `__enter__` is invoked on the context manager object at the start of the with
+    - a call to `__exit__` on the context manager object at the end of the with block
+      plays the role of the finally clause
+- the context manager object is the result of evaluating the expression after with
+    - the value bound to the target variable (in the as clause) is the result of
+      calling `__enter__` on the context manager object
+      . It just happens that in Example   15-1, the open() function returns
+      an instance of TextIOWrapper, and
+- the `open()` returns a context manager and its `__enter__` method returns self
+- the `__enter__` method may also return some other object instead of the context manager
+
+- the `__exit__` method is invoked on the context manager object when control flow exits the with block
+    - not on whatever is returned by `__enter__`
+- the as clause of the with statement is optional (depending on the context manager)
+- NOTE: use contextlib.redirect_stdout to redirect stdout
+- three arguments passed to __exit__
+    - exc_type - exception class
+    - exc_value - exception instance (parameters passed to the exception constructor can be found in exc_value.args)
+    traceback - traceback object
+
+## The contextlib Utilities
+- see contextlib — Utilities for with-statement contexts in the docs for info on
+  creating context managers
+- closing
+    - a function to build context managers out of objects that provide a close()
+      method but don't implement the `__enter__`/`__exit__` protocol
+- suppress
+    - a context manager to temporarily ignore specified exceptions
+- @contextmanager
+    - a decorator that lets you build a context manager from a simple generator function,
+      instead of creating a class and implementing the protocol
+- ContextDecorator
+    - a base class for defining class-based context managers that can also be used as function
+      decorators, running the entire function within a managed context
+- ExitStack
+    - a context manager that lets you enter a variable number of context managers
+    - ExitStack calls the stacked context managers' `__exit__` methods in LIFO order (last entered, first exited)
+      when the block ends
+    - use when it is unknown how many context managers you need to enter in your with block
+
+## Using @contextmanager
+- @contextmanager decorator reduces boilerplate code needed to create a context manager
+    - just implement a generator with a single yield that should produce whatever you want
+      the `__enter__` method to return
+- yield is used to split the body of the function in two parts
+    - everything before the yield will be executed at the beginning of the with block
+      when the interpreter calls `__enter__`
+    - code after yield will run when `__exit__` is called at the end of the block
+- the contextmanager decorator wraps the function in a class that
+  implements the `__enter__` and `__exit__` methods
+    - `__enter__` method
+        1. invokes the generator function and holds on to the generator object
+        2. calls `next()` on the generator object to make it run to the yield keyword
+        3. returns the value yielded by the call so it can be bound to a target variable
+           in the with/as form
+    - `__exit__` method
+        1. checks if an exception was passed as exc_type
+            - if so `gen.throw(exception)` is invoked, causing the exception to be raised in
+              the yield line inside the generator function body
+        2. otherwise, `next(gen)` is called, resuming the execution of the generator function body
+           after the yield
+- NOTE: a try/finally (or a with block) around the yield is unavoidable when using @contextmanager
+    - users of the context manager may do anything within the with block
+
+
+## Ch. 16 - Coroutines
+- a coroutine (syntactically like a generator) is just a function with the yield keyword
+    - yield usually appears on the right side of an expression (e.g., datum = yield)
+    - it may or may not produce a value
+        - if there is no expression after the yield keyword, the generator yields None
+- may receive data from the caller, which uses `.send(datum)` instead of `next(...)`
+  to feed the coroutine
+    - caller pushes values into the coroutine
+    - possible that no data goes in or out through the yield keyword
+- yield is a control flow device that can be used to implement cooperative multitasking
+    - each coroutine yields control to a central scheduler so that other coroutines can
+      be activated
+- to understand coroutines think of yield primarily in terms of control flow
+
+## How Coroutines Evolved from Generators
+- infrastructure for coroutines appeared in PEP 342 in Python 2.5 (2006)
+- yield keyword can be used in an expression
+- the `.send(value)` method was added to the generator API
+- caller of the generator can post data using send that then becomes the value of the yield expression
+  inside the generator function
+    - allows a generator to be used as a coroutine
+- coroutine can be seen as a procedure that collaborates with the caller, yielding and receiving values from the
+  caller
+- PEP 342 also added .throw() and .close() methods that respectively allow the caller to
+  throw an exception to be handled inside the generator and to terminate it
+  . These features are covered in the next section and in “Coroutine Termination and Exception Handling”.
+- latest evolutionary step for coroutines - PEP 380 - Syntax for Delegating to a Subgenerator
+    - Python 3.3 (2012)
+    - generator can now return a value
+        - previously, providing a value to the return statement inside a generator raised a
+          SyntaxError
+    - `yield from` enables complex generators to be refactored into smaller, nested
+      generators while avoiding a lot of boilerplate code previously required
+      for a generator to delegate to subgenerators
+
+## Basic Behavior of a Generator Used as a Coroutine
+- define a function with yield in the body where yield is used in an expression
+    - when the coroutine is designed just to receive data from the client it yields None 
+        - implicit when there is no expression to the right of the yield keyword
+- call the function to get a generator object back
+- the first call is `next()` because the generator hasn't started so it's not waiting in a
+  yield and it cannot be sent any data initially
+    - call to next makes the yield in the coroutine body evaluate
+    - coroutine resumes and runs until the next yield or termination
+- if control flows off the end of the coroutine body the generator machinery will raise StopIteration
+- a coroutine can be in one of four states
+- determine the current state using the `inspect.getgeneratorstate()`
+    - 'GEN_CREATED' - waiting to start execution
+    - 'GEN_RUNNING' - currently being executed by the interpreter
+    - 'GEN_SUSPENDED' - currently suspended at a yield expression
+    - 'GEN_CLOSED' - execution has completed
+- the argument to the send method will become the value of the pending
+  yield expression
+    - can only make a call to send if the coroutine is currently suspended
+    - not the case if the coroutine has never been activated ('GEN_CREATED')
+    - the first activation of a coroutine is always done with next
+        - can also call `.send(None)` and the effect is the same
+- execution of the coroutine is suspended exactly at the yield keyword
+
+## Example: Coroutine to Compute a Running Average
+- see book for code
+- one benefit of coroutines is that state can be simple local variables
+    - no instance attributes or closures
+
+## Decorators for Coroutine Priming
+- a priming decorator is sometimes used to make coroutine usage more convenient (i.e.
+  avoid the need to call next before being able to call send)
+- coroutil module - coroutine decorator
+- many other coroutine decorators like tornado.gen
+
+## Coroutine Termination and Exception Handling
+- unhandled exception in a coroutine propagates to the caller of the next or send
+  that triggered it
+    - any attempt to reactivate will trigger StopIteration
+- to terminate coroutines
+    - can use send with some sentinel value that tells the coroutine to exit
+        - e.g. None and Ellipsis
+- generator objects have two methods that allow the client to explicitly send exceptions
+  into the coroutine since Python 2.5
+    - `generator.throw(exc_type[, exc_value[, traceback]])`
+        - causes the yield expression where the generator was paused to raise the
+          exception given
+        - if the exception is handled by the generator, flow advances to the next yield,
+          and the value yielded becomes the value of the `generator.throw` call
+        - if the exception is not handled by the generator, it propagates to the context of
+          the caller
+    - `generator.close()`
+        - causes the yield expression where the generator was paused to raise a GeneratorExit exception
+        - no error is reported to the caller if the generator does not handle that exception or raises
+          StopIteration — usually by running to completion
+        - when receiving a GeneratorExit, the generator must not yield a value, otherwise a
+          RuntimeError is raised
+        - if any other exception is raised by the generator, it propagates to the caller
+
+## Returning a Value from a Coroutine
+- can return a value from a coroutine by returning a value normally
+    - before Python 3.3. it was a syntax error to return a value in a generator function
+- can hack the return by passing it with StopIteration
+    - defined as part of PEP 380
+    - the yield from construct handles it automatically by catching StopIteration internally
+    - interpreter not only consumes the StopIteration, but its value attribute becomes the
+
+## Using yield from
+- similar language constructs are called `await` in other languages, which conveys
+  the purpose much better
+    - `yield from another_co()` allows the other coroutine to take over and will
+      yield values to the outer called
+- the use of yield from requires a nontrivial arrangement of code
+- PEP 380 uses additional terms
+    - delegating generator
+        - the generator function that contains the yield from <iterable> expression
+    - subgenerator
+        - the generator obtained from the <iterable> part of the yield from expression
+    - caller
+        - client code that calls the delegating generator
+        . Depending on context, I use
+- client vs. caller distinguishes from the delegating generator, which is also a caller
+  (it calls the subgenerator)
+- NOTE: PEP 380 often uses the word iterator to refer to the subgenerator
+    - confusing because the delegating generator is also an iterator
+    - stick to subgenerator
+    - subgenerator can be a simple iterator implementing only `__next__`
+    - yield from can handle that as well
+- see text for code and details
+- if a subgenerator never terminates, the delegating generator will be suspended forever at the yield
+  from
+    - will not prevent program from making progress because the yield from transfers control to the
+      client code
+    - means that some task will be left unfinished
+- every `yield from` chain must be driven by a call to next or send in the client code
+
+## The Meaning of yield from
+- ok first approximation at a definition
+    - when the iterator is another generator, the effect is the same as if the body of the subgenerator
+      were inlined at the point of the yield from expression
+    - the subgenerator is allowed to execute a return statement with a value
+        - that value becomes the value of the yield from expression
+- more details
+    - any values that the subgenerator yields are passed directly to the caller of the delegating generator
+      (i.e., the client code)
+    - any values sent to the delegating generator using `send()` are passed directly to the subgenerator
+        - if the sent value is None, the subgenerator’s `__next__()` method is called
+        - if the sent value is not None, the subgenerator’s `send()` method is called
+        - if the call raises StopIteration, the delegating generator is resumed
+        - any other exception is propagated to the delegating generator
+     - return expr in a generator (or subgenerator) causes StopIteration(expr) to be raised upon
+       exit from the generator
+     - the value of the yield from expression is the first argument to the StopIteration exception raised
+       by the subgenerator when it terminates
+     - exceptions other than GeneratorExit thrown into the delegating generator are passed to the
+       `throw()` method of the subgenerator
+        - if the call raises StopIteration, the delegating generator is resumed
+        - any other exception is propagated to the delegating generator
+     - if a GeneratorExit exception is thrown into the delegating generator, or the close()
+       method of the delegating generator is called, then the close() method of the subgenerator is
+       called if it has one
+        - if this call results in an exception, it is propagated to the delegating generator
+        - otherwise, GeneratorExit is raised in the delegating generator
+- yield from behavior is documented using pseudocode (with Python syntax) in PEP 380
+- see text for more explanation here
+
+## Use Case: Coroutines for Discrete Event Simulation
+- coroutines are the fundamental building blocks of asyncio
+- event simulation shows how to implement concurrent activities using coroutines
+  instead of threads
+- see book for description of discrete event simulation and code
+
+## Summary
+- generators can be used to write
+    - traditional "pull" style (iterators) (see ch. 14)
+    - "push" style (current chapter)
+    - "tasks" (event example and ch. 18)
+
+
+## Ch. 17 - Concurrency with Futures
