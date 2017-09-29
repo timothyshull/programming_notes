@@ -324,7 +324,7 @@ for name, cc, pop, (latitude, longitude) in metro_areas:
 
 # 3. Dictionaries and Sets
 - Python dicts are highly optimized
-- hash tables are the engines behind Python’s high-performance dicts
+- hash tables are the engines behind Python's high-performance dicts
 
 ## Generic Mapping Types
 - collections.abc
@@ -712,7 +712,7 @@ memv_oct = memv.cast('B')
         - provides the synchronized (i.e., thread-safe) classes Queue, LifoQueue, and PriorityQueue
         - used for safe communication between threads
         - can be bounded by providing a maxsize argument greater than 0 to the constructor
-        - don’t discard items to make room as deque does
+        - don't discard items to make room as deque does
             - when the queue is full the insertion of a new item blocks — i.e., it waits until some other
               thread makes room by taking an item from the queue
             - useful to throttle the number of live threads
@@ -1051,7 +1051,7 @@ frozenset([1, 2, 3, 4])
     - UnicodeDecodeError - when reading binary sequences into str
 - can get a SyntaxError when loading Python modules when the source encoding is
   unexpected
-  . We’ll show how to handle all of these errors in the next sections.
+  . We'll show how to handle all of these errors in the next sections.
   Tip The first thing to note
 - when receiving a Unicode error, note the exact type of the exception
 - dealing with UnicodeEncodeError
@@ -1075,7 +1075,7 @@ frozenset([1, 2, 3, 4])
     - error happens in Python for Windows, because the default encoding for Python 3 is UTF-8 across all platforms
     - add a magic coding comment at the top of the file to fix this problem
       `# coding: cp1252`
-    - Python 3 source code is no longer limited to ASCII and defaults to the excellent UTF-8 encoding, the best “fix” for source code in legacy encodings like 'cp1252' is to convert them to UTF-8 already, and not bother with the coding comments. If your editor does not support UTF-8, it’s time to switch.
+    - Python 3 source code is no longer limited to ASCII and defaults to the excellent UTF-8 encoding, the best "fix" for source code in legacy encodings like 'cp1252' is to convert them to UTF-8 already, and not bother with the coding comments. If your editor does not support UTF-8, it's time to switch.
 - must be told what the encoding of a byte sequence is
     - can use libraries like Chardet to determine within a confidence level
 - BOM - byte order mark or bytes denoting endianness of CPU where encoding was performed
@@ -1543,10 +1543,10 @@ f = d1(d2(f))
 
 ## Identity, Equality, and Aliases
 - every object has an identity, a type and a value
-- an object’s identity never changes once it has been created
+- an object's identity never changes once it has been created
 - `is` operator compares the identity of two objects
 - `id()` function returns an integer representing its identity
-    - the meaning of an object’s ID is implementation-dependent
+    - the meaning of an object's ID is implementation-dependent
     - id() returns the memory address of the object in CPython
     - may be something else in another Python interpreter
 - ID is guaranteed to be a unique numeric label that will never change during the life of
@@ -1818,7 +1818,7 @@ def x(self):
   identifiers for the instance attributes
     - good to use a tuple because it conveys the message that the `__slots__` definition
       cannot change
-      By defining __slots__ in the class, you are telling the interpreter: “
+      By defining __slots__ in the class, you are telling the interpreter: "
 - effectively tells interpreter that the specified attributes are all the instance attributes in
   this class
 - stored in a tuple-like structure in each instance
@@ -1863,3 +1863,546 @@ class_name = type(self).__name__
 ```
 
 # Ch. 10 - Sequence Hacking, Hashing, and Slicing
+
+## Vector: A User-Defined Sequence Type
+- using composition over inheritance
+    - provide access to an array of floats to create an immutable flat
+      sequence type
+
+## Vector Take #1: Vector2d Compatible
+- NOTE: for > 6 items, repr abbreviates with '...'
+    - use reprlib for more
+- repr should never raise an exception because of it's use in debugging
+- see section for code
+
+## Protocols and Duck Typing
+- a protocol is an informal interface defined only in documentation and not in code (in Python)
+    - whether a class is a subclass of the protocol class is irrelevant - all that matters is that it
+      provides the necessary methods
+- duck typing (after Alex Martelli's post)
+    - behaving like a sequence is all that matters, i.e. implementing the sequence protocol
+    - does not need to be declared anywhere in the code
+- can often get away with implementing just part of a protocol (informal and unenforced)
+    - to support iteration, only `__getitem__` is required
+
+## Vector Take #2: A Sliceable Sequence
+- see code for details
+- delegates `__len__` and `__getitem__` to the `self._components` array
+    - need to modify `__getitem__` to ensure slices produce Vector items rather
+      than array items
+- must know slice object to better understand `__getitem__`
+    - attributes start, stop, and step, and an indices method
+    - `S.indices(len) -> (start, stop, stride)`
+        - assuming a sequence of length len, calculate the start and stop indices, and the stride length of
+          the extended slice described by S
+        - out of bounds indices are clipped in a manner consistent with the handling of
+          normal slices
+    - indices basically normalizes the values passed to slices
+- improved `__getitem__` body
+```
+cls = type(self)
+if isinstance(index, slice):
+    return cls(self._components[ index])
+elif isinstance(index, numbers.Integral):
+    return self._components[index]
+else:
+    msg = '{cls.__name__} indices must be integers'
+    raise TypeError(msg.format(cls=cls))
+```
+- NOTE: excessive use of isinstance may be a sign of bad OO design
+    - using ABCs in isinstance tests makes an API more flexible and future-proof
+    - no ABC for slice in the Python 3.4 standard library
+
+## Vector Take #3: Dynamic Attribute Access
+- the `__getattr__` method is invoked by the interpreter when attribute lookup fails
+    - a call to `obj.x` causes the interpreter to check if the instance has an attribute named x
+    - if not, the search goes to the `class(obj.__class__)`
+    - then it goes up the inheritance graph
+    - if the x attribute is not found, then the `__getattr__` method defined in the class
+      of obj is called with self and the name of the attribute as a string (e.g., 'x')
+- NOTE: `__getattr__` is only called as a fallback
+    - if an attribute is dynamically assigned to an instance, the lookup described above
+      will not occur
+- can use `__setattr__` to prevent assignment of undesired names, or generally control
+  assignment to attributes
+- NOTE: the `super()` function a way to access methods of superclasses dynamically
+    - necessary in a dynamic language that supports multiple inheritance
+    - used to delegate some task from a method in a subclass to a method in a superclass
+- common to need to implement `__setattr__` when `__getattr__` is required
+
+## Vector Take #4: Hashing and a Faster ==
+- using functools.reduce to apply hash and XOR to each component of the array
+    - can be replaced by sum in many cases
+```
+hashes = (hash(x) for x in self._components)
+return functools.reduce(operator.xor, hashes, 0)
+```
+- good practice to provide the third argument, reduce(function, iterable, initializer),
+  to prevent a TypeError on an empty sequence with no initial value
+  - initializer is the value returned if the sequence is empty and is used as the
+    first argument in the reducing loop
+  - should be the identity value of the operation
+  - for +, |, ^ the initializer should be 0
+  - for *, & it should be 1
+- perfect example of map/reduce
+```
+hashes = map(hash, self._components)
+return functools.reduce(operator.xor, hashes)
+```
+- NOTE: map is less efficient in Python 2 because it builds a new list
+    - Python 3 builds a lazy generator
+- can also replace `__eq__`
+```
+return len(self) == len(other) and all(a == b for a, b in zip(self, other))
+```
+
+## Vector Take #5: Formatting
+- NOTE: when extending the Format Specification Mini-Language it's best to avoid
+  reusing format codes supported by built-in types
+- see code for support of hyperspherical coordinates
+
+
+# Ch. 11 - Interfaces: From Protocols to ABCs
+## Interfaces and Protocols in Python Culture
+- every class has an interface
+    - the set public attributes (methods or data attributes) implemented or inherited by
+      the class
+    - includes special methods, like `__getitem__` or `__add__`
+    - protected and private attributes are not part of an interface by definition
+        - even if "protected" is merely a naming convention (the single leading underscore)
+        - even if private attributes are easily accessed
+    - possible and even OK to have public data attributes as part of the interface of an object
+        - if necessary a data attribute can be turned into a property implementing getter/setter
+          logic without breaking client code
+- complementary definition of interface
+    - the subset of an object's public methods that enable it to play a specific role
+      in the system
+- interface as a set of methods to fulfill a role is what == procotol in Smalltalk
+- protocols are independent of inheritance
+     - a class may implement several protocols
+     - enables instances to fulfill several roles
+- protocols are informal interfaces and are therefore not enforced like formal interfaces
+    - may be partially implemented in a particular class
+
+## Python Digs Sequences
+- see code
+
+## Monkey-Patching to Implement a Protocol at Runtime
+- following established protocols improves chances of working with existing library
+  functions etc
+- monkey-patching - changing code at runtime
+- shows example of adding methods to a class at runtime to allow it to work with
+  random.shuffle
+- alsow highlights that protocols are dynamic
+
+## Alex Martelli's Waterfowl
+- Alex Martelli - Waterfowl and ABCs
+    - duck typing
+        - ignoring an object's actual type
+        - ensure that the object implements the method names, signatures, and semantics required
+          for its intended use
+    - mostly boils down to avoiding the use of isinstance to check the object's type in Python
+        - also worse approach of checking whether `type(foo) is bar`
+        - inhibits even the simplest forms of inheritance
+    - alternate approach to duck typing has evolved over time
+    - the presence of two identical methods on a type doesn't imply interchangeability
+        - programmer needs to be able to assert something to be assured of interchangeability
+    - duck typing -> goose typing
+    - major advantage of ABCs
+        - the register class method lets end-user code "declare" that a certain class becomes
+          a "virtual" subclass of an ABC
+        - registered class must meet the ABC's method name and signature requirements
+        - more importantly must meet the underlying semantic contract of the signature requirements
+        - does not have to have been developed with any awareness of the ABC (i.e. inherit from it)
+        - breaks rigidity and strong coupling that make inheritance something to use with
+          much more caution than typically practiced by most OOP
+    - in some cases, classes do not even need to be registered as a subclass to be recognized
+    - use `isinstance(instance, ABC)`
+    - don't define custom ABCs in production code
+
+- inheriting from an ABC is more than implementing the required methods
+    - also a declaration of intent by the developer
+    - intent can also be made explicit through registering a virtual subclass
+- use of isinstance and issubclass becomes more acceptable to test against ABCs
+    - these functions previously worked against duck typing
+    - if a component does not implement an ABC by subclassing, it can be registered after
+      the fact so it passes those explicit type checks
+      . However, even with ABCs, you should beware that
+- excessive use of isinstance checks may be a code smell even with ABCs
+    - should use polymorphism for that
+    - design classes so that the interpreter dispatches calls to the proper methods
+    - exceptions
+        - some Python APIs accept a single str or a sequence of str items
+            - wrap the str in a list to ease processing
+        Because str is a sequence type,
+        - the simplest way to distinguish the string from any other immutable sequence is to
+          do an explicit `isinstance(x, str)` (since it is a sequence type)
+    - usually OK to perform an insinstance check against an ABC if an API contract must be enforces
+- duck typing is often simpler and more flexible than type checks outside of frameworks
+- do not overuse ABCs
+    - ABCs are meant to encapsulate very general concepts, abstractions, introduced by a 
+      framework 
+    - most programmers most likely don't need to write any new ABCs
+        - use existing ones correctly
+
+## Subclassing an ABC
+- interpreter does not check for the implementation of the abstract methods at import time
+    - only checked at runtime when an implementing instance is instantiated
+    - if any abstract method is not implemented a TypeError exception is thrown
+- concrete methods in each collections.abc ABC are implemented in terms of the public
+  interface of the class
+    - work without any knowledge of the internal structure of instances
+- NOTE: when coding a concrete subclass it may be possible to override methods inherited from
+  ABCs with more efficient implementations
+    - `__contains__` works by doing a full scan of the sequence
+        - can speed a sorted concrete sequence using binary search with bisect
+## ABCs in the Standard Library
+- ABCs have been available since 2.6
+    - most in collections.abc module
+    - numbers and io packages
+- two modules named abc in the standard library
+    - in Python 3.4 implemented outside of the collections package to reduce load time
+    - other abc module is just abc (i.e., Lib/ abc.py)
+        - defines abc.ABC class
+        - depended on by every ABC but not needed to extend ABCs
+- see figure 11-3 or the table in the docs for inheritance structure in ABC
+- much multiple inheritance, but mostly for mixin methods
+- Iterable, Container, and Sized
+    - every collection should either inherit from these ABCs or at least implement compatible protocols
+    - Iterable supports iteration with `__iter__`
+    - Container supports the in operator with `__contains__`
+    - Sized supports `len()` with `__len__`
+- Sequence, Mapping, and Set
+    - main immutable collection types
+    - each has a mutable subclass
+- MappingView
+    - objects returned from the mapping methods `.items()`, `.keys()`, and `.values()` inherit
+      from ItemsView, ValuesView, and ValuesView in Python 3
+    - first two also inherit the interface of Set
+- Callable and Hashable
+    - not limited to collections
+    - collections.abc was the first package to define ABCs in the standard library
+    - rare to see subclasses of either Callable or Hashable
+    - main use is to support the `insinstance` built-in as a safe way of
+      determining whether an object is callable or hashable
+- Iterator
+    - iterator subclasses Iterable
+
+- numbers packages
+    - Number
+    - Complex
+    - Real
+    - Rational
+    - Float
+    - can use each with `isinstance`
+    - decimal.Decimal is not registered as a virtual subclass of numbers.Real
+        - need protection from accidental mixing of decimals with other less precise
+          numeric types (i.e. floats) when the precision of Decimal is require
+
+## Defining and Using an ABC
+- common to use in frameworks
+- example class is designed designed to pick items at random from a finite set,
+  without repeating, until the set is exhausted
+- abstract methods
+    - `.load():` - put items into the container
+    - `.pick():` - remove one item at random from the container, returning it
+- concrete methods
+    - `.loaded():` - return True if there is at least one item in the container
+    - `.inspect():` -  return a sorted tuple built from the items currently in the
+      container, without changing its contents (its internal ordering is not preserved)
+- mark an abstract method with @abc.abstractmethod and generally leave the body empty
+  (but add a docstring)
+- NOTE: an abstract method can have an implementation
+    - subclasses will still be forced to override it
+    - will be able to invoke the abstract method with super()
+        - adds functionality to it instead of implementing from scratch
+    - see the abc module documentation for details on @abstractmethod usage
+
+- to declare an ABC, subclass abc.ABC or any other ABC
+    - abc.ABC class is new in Python 3.4
+    - for earlier versions of Python use the metaclass=keyword in the class statement
+      and point to abc.ABCMeta `class Tombola(metaclass=abc.ABCMeta):`
+- metaclass=keyword argument was introduced in Python 3
+- use the __metaclass__ class attribute in Python 2
+```
+class Tombola(object):
+    __metaclass__ = abc.ABCMeta
+```
+- a metaclass is a special kind of class explained later
+- abc module defines the following decorators
+    - @abstractmethod
+    - @abstractclassmethod
+    - @abstractstaticmethod
+    - @abstractproperty
+    - last three are deprecated since Python 3.3
+        - possible to stack decorators on top of @abstractmethod
+        - the preferred way to declare an abstract class method is
+```
+@classmethod
+@abc.abstractmethod
+def an_abstract_classmethod(cls, ...):
+    pass
+```
+- NOTE: order of stacked function decorators matters, check docs
+- see code for details of subclassing the custom ABC
+
+- with goose typing programmer can register a class as a virtual subclass of an
+  ABC even if it does not inherit from it
+    - declares contract that the class faithfully implements the interface defined
+      in the ABC
+    - interpreter assumes this is true without checking
+    - if not implemented, runtime exceptions will occur
+- done by calling a register method on the ABC
+    - registered class then becomes a virtual subclass of the ABC
+        - will be recognized by functions like issubclass and isinstance
+        - will not inherit any methods or attributes from the ABC
+- NOTE: virtual subclasses do not inherit from their registered ABCs
+    - they are not checked for conformance to the ABC interface at any time
+    - up to the subclass to actually implement all the methods needed to avoid
+      runtime errors
+- register method is usually invoked as a plain function
+    - can also used as a decorator `@ABCClass.register`
+- `issubclass` and `isinstance` work but `__mro__` does not show the ABC as a class
+  that is inherited from
+
+## How the Tombola Subclasses Were Tested
+- class attributes that allow introspection of a class hierarchy
+    - `__subclasses__()`
+        - method that returns a list of the immediate subclasses of the class
+            - does not include virtual subclasses
+    - `_abc_registry`
+        - data attribute that is only available in ABCs
+        - bound to a WeakSet with weak references to registered virtual subclasses
+          of the abstract class
+- see code for details
+
+## Usage of register in Practice
+- `register` had to be called as plain function prior to Python 3.3
+    - often still called as a function e.g. `Sequence.register(tuple)`
+
+## Geese Can Behave as Ducks
+- class can be recognized as a virtual subclass of an ABC even without registration
+Struggle is considered a subclass of abc.Sized by the
+- issubclass and isinstance functions consider example class to be a subclass of the ABC
+  because the ABC implements a special class method named `__subclasshook__`
+    - for Sized, checks if `__len__` is in the `__dict__` for all of the inherited classes
+      in `__mro__` of the class being checked
+- probably not a good idea to implement `__subclasshook__` in your own ABCs
+
+
+# Ch. 12 - Inheritance: For Good or For Worse
+## Subclassing Built-In Types Is Tricky
+- not possible to subclass built-in types before Python 2.2.
+- can now be done
+    - code of the built-ins, written in C, does not call special methods overridden
+      by user-defined classes
+    - CPython has no rule for when overridden method of subclasses of built-in types
+      get implicitly called or not
+        - methods are never called by other built-in methods of the same object
+- violates basic rule of OO
+    - method search should always start from base class of target instance and
+      propagate upwards
+- problem applies only to method delegation within the C language implementation of the
+  built-in types
+    - only affects user-defined classes derived directly from those types
+    - subclassing from a class coded in Python will not cause the same problems
+
+## Multiple Inheritance and Method Resolution Order
+- consider diamond inheritance classes in multiple inheritance
+- can explicitly call superclass methods
+```
+i.method()
+P.method(i)
+```
+- Python follows a specific order when traversing the inheritance graph
+    - called MRO - Method Resolution Order
+    - classes have an attribute called `__mro__` holding a tuple of references to the
+      superclasses in MRO order
+        - current class all the way to the object class
+- recommended way to delegate method calls to superclasses is the super() built-in function
+    - easier to use in Python 3
+- possible to bypass the MRO and invoke a method on a superclass directly
+    - must pass self explicitly when calling an instance method directly on a class
+        - accessing an unbound method
+- safest and most future-proof to call super
+    - especially when using frameworks and class hierarchies that are externally
+      controlled
+- MRO is computed using an algorithm called C3
+    - "The Python 2.3 Method Resolution Order" is the canonical paper
+    - not necessary to understand unless making strong use of multiple inheritance
+
+## Multiple Inheritance in the Real World
+- Adapter pattern uses MI
+- collections.abc uses MI but more for interfaces
+- Tkinter GUI toolkit uses extensively due to widget-based approach
+- see book for descriptions of classes and hierarchy
+
+## Coping with Multiple Inheritance
+1. distinguish interface inheritance from implementation inheritance
+    - useful to keep the reasons why subclassing is done straight when using MI
+        - inheritance of interface creates a subtype, implying an "is-a" relationship
+        - inheritance of implementation avoids code duplication by reuse
+     - both uses are often simultaneous
+        - make intent clear when possible
+     - code reuse is an implementation detail and can often be replaced by composition and delegation
+     - interface inheritance is the backbone of a framework
+2. make interfaces explicit with abcs
+    - if a class is designed to define an interface it should be an explicit ABC in modern Python
+        - subclass abc.ABC or another ABC
+3. use mixins for code reuse
+    - a class is designed to provide method implementations for reuse by multiple
+      unrelated subclasses should be an explicit mixin class if it doesn't imply an "is-a" relationship
+    - a mixin does not define a new type (conceptually)
+        - bundles methods for reuse
+    - never instantiate
+    - concrete classes should not only inherit from a mixin
+    - a single mixin should provide a single specific behavior with a few closely related methods
+4. make mixins explicit by naming
+    - no formal method to define a mixin
+        - highly recommended to name with a Mixin suffix
+5. an abc may also be a mixin; the reverse is not true
+    - when an ABC can implement concrete methods it can work as a mixin also
+    - an ABC defines a type
+        - mixin does not
+    - an ABC can be the sole base class of any other class
+        - mixin should not be (except in special cases)
+    - a restriction applied to ABCs and not mixins
+        - concrete methods implemented in an ABC should only collaborate with methods
+          of the same ABC and its superclasses
+6. don’t subclass from more than one concrete class concrete
+    - classes should have zero or at most one concrete superclass
+    - all but one of the superclasses of a concrete class should be ABCs or mixins
+7. provide aggregate classes to users
+    - provide a class that brings classes together in a sensible way if some
+      combination of ABCs or mixins is useful to client code
+    - aggregate class
+8. favor object composition over class inheritance
+    - best advice
+    - easy to overuse inheritance
+    - hierarchy appeals to a sense of order
+    - favoring composition leads to more flexible designs
+    - in many cases, a class that
+
+- see text for issues with Tkinter
+
+## A Modern Example: Mixins in Django Generic Views
+- see text for description
+
+
+# Ch. 13 - Operator Overloading: Doing It Right
+## Operator Overloading 101
+- can be abused, but can also lead to clean programming constructs
+- limitations in Python
+    - cannot overload operators for the built-in types
+    - cannot create new operators, only overload existing ones
+    - some operators can’t be overloaded - is, and, or, not (but the bitwise &, |, ~, can)
+
+## Unary Operators
+- `-(__neg__)`
+    - arithmetic unary negation
+- `+(__pos__)`
+    - arithmetic unary plus
+    - usually x == +x
+    - cases not true
+- `~(__invert__)`
+    - bitwise inverse of an integer, defined as ~x == -(x + 1)
+- abs() built-in function is listed as a unary operator
+    - `__abs__` special method
+- to support, implement the appropriate special method, which will receive just one
+  argument - self
+    - use logic that makes sense for the class
+    - fundamental rule of operators - always return a new object
+        - do not modify self
+        - create and return a new instance of a suitable type
+- cases where x and +x are not equal
+
+ Everybody expects that x = = + x, and that is true almost all the time in Python,
+ but I found two cases in the standard library where x != + x. The
+ first case involves the
+    - decimal.Decimal class
+        - can have x != +x if x is a Decimal instance created in an arithmetic context and +x
+          is then evaluated in a context with different settings
+    - collections.Counter documentation
+        - Counter class implements infix + to add the tallies from two Counter instances
+        - Counter addition discards from the result any item with a negative or zero count
+        - prefix + is a shortcut for adding an empty Counter
+            - produces a new Counter preserving only the tallies that are greater than zero
+
+## Overloading + for Vector Addition
+- for Sequence types, + and * should be used for concatenation and repetition
+- see book for code examples
+- NOTE: only augmented assignment operators should modify self
+    - all others should return a new object
+- NOTE: do not confuse NotImplemented with NotImplementedError
+    - NotImplemented is a special singleton value that an infix operator special method
+      should return to tell the interpreter it cannot handle a given operand
+    - NotImplementedError is an exception that stub methods in abstract classes raise
+      to warn that they must be overwritten by subclasses
+- NOTE: an infix operator that raises an exception aborts the operator dispatch algorithm
+    - for TypeError it is often better to catch it and return NotImplemented
+    - allows the interpreter to try calling the reversed operator method
+
+## Overloading * for Scalar Multiplication
+- see book for code examples
+- see table 13-1 for infix operator method names
+- Python 3.5 adds a dedicated infix matrix multiplication operator
+
+## Rich Comparison Operators
+- operators ==, !=, >, <, >=, <= differ in two aspects
+    - same set of methods are used in forward and reverse operator calls
+    - both the forward and reverse calls invoke `__eq__` for ==, only swapping arguments
+    - a forward call to `__gt__` is followed by a reverse call to `__lt__` with the
+      swapped arguments
+    - for == and !=, if the reverse call fails, Python compares the object IDs instead of
+      raising TypeError
+- see table 13-2 for rich comparison operators
+- NOTE: the fallback step for all comparison operators changed from Python 2
+    - Python 3 returns the negated result of `__eq__` for `__ne__`
+    - Python 3 raises TypeError for the ordering comparison operators
+    - in Python 2 ordering comparisons produced weird results taking into account object
+      types and IDs in some arbitrary way
+      - raising TypeError is an improvement because it makes more sense for comparing
+        something like a tuple and an int
+- Python 3 documentation bug
+    - the rich comparison method documentation states that the truth of x == y does
+      not imply that x! = y is false
+    - when defining `__eq__()`, one should also define `__ne__()` so that the operators
+      will behave as expected
+        - true for Python 2
+        - not good in Python 3
+            - a useful default `__ne__` implementation is inherited from the object class
+            - rarely necessary to override it
+
+## Augmented Assignment Operators
+- if the in-place operators are not implemented by a class the augmented assignment operators
+  are just syntactic sugar
+    - a += b is evaluated exactly as a = a + b
+    - expected behavior for immutable types
+    - if `__add__` is implemented then += will work with no additional code
+    - if an in-place operator method such as `__iadd__` is implemented, that method is
+      called to compute the result of a += b
+- expected to change the lefthand operand in place
+    - not create a new object as the result
+- NOTE: in-place special methods should never be implemented for immutable types
+- NOTE: can observe contrasting behavior of + and += by looking at how the list built-in
+  works
+    - can only concatenate one list to another list with infix +
+    - can extend the lefthand list with items from any iterable on the righthand side of operator +=
+        - consistent with how the list.extend() method works
+- `__add__`
+    - result is produced by calling the constructor to build a new instance
+- `__iadd__`
+    - result is produced by returning self after it has been modified
+    . To wrap up this example, a final observation on Example   13-18: by design,
+- `__radd__` may not be necessary
+    - the forward method `__add__` will only deal with righthand operands of the same type
+- NOTE: if a forward infix operator method (e.g., `__mul__`) is designed to
+  work only with operands of the same type as self it is useless to implement the
+  corresponding reverse method (e.g., `__rmul__`)
+    - by definition reverse method will only be invoked when dealing with an operand
+      of a different type
+
+
+# Ch. 14 - Iterables, Iterators, and Generators
+
+
