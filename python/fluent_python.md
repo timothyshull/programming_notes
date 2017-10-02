@@ -2440,7 +2440,7 @@ P.method(i)
     - special handling of `__getitem__` exists for backward compatibility reasons and
       may be gone in the future
       (although it is not deprecated as I write this).
-      As mentioned in “Python Digs Sequences”,
+      As mentioned in "Python Digs Sequences",
       this is an extreme form of duck typing:
 - an object is considered iterable when it implements the special method `__iter__` and/or
   when it implements `__getitem__` (assuming `__getitem__` accepts int keys starting from 0)
@@ -2722,7 +2722,7 @@ but eventually I got used to it. Here are the
     - users of the context manager may do anything within the with block
 
 
-## Ch. 16 - Coroutines
+# Ch. 16 - Coroutines
 - a coroutine (syntactically like a generator) is just a function with the yield keyword
     - yield usually appears on the right side of an expression (e.g., datum = yield)
     - it may or may not produce a value
@@ -2747,7 +2747,7 @@ but eventually I got used to it. Here are the
   caller
 - PEP 342 also added .throw() and .close() methods that respectively allow the caller to
   throw an exception to be handled inside the generator and to terminate it
-  . These features are covered in the next section and in “Coroutine Termination and Exception Handling”.
+  . These features are covered in the next section and in "Coroutine Termination and Exception Handling".
 - latest evolutionary step for coroutines - PEP 380 - Syntax for Delegating to a Subgenerator
     - Python 3.3 (2012)
     - generator can now return a value
@@ -2863,8 +2863,8 @@ but eventually I got used to it. Here are the
     - any values that the subgenerator yields are passed directly to the caller of the delegating generator
       (i.e., the client code)
     - any values sent to the delegating generator using `send()` are passed directly to the subgenerator
-        - if the sent value is None, the subgenerator’s `__next__()` method is called
-        - if the sent value is not None, the subgenerator’s `send()` method is called
+        - if the sent value is None, the subgenerator's `__next__()` method is called
+        - if the sent value is not None, the subgenerator's `send()` method is called
         - if the call raises StopIteration, the delegating generator is resumed
         - any other exception is propagated to the delegating generator
      - return expr in a generator (or subgenerator) causes StopIteration(expr) to be raised upon
@@ -2897,3 +2897,443 @@ but eventually I got used to it. Here are the
 
 
 ## Ch. 17 - Concurrency with Futures
+- available in 3.2 but 2.5 and up as the futures package
+
+## Example: Web Downloads in Three Styles
+- network IO requires concurrency
+- three flavors here
+    - sequential
+    - threadpools and futures
+    - asyncio
+- NOTE: be careful not to inadvertently launch a DoS attack when testing against the
+  public web
+    - set up your own test server for non-trivial HTTP client testing
+- sequential
+    - no error handling for now
+    - see text for code
+- NOTE: the requests library is available on PyPI
+    - more powerful and easier to use than the urllib.request module from the Python 3
+      standard library
+    - considered a model Pythonic API
+    - compatible with Python 2.6 and up
+    - urllib2 from Python 2 was moved and renamed in Python 3
+        - more convenient to use requests regardless of Python version
+- concurrent.futures
+    - ThreadPoolExecutor and ProcessPoolExecutor classes
+        - implement an interface that allows submitting callables for execution in different
+          threads or processes
+        - classes manage an internal pool of worker threads or processes and a queue of tasks
+          to be executed
+        - interface is very high level
+        - don't need to know about any of those details for a simple use case
+    - see text for code
+
+- futures are main components in concurrent.futures and of asyncio
+- two classes named Future in the standard library (as of 3.4)
+    - concurrent.futures.Future
+    - asyncio.Future
+- an instance of either Future class represents a deferred computation that may or may
+  not have completed
+    - similar
+        - Deferred class in Twisted
+        - Future class in Tornado
+        - Promise objects in JavaScript
+- encapsulate pending operations so
+    - they can be put in queues
+    - state of completion can be queried
+    - results (or exceptions) can be retrieved when available
+- meant to be instantiated exclusively by the concurrency framework
+    - concurrent.futures.Future instances are created only as the result of
+      scheduling something for execution with a concurrent.futures.Executor subclass
+    - Executor.submit() method takes a callable, schedules it to run, and returns a future
+    . Client code is not supposed to change the state of a future: the
+    concurrency framework changes the state of a future when the computation it
+    represents is done, and we
+- both types of Future have a `.done()` method that is nonblocking and returns a Boolean
+  signaling whether the callable linked to that future has executed or not
+    - client code usually asks to be notified
+    - `.add_done_callback()` method - passed a callable and the callable will be invoked
+      with the future as the single argument when the future is done
+    - `.result()` method - returns the result of the callable, or re-raises whatever exception might have been thrown
+      when the callable was executed (same in both classes)
+    . However, when the future is not done, the
+    - behavior of the `result` method is different between the two Futures when the future is not done
+        - concurrency.futures.Future - invoking f.result() will block the caller's thread
+          until the result is ready
+            - optional timeout argument can be passed, and if the future is not done in
+              the specified time, a TimeoutError exception is raised
+        - asyncio.Future.result method does not support timeout
+            - preferred way to get the result of futures in that library is to use yield from
+- several functions in both libraries return futures
+- NOTE: expect timing variability when changing `max_workers` and working with
+  concurrent code in general
+- none of the concurrent scripts mentioned so far can perform downloads in parallel
+    - concurrent.futures are limited by the GIL
+    - the asyncio example is single threaded
+
+## Blocking I/O and the GIL
+- GIL handles thread safety in CPython by only executing Python bytecodes on one thread
+   at a time
+    - does not take advantage of several CPU cores at once
+- Python code has no control over the GIL
+    - built-in functions or an extension written in C can release the GIL while running
+      time-consuming tasks
+    - Python library coded in C can manage the GIL, launch its own OS threads, and take advantage
+      of all available CPU cores
+- all standard library functions that perform blocking I/O release the GIL when
+  waiting for a result from the OS
+    - Python programs that are I/O bound can benefit from using threads at the Python
+      level
+    - blocked I/O function releases the GIL so another thread can run while one Python thread
+      is waiting for a response from the network
+- NOTE: every blocking I/O function in the Python standard library releases the GIL
+    - time.sleep() function also releases
+    - Python threads are still useful in I/O bound applications despite the GIL
+
+## Launching Processes with concurrent.futures
+- concurrent.futures does enable truly parallel computations because it supports distributing
+  work among multiple Python processes using the ProcessPoolExecutor class
+    - bypasses the GIL and leverages all available CPU cores
+    - good for CPU-bound processing
+- ProcessPoolExecutor and ThreadPoolExecutor implement the generic Executor interface
+    - easy to switch from a thread-based to a process-based solution using concurrent.futures
+- no advantage in using a ProcessPoolExecutor for any I/O-bound job
+with futures.ProcessPoolExecutor() as executor:
+For simple uses, the
+- only notable difference between the two concrete executor classes is that `ThreadPoolExecutor.__init__`
+  requires a max_workers argument setting the number of threads in the pool
+    - optional argument in ProcessPoolExecutor
+        - default is the number of CPUs returned by os.cpu_count()
+        - often not used
+        . This makes sense: for CPU-bound processing, it
+        makes no sense to ask for more workers than CPUs.
+        On the other hand,
+    - can use 10, 100, or 1,000 threads in a ThreadPoolExecutor for I/O-bound processing
+        - best number depends on available memory
+        - finding the optimal number will require careful testing
+- NOTE: try PyPy for CPU-intensive tasks
+
+## Experimenting with Executor.map
+- map(func, *iterables, timeout=None, chunksize=1)
+- equivalent to map(func, *iterables)
+    - func is executed asynchronously and several calls to func may be made concurrently
+    - returned iterator raises a concurrent.futures.TimeoutError if `__next__()` is called
+      and the result isn't available after timeout seconds from the
+      original call to Executor.map()
+    - timeout can be an int or a float
+    - if timeout is not specified or None, there is no limit to the wait time
+    - if a call raises an exception, then that exception will be raised when its value
+      is retrieved from the iterator
+    - method chops iterables into a number of chunks which it submits to the pool as
+      separate tasks when using ProcessPoolExecutor
+- easy to use but it has a feature that may or may not be helpful
+    - returns the results exactly in the same order as the calls are started
+    - your code will block in order as it tries to retrieve the first result of the
+      generator returned by map
+    - will get the remaining results without blocking because they will be done
+- often it's preferable to get the results as they are ready regardless of
+  the order they were submitted
+    - requires a combination of the Executor.submit method and the futures.as_completed
+- NOTE: the combination of executor.submit and futures.as_completed is more flexible
+  than executor.map
+    - can submit different callables and arguments
+    - executor.map is designed to run the same callable on the different arguments
+    - set of futures passed to futures.as_completed may come from more than one executor
+
+## Downloads with Progress Display and Error Handling
+- updated script examples
+- TQDM module - instantly shows a progress bar in the console when iterating through an iterator
+- see text for code and details
+- futures.as_completed returns an iterator that yields futures as they are done
+- an idiom that is useful with futures.as_completed
+    - build a dict to map each future to other data that may be useful when
+      the future is completed
+    - makes it easy to do follow-up processing with the result of the futures
+      despite the fact that they are produced out of order
+- Python threads are well suited for I/O-intensive applications
+    - concurrent.futures package makes them trivially simple to use for certain use cases
+- Python has supported threads since release 0.9.8 (1993)
+    - concurrent.futures is the latest way of using them
+- original thread module was deprecated in favor of the higher-level threading module in Python 3
+- futures.ThreadPoolExecutor is not flexible enough for a certain job
+    - may need a custom solution out of basic threading components such as
+      Thread, Lock, Semaphore, etc.
+        - also thread-safe queues of the queue module for passing data between threads
+- moving parts are encapsulated by futures.ThreadPoolExecutor
+- sidestep the GIL by launching multiple processes using futures.ProcessPoolExecutor for CPU-bound work
+- multiprocessing package emulates the threading API but delegates jobs to multiple processes
+    - can replace threading with few changes
+    - offers facilities to solve the biggest challenge faced by collaborating processes
+        - how to pass around data
+
+
+# Ch. 18 - Concurrency with asyncio
+- concurrency is about dealing with lots of things at once
+- parallelism is about doing lots of things at once
+- one is about structure, one is about execution
+- concurrency provides a way to structure a solution to solve a problem that 
+  may (but not necessarily) be parallelizable
+- often different definitions for "concurrency" and "parallelism" 
+- real parallelism must have multiple cores
+- in practice, most processing happens concurrently and not in parallel
+- asyncio is a package that implements concurrency with coroutines driven by an event loop
+    - one of the largest and most ambitious libraries ever added to Python
+- asyncio is incompatible with older versions of Python uses yield from expressions extensively
+- NOTE: Trollius project is a backport of asyncio to Python 2.6 and newer
+    - replaces yield from with yield and callables named From and Return
+
+## Thread Versus Coroutine: A Comparison
+- NOTE: asyncio uses a strict definition of coroutine
+    - a coroutine suitable for use with the asyncio API
+        - must use yield from and not yield in its body
+        - should be driven by a caller invoking it through yield from or by passing
+          the coroutine to one of the asyncio functions such as `asyncio.async(...)`
+        - @asyncio.coroutine decorator should be applied to coroutines
+- NOTE: never use `time.sleep(...)` in asyncio coroutines
+    - will block the main thread and freeze the event loop
+    - use yield from `asyncio.sleep(DELAY)` if a coroutine needs to spin for a time
+- use of the @asyncio.coroutine decorator is not mandatory but highly recommended
+    - makes the coroutines stand out among regular functions
+    - helps with debugging by issuing a warning when a coroutine is garbage collected without
+      being yielded from
+        - means some operation was left unfinished and is likely a bug
+    - not a priming decorator
+- notable thread vs. coroutine differences
+    - asyncio.Task is roughly the equivalent of a threading.Thread
+        - a Task is like a green thread in libraries that implement cooperative multitasking (gevent)
+    - a Task drives a coroutine, and a Thread invokes a callable
+        - Task objects aren't instantiated by client code
+            - obtained by passing a coroutine to `asyncio.async(...)` or `loop.create_task(...)`
+    - a Task object is already scheduled to run (e.g., by asyncio.async) when it is
+      retrieved
+        - a Thread instance must be explicitly told to run by calling its start method
+    - with threads, the runnable function is a plain function and is directly invoked by
+      the thread
+        - in aysncio, the runnable is a coroutine driven by yield from
+    - no API to terminate a thread from the outside because a thread could be interrupted at any
+      point (would leave system in an invalid state)
+        - tasks have the Task.cancel() instance method (raises CancelledError inside the coroutine)
+        - coroutine can deal with this by catching the exception in the yield where it's suspended
+    - main coroutines must be executed with loop.run_until_complete in the main function
+- programming with threads can be challenging to reason about because the scheduler can 
+  interrupt a thread at any time
+    - must remember to hold locks to protect the critical sections of the program
+      to avoid getting interrupted in the middle of a multistep operation (could 
+      leave data in an invalid state)
+- everything is protected against interruption by default with coroutines
+    - must explicitly yield to let the rest of the program run
+    - have coroutines that are "synchronized" by definition (instead of holding locks 
+      to synchronize the operations of multiple threads)
+        - only one of them is running at any time
+    - use yield or yield from to give control back to the scheduler
+- by definition, a coroutine can only be cancelled when it's suspended at a yield
+  point
+    - can perform cleanup by handling the CancelledError exception
+    - possible to safely cancel a coroutine
+
+### asyncio.Future: Nonblocking by Design 
+- asyncio.Future and the concurrent.futures.Future classes have mostly the same interface 
+    - implemented differently and are not interchangeable
+    - may unify asyncio.Future and concurrent.futures.Future in the future (e.g., by adding 
+      an __iter__ method to concurrent.futures.Future that works with yield from)
+- futures are created only as the result of scheduling something for execution
+- `BaseEventLoop.create_task(...)` takes a coroutine, schedules it to run, and returns an asyncio.Task instance
+    - Task is also an instance of asyncio.Future because Task is a subclass of Future designed 
+      to wrap a coroutine
+- analogous to creation of concurrent.futures.Future instances by invoking `Executor.submit(...)`
+- asyncio.Future class provides 
+    - .done()
+    - .add_done_callback(...)
+    - .result() 
+        - takes no arguments
+        - can't specify a timeout
+        - if called and the future is not done, it does not block waiting for the result
+            - raises asyncio.InvalidStateError
+- the usual way to get the result of an asyncio.Future is to yield from it
+    - automatically takes care of waiting for future to finish, without blocking the event loop
+    - yield from is used to give control back to the event loop
+- yield from with a future is the coroutine equivalent of the functionality offered
+  by add_done_callback
+    - instead of triggering a callback, when the delayed operation is done, the event loop sets the result
+      of the future
+    - the yield from expression produces a return value inside the suspended coroutine
+      which allows it to resume
+- these following are often not needed because asyncio.Future is designed to work with yield from
+    - `future.add_done_callback(...)` because processing done after the future is done can be put in
+      the lines that follow yield from future in the coroutine
+    - future.result() because the value of a yield from expression on a future is the result
+      (e.g., result = yield from future)
+- close relationship between futures and coroutines
+    - can get the result of an asyncio.Future by yielding from it
+    - res = yield from foo() works if foo is a coroutine function
+        - returns a coroutine object when called
+    - also works if foo is a plain function that returns a Future or Task instance
+- one of the reasons why coroutines and futures are often interchangeable
+- to execute, a coroutine must be scheduled, and then it's wrapped in an asyncio.Task
+    - to obtain a task from a coroutine
+        - `asyncio.async(coro_or_future, *, loop=None)`
+            - unifies coroutines and futures
+            - first argument can be either one
+            - returned unchanged if Future or Task
+            - async calls `loop.create_task(...)` on it to create a Task if it is a coroutine
+            - an optional event loop may be passed as the loop=keyword argument
+            - async gets the loop object by calling `asyncio.get_event_loop()` if omitted
+        - `BaseEventLoop.create_task(coro)`
+            - schedules the coroutine for execution and returns an asyncio.Task object
+            . If called on a custom subclass of BaseEventLoop,
+            - the object returned may be an instance of some other Task-compatible class
+              provided by an external library (e.g., Tornado) if called on a custom subclass
+              of BaseEventLoop
+- NOTE: `BaseEventLoop.create_task(...)` is only available in Python 3.4.2 or later
+    - use asyncio.async(...) or install a more recent version of asyncio from PyPI for older versions
+
+- many asyncio functions accept coroutines and wrap them in asyncio.Task objects automatically
+    - i.e. `BaseEventLoop.run_until_complete(...)`
+
+## Downloading with asyncio and aiohttp
+- asyncio only supports TCP and UDP directly
+- aiohttp is a 3rd party package for HTTP
+- see text for code and description
+- `asyncio.wait(...)` coroutine accepts an iterable of futures or coroutines
+    - wait wraps each coroutine in a Task
+    - all objects managed by wait become instances of Future in some way
+- calling `wait(...)` returns a coroutine/generator object
+- pass a coroutine to `loop.run_until_complete(...)` to drive it
+    - accepts a future or a coroutine
+    - wraps a coroutine into a Task
+- coroutines, futures, and tasks can all be driven by yield from
+    - run_until_complete does with coroutines returned by the wait call
+- wait accepts two keyword-only arguments that may cause it to return even if some of the
+  a set of futures are not complete
+    - timeout
+    - return_when
+- must replace every function that hits the network with an asynchronous version that is
+  invoked with yield from, so that control is given back to the event loop when working with
+  asyncio
+- trick for understanding code using yield from
+    - pretend the yield from keywords are not there
+    - code is as easy to read as sequential code
+- using the yield from avoids blocking because the current coroutine is suspended
+  (i.e., the delegating generator where the yield from code is), but the control flow goes
+  back to the event loop, which can drive other coroutines
+    - when a future or coroutine is done, it returns a result to the suspended coroutine, resuming it
+- when using yield from with the asyncio API the following facts remain true
+    - every arrangement of coroutines chained with yield from must be ultimately driven by a
+      caller that is not a coroutine, which invokes next(...) or .send(...) on the outermost delegating
+      generator, explicitly or implicitly (e.g., in a for loop)
+    - the innermost subgenerator in the chain must be a simple generator that uses just yield or an iterable
+      object
+- specifics
+    - the coroutine chains are always driven by passing the outermost delegating generator to an asyncio API call
+      such as `loop.run_until_complete(...)`
+        - code doesn't drive a coroutine chain by calling `next(...)` or `.send(...)` on it when using asyncio
+            - asyncio event loop does that
+    - coroutine chains always end by delegating with yield from to some asyncio coroutine function
+      or coroutine method (e.g., yield from asyncio.sleep(...)) or coroutines from libraries that
+      implement higher-level protocols (e.g., resp=yield from aiohttp.request(' GET', url))
+        - the innermost subgenerator will be a library function that does the actual I/O, not something
+          written by the programmer
+- asynchronous code consists of coroutines that are delegating generators driven by asyncio itself
+  and that delegate to asyncio library coroutines when using asyncio
+    - creates pipelines where the asyncio event loop drives library functions that perform
+      low-level asynchronous I/O using programmer's coroutines
+
+## Running Circles Around Blocking Calls
+- blocking function - on that does disk or network I/O
+    - cannot be treated the same as nonblocking functions
+- are two ways to prevent blocking calls to halt the progress of the entire application
+    - run each blocking operation in a separate thread
+    - turn every blocking operation into a nonblocking asynchronous call
+- threads work fine, but has high memory overhead for each OS thread
+    - can't afford one thread per connection for thousands of connections
+- callbacks are the traditional way to implement asynchronous calls with low memory overhead
+    - low-level concept
+    - register a function to be called when something happens.
+    - every call made can be nonblocking
+- callbacks depend on underlying infrastructure that uses interrupts, threads, polling,
+  background processes, etc. to ensure that multiple concurrent requests make progress
+  and they eventually get done
+    - event loop calls callback when it gets a response
+    - single main thread shared by the event loop and application code is never blocked
+- When used as coroutines,
+- generators provide an alternative way to do asynchronous programming when used as coroutines
+
+
+
+# TODO: Finish chapter 18
+
+
+
+# Ch. 19 - Dynamic Attributes and Properties
+- importance of properties 
+    - existence makes it safe and advisable for to expose public data attributes as 
+      part of a class's public interface
+- data attributes and methods are collectively known as attributes in Python
+    - a method is just an attribute that is callable
+- can also create properties, which can be used to replace a public data attribute with
+  accessor methods (i.e., getter/ setter), without changing the class interface
+    - agrees with the uniform access principle
+        - all services offered by a module should be available through a uniform notation
+         which does not betray whether they are implemented through storage or through
+         computation
+- Python provides a rich API for controlling attribute access and implementing dynamic
+  attributes
+    - interpreter calls special methods such as `__getattr__` and `__setattr__` to evaluate
+       attribute access using dot notation (e.g., obj.attr)
+    - a user-defined class implementing `__getattr__` can implement "virtual attributes" by
+      computing values on the fly whenever somebody tries to read a nonexistent attribute
+
+## Data Wrangling with Dynamic Attributes
+- see text for code and description
+- example JSON class uses `__getattr__` and `hasattr` with `self.__data`
+- needs special handling for attribute names that are Python keywords
+    - use a mechanism that appends _ to Python keywords used as attributes
+    - must also use if the string is not a valid Python identifier
+        - use str.isidentifier()
+
+- `__init__` is often referred to as the constructor method
+    - the special method that actually constructs an instance is `__new__`
+        - a class method (but gets special treatment, so the @classmethod decorator is
+          not used)
+        - must return an instance
+        - returned instance will in turn be passed as the first argument self of `__init__`
+- `__init__` is forbidden from returning anything
+    - really an "initializer"
+- real constructor is `__new__`
+    - rarely need to code because the implementation inherited from object suffices
+- `__new__` method can also return an instance of a different class
+    - when that happens the interpreter does not call `__init__`
+    . In other words, the
+- the process of building an object in Python can be summarized
+```
+def object_maker(the_class, some_arg):
+    new_object = the_class.__new__( some_arg)
+    if isinstance(new_object, the_class):
+        the_class.__init__(new_object, some_arg)
+    return new_object
+
+ # roughly equivalent
+ x = Foo('bar')
+ x = object_maker(Foo, 'bar')
+ ```
+
+- shelve module provides pickle sotrage
+- shelve.open high-level function returns a shelve.Shelf instance
+    - simple key-value object database backed by the dbm module
+    - shelve.Shelf subclasses abc.MutableMapping
+    - shelve.Shelf provides a few other I/O management methods, like sync and close
+    - also a context manager
+    - keys and values are saved whenever a new value is assigned to a key
+    - keys must be strings
+    - values must be objects that the pickle module can handle
+- shelve provides a simple, efficient way to reorganize JSON data
+- NOTE: see argparse.Namespace and multiprocessing.Namespace for classes that
+  build arbitrary sets of attributes from keyword arguments passed to the constructor
+- NOTE: In Python 2, only "new style" classes support properties
+    - must subclass directly or indirectly from object
+- NOTE: always the risk of bugs due to shadowing of class attributes (such as methods)
+  or data loss through accidental overwriting of existing instance attributes when
+  creating instance attribute names from data
+    - main reason why, by default, Python dicts are not like JavaScript objects
+
+## Using a Property for Attribute Validation
