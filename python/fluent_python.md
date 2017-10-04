@@ -3258,10 +3258,152 @@ For simple uses, the
 - When used as coroutines,
 - generators provide an alternative way to do asynchronous programming when used as coroutines
 
+## Enhancing the asyncio downloader Script
+- network client code should always use some throttling mechanism to avoid hitting the
+  server with too many concurrent requests
+    - overall performance of the system may degrade if the server is overloaded
+- previous throttling was done by instantiating the ThreadPoolExecutor with the required
+  max_workers argument set so that a max number of concurrent requests limits the threads
+  that can be started in a pool
+- current example uses asyncio.Semaphore
+    - Semaphore is an object that holds an internal counter that is decremented
+      whenever the .acquire() coroutine method is called on it, and incremented when
+      the .release() coroutine method is called
+    - the initial value of the counter is set when the Semaphore is instantiated
+```
+semaphore = asyncio.Semaphore(concur_req)
+```
 
+- calling .acquire() does not block when the counter is greater than zero
+    - if the counter is zero .acquire() will block the calling coroutine until some
+      other coroutine calls .release() on the same Semaphore
+    - increments the counter
+- can use the semaphore as a context manager
+    - guarantees that no more than the max number of concurrent requests instances
+      of the coroutine will be started at any time
+```
+with (yield from semaphore):
+    image = yield from get_flag(base_url, cc)
+```
+- use yield from to retrieve the results of the futures yielded by asyncio.as_completed
+    - as_completed must be invoked in a coroutine
+    - must move most of the previous download functionality to the coroutine
+- couldn’t simply turn download_many into a coroutine, because I
+- may need to take care when splitting functionality between plain functions and
+  coroutines
+    - need to run the as_completed loop, the event loop and schedule a coroutine by
+      passing it to loop.run_until_complete
+- the futures returned by asyncio.as_completed are not necessarily the same futures
+ passed into the as_completed call
+    - the asyncio machinery replaces the future objects provided with others that will
+      produce the same results
 
-# TODO: Finish chapter 18
+### Using an Executor to Avoid Blocking the Event Loop
+- Python programs often don't pay enough attention to the fact that local filesystem access
+  is blocking
+    - network latency is main consideration
+    - Node.js functions have reminders that filesystem functions are blocking
+      because their signatures require a callback
+- blocking for disk I/O wastes millions of CPU cycles
+- for blocking functions that run in one one of several worker threads
+    - blocking I/O call releases the GIL behind the scenes so another thread can proceed
+- whole application freezes while the file is being saved if block code runs on the same
+  thread as the asyncio event loop
+    - solution to this problem is the run_in_executor method of the event loop object
+    - asyncio event loop has a thread pool executor behind the scenes
+        - can send callables to be executed by it with run_in_executor
+- NOTE: no noticeable change in performance for using run_in_executor for saving 13KB
+  files
+    - will see an effect when saving 130KB files
+    - advantage of using run_in_executor becomes clear with this size
+        - speedup will be significant
+- advantage of coroutines over callbacks becomes evident when coordinating
+  asynchronous requests and not just making completely independent requests
 
+## From Callbacks to Futures and Coroutines
+- event-oriented programming with coroutines requires effort
+    - important to be clear on how it improves on the classic callback style
+- callback-style event-oriented programming often leads to "callback hell"
+    - nesting of callbacks when one operation depends on the result of the previous
+      operation
+    - three asynchronous calls that happen in succession require callbacks nested three levels
+      deep
+- each function does part of the job, sets up the next callback, and returns, to let the
+  event loop proceed
+    - all local context is lost
+    - don’t have the value of any more when the next callback is executed
+    - must rely on closures or external data structures to store context between the different
+      stages of the processing
+- within a coroutine, to perform
+- three asynchronous actions in succession in a coroutine yield three times to let the event
+  loop continue running
+    - coroutine is activated with a .send() call when the result is ready
+    - similar to invoking a callback from the perspective of the event loop
+- situation is vastly improved with a coroutine-style asynchronous API
+    - entire sequence of three operations is in one function body
+    - like sequential code with local variables to retain the context of the overall task
+- coroutines and yield from enable asynchronous programming without callbacks
+- also provides a context for error reporting
+- exception cannot be caught in an asynchronous call that returns immediately before any I/O
+  is performed
+  In callback-based APIs, this is
+- solved by registering two callbacks for each asynchronous call in callback-based APIs
+    - one for handling the result of successful operations
+    - another for handling errors
+- conditions in callback hell quickly deteriorate when error handling is involved
+- can place all async calls for an operation in a single function
+    - can place any potentially throwing calls by putting respective yield from lines
+      inside try/except blocks
+- downsides
+    - must use coroutines and get used to yield from
+    - can’t simply call the coroutines
+        - must explicitly schedule the execution of the coroutine with the event loop
+          or activate it using yield from in another coroutine that is scheduled for
+          execution
+        - nothing would happen without the call to loop.create_task
+
+### Doing Multiple Requests for Each Download
+- multiple requests in the same task is easy with threads
+    - just make one request then the other, blocking the thread twice, and
+      keeping data in local variables
+      , ready to use when saving the files. If you need
+- to do the same in an asynchronous script with callbacks
+    - data needs to be passed around in a closure or held somewhere until
+      use because each callback runs in a different local context
+- coroutines and yield from provide a cleaner solution
+    - not as simple as with threads
+    - more manageable than chained or nested callbacks
+- challenge is to know when to use yield from and when to not use it
+    - yield from coroutines and asyncio.Future instances — including tasks
+    - some APIs are tricky, mixing coroutines and plain functions in seemingly
+      arbitrary ways
+- experiment with example 18-13
+
+## Writing asyncio Servers
+- see text for code and description of servers
+- example looks like a view function in Django or Flask
+    - nothing asynchronous about implementation
+        - gets a request
+        - fetches data from a database
+        - builds a response by rendering a full HTML page
+    - database is example is in memory
+        - accessing a real database should be done asynchronously
+        . For example, the
+- aiopg package provides an asynchronous PostgreSQL driver compatible with asyncio
+- concurrent systems must split large chunks of work into smaller pieces to stay responsive
+    - in addition to avoiding blocking calls
+- most queries return much smaller responses than given in example
+- to avoid the long response implement pagination
+    - return results with at most ~200 rows
+    - user clicks or scrolls the page to fetch more
+    - use AJAX or even WebSockets to send the next batch
+    - most of the necessary coding for sending results in batches would be on the browser
+    - smart asynchronous clients make better use of server resources
+- smart clients can help even old-style Django applications
+    - need frameworks that support asynchronous programming all the way
+    - handling of HTTP requests, responses, and database access
+    - especially true for real-time services such as games and media streaming
+      with WebSockets
 
 
 # Ch. 19 - Dynamic Attributes and Properties
@@ -3337,3 +3479,386 @@ def object_maker(the_class, some_arg):
     - main reason why, by default, Python dicts are not like JavaScript objects
 
 ## Using a Property for Attribute Validation
+- getter and setter
+```
+@property
+def weight(self):
+    return self.__weight
+
+@weight.setter
+def weight(self, value):
+    if value > 0:
+        self.__weight = value
+    else:
+        raise ValueError('value must be > 0')
+```
+- property setter guards against improper setter values
+- methods that implement a property all have the name of the public attribute
+    - actual value is stored in a private attribute
+- decorated getter has a .setter attribute, which is also a decorator
+    - ties the getter and setter together
+- NOTE: cure for repetition is abstraction!!!
+- two ways to abstract away property definitions
+    - property factory
+    - descriptor class
+        - more flexible (ch. 20)
+- properties are implemented as descriptor classes themselves
+
+## A Proper Look at Properties
+- the property built-in is a class
+    - functions and classes are often interchangeable in Python
+    - both are callable and there is no new operator for object instantiation
+    - invoking a constructor is no different than invoking a factory function
+- both classes and function can be used as decorators
+    - need to return a new callable that is a suitable replacement of the decorated
+      function
+- full signature of the property constructor
+```
+property(fget = None, fset = None, fdel = None, doc = None)
+```
+- all arguments are optional
+- corresponding operation is not allowed by the resulting property object if a function
+  is not provided for one of them
+- property type was added in Python 2.2
+    - @ decorator syntax appeared only in Python 2.4
+        - properties were defined by passing the accessor functions as the first two
+          arguments
+- classic syntax for defining properties without decorators
+```
+# within class definition after getters and setters
+weight = property(get_weight, set_weight)
+```
+- classic form is better than the decorator syntax in some situations
+    - property factoryies, for instance
+- decorators make it explicit which are the getters and setters
+  without depending on the convention of using get and set prefixes in their names
+
+- properties override instance attributes
+- properties are always class attributes
+    - manage attribute access in the instances of the class
+- when an instance and its class both have a data attribute by the same name
+  the instance attribute overrides (shadows) the class attribute
+  (when read through that instance)
+- expression like obj.attr does not search for attr starting with obj
+    - starts at `obj.__class__`
+    - Python looks in the obj instance itself only if there is no property named attr in the class
+- applies not only to properties but
+- applies to a whole category of descriptors
+    - overriding descriptors
+    - not only properties
+- every Python code unit can have a docstring
+    - modules
+    - functions
+    - classes
+    - methods
+- property documentation
+- `__doc__` attribute of the property
+- used by tools such as the console help() function or IDEs need to display the documentation
+- with classic call syntax property can get the documentation string as the doc argument
+- as a decorator, the docstring of the getter method — the one with the @property decorator
+  itself — is used as the documentation of the property
+
+## Coding a Property Factory
+- creating and using a property factory requires repetition in the class definition
+```
+class ClassName:
+    property_name = property_factory('property_name')
+```
+- NOTE: improving this so user doesn't have to retype the attribute name is a nontrivial
+  metaprogramming problem
+- factory
+```
+def property_factory(storage_name):
+    def factory_getter(instance):
+        return instance.__dict__[storage_name]
+
+    def factory_setter(instance, value):
+        if condition:
+            instance.__dict__[storage_name] = value
+        else:
+            raise Exception
+
+    return property(factory_getter, factory_setter)
+```
+
+- the name of the attribute to store a value is hardcoded in the getter and setter methods
+  when writing a property in the traditional way
+- property factory makes getter and setter functions generic
+    - depend on the storage_name variable to know where to get/set the managed attribute
+      in the instance `__dict__`
+- storage_name must be set to a unique value each time the quantity factory is called to build a property
+    - the getter and setter functions will be wrapped by the property object created in
+      the last line of the factory function
+    - when called, the functions will read the storage_name from their closures to determine
+      where to retrieve/store the managed attribute values
+  - properties built by the factory leverage the behavior by how it overrides
+    - property overrides the instance attribute so that every reference to self.<property>
+      or is handled by the property functions
+    - only way to bypass the property logic is to access the instance `__dict__` directly
+- same validation may appear in many fields across classes
+    - factory would be placed in a utility module to be used over and over again
+- simple factory could be refactored into a more extensible descriptor class
+    - specialized subclasses performing different validations
+
+## Handling Attribute Deletion
+- object attributes can be deleted with `del`
+```
+del obj.attr
+```
+- not common, but can delete properties with @<property_name>.deleter
+  for the deleter function
+- use `fdel` arg with the classic call syntax
+- attribute deletion can also be handled by implementing the lower-level `__delattr__`
+  special method when not using a property
+
+## Essential Attributes and Functions for Attribute Handling
+- mentioned some of the built-in functions and special methods Python provides for dealing
+  with dynamic attributes
+
+### Special Attributes that Affect Attribute Handling
+The behavior of many of the functions and
+- many of the functions and special methods depend on three special attributes
+    - `__class__`
+        - a reference to the object’s class
+        - `obj.__class__` is the same as type(obj)
+         Python looks for special methods such as __getattr__ only in an object’s class,
+         and not in the instances themselves.
+    - `__dict__`
+        - a mapping that stores the writable attributes of an object or class
+        - an object that has a `__dict__` can have arbitrary new attributes set at any
+          time
+        - instances may not have a `__dict__` if a class has the `__slots__` attribute
+    - `__slots__`
+        - an attribute that may be defined in a class to limit the attributes its instances
+          can have
+        - a tuple of strings naming the allowed attributes
+        - instances of that class will not have a `__dict__` of their own if `__dict__`
+          is not in slots
+            - only named attributes will be allowed in them
+
+### Built-In Functions for Attribute Handling
+- built-in functions that perform object attribute reading, writing, and introspection
+    - `dir([object])`
+        - lists most attributes of the object
+        - official docs say dir is intended for interactive use
+            - does not provide a comprehensive list of attributes
+        - can inspect objects implemented with or without a `__dict__`
+        - `__dict__` attribute is not listed by dir
+        - `__dict__` keys are listed
+        - many special attributes of classes are not listed by dir either
+            - `__mro__`
+            - `__bases__`
+            - `__name__`
+        - dir lists the names in the current scope if the optional object argument is not given
+    - `getattr(object, name[, default])`
+        - gets the attribute identified by the name string from the object
+        - may fetch an attribute from the object’s class or from a superclass
+        - raises AttributeError or returns the default value (if given) if no such attribute
+          exists
+    - `hasattr(object, name)`
+        - returns True if the named attribute exists in the object or can be somehow
+          fetched through it (e.g., by inheritance)
+        - implemented by calling `getattr(object, name)` and seeing whether it raises an
+          AttributeError or not
+    - `setattr(object, name, value)`
+        - assigns the value to the named attribute of object, if the object allows it
+        - may create a new attribute or overwrite an existing one
+    - `vars([object])`
+        - returns the __dict__ of object
+        - can’t deal with instances of classes that define `__slots__` and don’t have
+          a `__dict__`
+        - same as locals() without vars - returns a dict representing the local scope
+
+### Special Methods for Attribute Handling
+- these special methods handle attribute retrieval, setting, deletion, and listing
+  when implemented in a user-defined class
+- attribute access using either dot notation or the built-in functions getattr, hasattr,
+  and setattr trigger these special methods
+- reading and writing attributes directly in the instance `__dict__` does not trigger
+  these special methods
+    - usual way to bypass them if needed
+- implicit invocations of special methods are only guaranteed to work correctly if
+  defined on an object’s type, not in the object’s instance dictionary for custom classes
+    - assume that the special methods will be retrieved on the class itself
+      even when the target of the action is an instance
+- special methods are not shadowed by instance attributes with the same name for this reason
+    - `__delattr__( self, name)`
+        - always called when there is an attempt to delete an attribute using the del statement
+        - triggers `Class.__delattr__(obj, 'attr')`
+    - `__dir__(self)`
+        - called when dir is invoked on the object, to provide a listing of attributes
+    - `__getattr__(self, name)`
+        - called only when an attempt to retrieve the named attribute fails, after the obj,
+          Class, and its superclasses are searched
+        - expressions `obj.no_such_attr`, `getattr(obj, 'no_such_attr')`, and `hasattr(obj, 'no_such_attr')`
+          may trigger `Class.__getattr__(obj, 'no_such_attr')`
+            - only if an attribute by that name cannot be found in obj or in Class and its
+              superclasses
+    - `__getattribute__(self, name)`
+        - always called when there is an attempt to retrieve the named attribute, except when
+          the attribute sought is a special attribute or method
+        - dot notation and the getattr and hasattr built-ins trigger this method
+        - `__getattr__` is only invoked after `__getattribute__`, and only when `__getattribute__`
+          raises AttributeError
+        - to retrieve attributes of the instance obj without triggering an infinite recursion,
+          implementations of `__getattribute__` should use `super().__getattribute__(obj, name)`
+    - `__setattr__(self, name, value)`
+        - always called when there is an attempt to set the named attribute
+        - dot notation and the setattr built-in trigger this method
+        - `Class.__setattr__(obj, 'attr', 42)`
+- NOTE: `__getattribute__` and `__setattr__` special methods are harder to use correctly than
+  `__getattr__` (only handles nonexisting attribute names) because they are unconditionally
+  called and affect practically every attribute access
+    - properties or descriptors is less error prone than defining these special methods
+
+
+# Ch. 20 - Attribute Descriptors
+- good for gaining a deeper understanding of how Python works
+- good for reuse of access logic across multiple attributes
+- a descriptor is a class that implements a protocol consisting of the
+  `__get__`, `__set__`, and `__delete__` methods
+    - property class implements the full descriptor protocol
+    - partial implementations are OK
+    - most descriptors implement only `__get__` and `__set__`
+    - many implement only one of these methods
+- other Python features that leverage descriptors are methods and the classmethod and
+  staticmethod decorators
+- key to Python mastery
+
+## Descriptor Example: Attribute Validation
+- property factory - function to avoid duplication for property creation
+- OO method - descriptor class
+- a descriptor is a class implementing
+
+- descriptor class
+    - a class implementing the descriptor protocol
+    - a `__get__`, a `__set__`, or a `__delete__` special method
+- managed class
+    - the class where the descriptor instances are declared as class attributes
+- descriptor instance
+    - each instance of a descriptor class, declared as a class attribute of the managed
+      class
+- managed instance
+    - one instance of the managed class
+- storage attribute
+    - an attribute of the managed instance that will hold the value of a managed
+      attribute for that particular instance
+    - distinct from the descriptor instances, which are always class attributes
+- managed attribute
+    - a public attribute in the managed class that will be handled by a descriptor
+      instance, with values stored in storage attributes
+    - a descriptor instance and a storage attribute provide the infrastructure for a managed
+      attribute
+- NOTE: when coding a __set__ method keep in mind
+    - self is the descriptor instance
+    - instance is the managed instance
+    - descriptors managing instance attributes should store values in the managed instances
+- do not store the values on self instead of instance
+    - anything stored in the descriptor is actually part of a class attribute rather
+      than an instance
+- can generate unique storage names for each descriptor to avoid retyping names
+```
+class Descriptor:
+    __counter = 0
+
+    def __init__(self):
+        cls = self.__class__
+        prefix = cls.__name__
+        index = cls.__counter
+        self.storage_name = '_{0}#{1}'.format(prefix, index)
+        cls.__counter += 1
+```
+- use the higher-level getattr and setattr built-ins to store the value instead of
+  resorting to `instance.__dict__`
+    - the managed attribute and the storage attribute have different names
+    - calling getattr on the storage attribute will not trigger the descriptor
+      (avoids the recursion)
+- NOTE: following the convention Python uses to do name mangling (e.g., _LineItem__quantity0)
+  requires the name of the managed class
+    - the body of a class definition runs before the class itself is built by the interpreter
+        - information is not available when each descriptor instance is created
+    - may not be a need to include the managed class name to avoid accidental overwriting in
+      subclasses
+        - the descriptor class __counter will be incremented every time a new descriptor is
+          instantiated
+        - gaurantess that each storage name will be unique across all managed classes
+- `__get__` receives three arguments
+    - self
+    - instance
+    - owner
+        - a reference to the managed class
+        - useful when the descriptor is used to get attributes from the class
+- if a managed attribute is retrieved via the class like LineItem.weight, the descriptor
+  `__get__` method receives None as the value for the instance argument
+- good practice to make `__get__` return the descriptor instance when the managed
+  attribute is accessed through the class to support introspection and other
+  metaprogramming tricks by the user
+- prefer the descriptor class for two reasons
+    - a descriptor class can be extended by subclassing
+        - reusing code from a factory function without copying and pasting is much harder
+    - more straightforward to hold state in class and instance attributes
+      than in function attributes and closures
+- property factory code does not depend on strange object relationships evidenced by
+  descriptor methods having arguments named self and instance
+- property factory pattern is simpler but the descriptor class approach is more extensible
+  and more widely used
+- example 5 is an example of the template method
+    - defines an algorithm in terms of abstract operations that subclasses override
+      to provide concrete behavior
+
+## Overriding Versus Nonoverriding Descriptors
+- important asymmetry Python attributes handling
+    - reading an attribute through an instance normally returns the attribute defined in
+      the instance
+        - a class attribute will be retrieved if there is no such attribute in the instance
+    - assigning to an attribute in an instance normally creates the attribute in the instance
+      without affecting the class at all
+- asymmetry also affects descriptors
+    - creates two broad categories of descriptors depending on whether the `__set__` method
+      is defined
+- overriding descriptor
+    - a descriptor that implements the `__set__` method
+    - a descriptor implementing `__set__` will override attempts to assign to instance
+      attributes even though it is a class attribute
+    - properties are also overriding descriptors
+        - default `__set__` from the property class will raise AttributeError to signal
+          that the attribute is read-only when a setter function isn't written to override
+          it
+- overriding descriptor without `__get__`
+    - overriding descriptors usually implement both `__set__` and `__get__`
+    - also possible to implement only `__set__`
+    - only writing is handled by the descriptor
+    - reading the descriptor through an instance will return the descriptor object itself because
+      there is no `__get__` to handle access
+    - the `__set__` method will still override further attempts to set that attribute if a namesake instance attribute
+      is created with a new value via direct access to the instance `__dict__`
+        - reading that attribute will simply return the new value from the instance
+          instead of returning the descriptor object
+    - e.g. the instance attribute will shadow the descriptor, but only when reading
+- nonoverriding descriptor
+    - a descriptor that does not implement __set__
+    - setting an instance attribute with the same name will shadow the descriptor
+        - renders it ineffective for handling that attribute in that specific instance
+    - methods are implemented as nonoverriding descriptors
+- NOTE: Python contributors and authors use different terms when discussing these concepts
+    - overriding descriptors are also called data descriptors or enforced descriptors
+    - nonoverriding descriptors are also known as nondata descriptors or shadowable descriptors
+- the setting of attributes in the class cannot be controlled by descriptors attached to
+  the same class
+    - means that the descriptor attributes themselves can be clobbered by assigning to the
+      class
+- overwriting a descriptor in the class
+    - descriptor can be overwritten by assignment to the class regardless of whether a descriptor
+      is overriding or not
+    - monkey-patching technique
+    - any descriptor can be overwritten on the class itself
+- another asymmetry regarding reading and writing attributes
+    - reading of a class attribute can be controlled by a descriptor with `__get__` attached to the managed
+      class
+    - the writing of a class attribute cannot be handled by a descriptor with `__set__` attached
+      to the same class
+- NOTE: attach descriptors to the class of the class (metaclass) to control the setting of attributes in a class
+    - the default metaclass of user-defined classes is type
+        - cannot add attributes to type
+
+## Methods Are Descriptors
