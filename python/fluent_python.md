@@ -3288,7 +3288,7 @@ with (yield from semaphore):
 - use yield from to retrieve the results of the futures yielded by asyncio.as_completed
     - as_completed must be invoked in a coroutine
     - must move most of the previous download functionality to the coroutine
-- couldn’t simply turn download_many into a coroutine, because I
+- couldn't simply turn download_many into a coroutine, because I
 - may need to take care when splitting functionality between plain functions and
   coroutines
     - need to run the as_completed loop, the event loop and schedule a coroutine by
@@ -3331,7 +3331,7 @@ with (yield from semaphore):
 - each function does part of the job, sets up the next callback, and returns, to let the
   event loop proceed
     - all local context is lost
-    - don’t have the value of any more when the next callback is executed
+    - don't have the value of any more when the next callback is executed
     - must rely on closures or external data structures to store context between the different
       stages of the processing
 - within a coroutine, to perform
@@ -3356,7 +3356,7 @@ with (yield from semaphore):
       inside try/except blocks
 - downsides
     - must use coroutines and get used to yield from
-    - can’t simply call the coroutines
+    - can't simply call the coroutines
         - must explicitly schedule the execution of the coroutine with the event loop
           or activate it using yield from in another coroutine that is scheduled for
           execution
@@ -3619,9 +3619,9 @@ del obj.attr
 The behavior of many of the functions and
 - many of the functions and special methods depend on three special attributes
     - `__class__`
-        - a reference to the object’s class
+        - a reference to the object's class
         - `obj.__class__` is the same as type(obj)
-         Python looks for special methods such as __getattr__ only in an object’s class,
+         Python looks for special methods such as __getattr__ only in an object's class,
          and not in the instances themselves.
     - `__dict__`
         - a mapping that stores the writable attributes of an object or class
@@ -3652,7 +3652,7 @@ The behavior of many of the functions and
         - dir lists the names in the current scope if the optional object argument is not given
     - `getattr(object, name[, default])`
         - gets the attribute identified by the name string from the object
-        - may fetch an attribute from the object’s class or from a superclass
+        - may fetch an attribute from the object's class or from a superclass
         - raises AttributeError or returns the default value (if given) if no such attribute
           exists
     - `hasattr(object, name)`
@@ -3665,7 +3665,7 @@ The behavior of many of the functions and
         - may create a new attribute or overwrite an existing one
     - `vars([object])`
         - returns the __dict__ of object
-        - can’t deal with instances of classes that define `__slots__` and don’t have
+        - can't deal with instances of classes that define `__slots__` and don't have
           a `__dict__`
         - same as locals() without vars - returns a dict representing the local scope
 
@@ -3678,7 +3678,7 @@ The behavior of many of the functions and
   these special methods
     - usual way to bypass them if needed
 - implicit invocations of special methods are only guaranteed to work correctly if
-  defined on an object’s type, not in the object’s instance dictionary for custom classes
+  defined on an object's type, not in the object's instance dictionary for custom classes
     - assume that the special methods will be retrieved on the class itself
       even when the target of the action is an instance
 - special methods are not shadowed by instance attributes with the same name for this reason
@@ -3862,3 +3862,259 @@ class Descriptor:
         - cannot add attributes to type
 
 ## Methods Are Descriptors
+- a function within a class becomes a bound method because all user-defined functions
+  have a `__get__` method
+    - operate as descriptors when attached to a class
+- instance and class retrieve different objects
+    - the `__get__` of a function returns a reference to itself when the access happens
+      through the managed class (as usual with descriptors)
+    - the `__get__` of the function returns a bound method object when the access goes through an instance
+        - a callable that wraps the function and binds the managed instance (e.g., obj)
+          to the first argument of the function (i.e., self)
+        - like functools.partial
+- the bound method object also has a `__call__` method
+    - handles the actual invocation
+    - calls the original function referenced in `__func__`, passing the `__self__` attribute
+      of the method as the first argument
+    - how the implicit binding of the conventional self argument works
+- the way functions are turned into bound methods is a prime example of how descriptors are
+  used as infrastructure in the language
+
+## Descriptor Usage Tips
+- use property to keep it simple
+    - property built-in actually creates overriding descriptors implementing both `__set__`
+      and `__get__`
+        - even if a setter method is not defined
+    - the default `__set__` of a property raises AttributeError
+    - a property is the easiest way to create a read-only attribute
+    - avoids issues below
+- read-only descriptors require `__set__`
+    - remember to code both `__get__` and `__set__` when using a descriptor class to
+      implement a read-only attribute
+        - setting a namesake attribute on an instance will shadow the descriptor
+    - the `__set__` method of a read-only attribute should just raise AttributeError with
+      a suitable message
+- validation descriptors can work with `__set__` only
+    - the `__set__` method should check the value argument it gets in a descriptor designed
+      only for validation
+        - if valid, set it directly in the instance `__dict__` using the descriptor instance name as key
+    - reading the attribute with the same name from the instance will be as fast as possible
+        - will not require a `__get_`
+- caching can be done efficiently with `__get__` only
+    - creates a nonoverriding descriptor if just `__get__` is coded
+    - useful for making expensive computations and then cache the results by setting an
+      attribute by the same name on the instance
+    - the namesake instance attribute will shadow the descriptor
+        - subsequent access to that attribute will fetch it directly from the instance `__dict__`
+          and not trigger the descriptor `__get__` anymore
+- nonspecial methods can be shadowed by instance attributes
+    - functions and methods do not handle attempts at setting instance attributes with the
+      same name because they only only implement `__get__`
+        - simple assignment like means that further access to the method through the instance
+          will retrieve the overriding value without affecting the class or other instances
+    - this issue does not interfere with special methods
+        - the interpreter only looks for special methods in the class itself
+        - `repr(x)` is executed as `x.__class__.__repr__(x)`
+        - a `__repr__` attribute defined in x has no effect on `repr(x)`
+     - the existence of an attribute named `__getattr__` in an instance will not subvert
+       the usual attribute access algorithm
+- when doing a lot of dynamic attribute creation, where the attribute names come from data
+  not under control of the programmer, be aware of the ability to override special methods and implement some filtering or escaping
+  of the dynamic attribute names to preserve security
+   . Note
+- NOTE:
+    - class methods are safe as long as they are always accessed through the class
+    - use of only special methods, class methods, static methods, and properties is also safe
+    - properties are data descriptors, so cannot be overridden by instance attributes
+
+## Descriptor docstring and Overriding Deletion
+- docstring of a descriptor class is used to document every instance of the descriptor
+  in the managed class
+    - may be unsatisfactory
+- can handle attempts to delete a managed attribute by implementing a `__delete__`
+  alongside or instead of the usual `__get__` and/or `__set__` in the descriptor
+  class
+
+
+# Ch. 21 - Class Metaprogramming
+- metaclasses are deeper than most users should ever worry about
+- class metaprogramming is the art of creating or customizing classes at runtime
+    - function can be used to create a new class at any time without using the class keyword
+    - class decorators are also functions that are capable of inspecting, changing, and even
+      replacing the decorated class with another class
+- metaclasses are the most advanced tool for class metaprogramming
+    - allow creation of whole new categories of classes with special traits
+        - abstract base classes
+    - powerful, but hard to get right
+- class decorators solve many of the same problems more simply
+- metaclasses are now so hard to justify in real code that my favorite
+- crucial distinction between import time and runtime
+
+## A Class Factory
+- collections.namedtuple
+    - function that, given a class name and attribute names creates a subclass
+      of tuple that allows retrieving items by name and provides a nice `__repr__`
+      for debugging
+- see code for example of a class factory
+- invoking type with three arguments is a common way of creating a class dynamically
+- source code for collections.namedtuple
+    - there is _class_template, a source code template as a string, and the namedtuple
+      function fills its blanks calling `_class_template.format(...)`
+    - resulting source code string is then evaluated with the exec built-in function
+- NOTE: good practice to avoid exec or eval for metaprogramming in Python
+    - pose serious security risks if they are fed strings (even fragments) from untrusted
+      sources
+    - Python offers sufficient introspection tools to make exec and eval unnecessary most
+      of the time
+    - Python core developers chose to use exec when implementing namedtuple
+        - makes the code generated for the class available in the ._source attribute
+- instances of classes created by the example have a limitation
+    - not serializable
+    - can't be used with the dump/load functions from the
+
+## A Class Decorator for Customizing Descriptors
+When we left the LineItem example in "LineItem Take #5: A New Descriptor Type", the
+- issue of descriptive storage names for descriptors
+    - the value of attributes such as weight was stored in an instance attribute named
+      _Quantity#0, which made debugging hard
+    - can retrieve the storage name from a descriptor
+    - would be better if the storage names actually included the name of the managed attribute
+    - could not use descriptive storage names because when the descriptor is instantiated it has no
+      way of knowing the name of the managed attribute (i.e., the class attribute to which the
+      descriptor will be bound)
+    - can inspect the class and set proper storage names to the descriptors once the whole class is
+      assembled and the descriptors are bound to the class attributes
+    - could be done in the __new__ method of the class
+        - correct storage names are set by the time the descriptors are used in the __init__ 
+          method
+    - using __new__ for that purpose causes the logic of __new__ to run every time a new instance 
+      is created, but the binding of the descriptor to the managed attribute will never change once 
+      the class itself is built
+    - need to set the storage names when the class is created
+- can be done with a class decorator or a metaclass
+- class decorator is very similar to a function decorator
+    - a function that gets a class object and returns the same class or a modified one
+    - are a simpler way of doing something that previously required a metaclass
+        - customizes a class the moment it's created
+    - a drawback of class decorators is that they act only on the class where they 
+      are directly applied
+    - means subclasses of the decorated class may or may not inherit the changes made 
+      by the decorator, depending on what those changes are
+      
+## What Happens When: Import Time Versus Runtime 
+- must be aware of when the Python interpreter evaluates each block of code
+- at import time
+    - the interpreter parses the source code of a .py module in one pass from top to bottom
+    - generates the bytecode to be executed
+    - when syntax errors may occur
+    - steps are skipped because the bytecode is ready to run if there is an up-to-date 
+      .pyc file available in the local `__pycache__`
+    . Although 
+- compiling is definitely an import-time activity
+- other things may also happen at import-time
+    - almost every statement in Python is executable 
+        - they potentially run user code and change the state of the user program
+    - the import statement is not just a declaration 
+        - runs all the top-level code of the imported module when it's imported for the first 
+          time in the process 
+        - any more imports of the same module will use a cache and only name binding occurs then
+    - top-level code may do anything, including typical "runtime" actions
+- import statement can trigger all sorts of "runtime" behavior
+- top-level code
+    - interpreter executes a def statement on the top level of a module when the module is imported
+        - interpreter compiles the function body (on first import)
+        - binds the function object to its global name
+        - it does not execute the body of the function
+- means that the interpreter defines top-level functions at import time, but executes their bodies
+  only when — and if — the functions are invoked at runtime
+- for classes
+    - at import time, the interpreter executes the body of every class, even the body of classes
+      nested in other classes
+    - execution of a class body means that the attributes and methods of the class are defined, and
+      then the class object itself is built
+- body of classes is "top-level code" - it runs at import time
+
+## The Evaluation Time Exercises
+- review these exercises
+- the effects of a class decorator may not affect subclasses
+- metaclasses are more effective to customize a whole class hierarchy, and not one class at a time
+
+## Metaclasses 101
+- a metaclass is a class factory written as a class
+- classes are objects
+    - each class must be an instance of some other class
+- Python classes are instances of type by default
+    - type is the metaclass for most built-in and user-defined classes
+    - type is an instance of itself to avoid infinite recursion
+- classes do not inherit from type
+    - class objects are themselves instances of type
+    - all are subclasses of object
+- NOTE: the classes object and type have a unique relationship
+    - object is an instance of type
+    - type is a subclass of object
+    - relationship cannot be expressed in Python because either class would have to exist
+      before the other could be defined
+- fact that type is an instance of itself is also magical
+- a few other metaclasses exist in the standard library, such as ABCMeta and Enum
+- class Iterable is abstract, but ABCMeta is not — after all, Iterable is an instance of ABCMeta
+    - ABCMeta is also type
+- every class is an instance of type, directly or indirectly, but only metaclasses are also subclasses of type
+- most important relationship to understand metaclasses
+    - a metaclass, such as ABCMeta, inherits from type the power to construct classes
+- important takeaway
+    - all classes are instances of type
+    - metaclasses are also subclasses of type
+        - act as class factories
+- a metaclass can customize its instances by implementing `__init__`
+    - `__init__` method can do everything a class decorator can do
+    - effects are more profound
+- NOTE: further class customization can be done by implementing `__new__` in a metaclass
+    - implementing __init__ is usually enough
+
+## A Metaclass for Customizing Descriptors
+- see model.Entity
+
+## The Metaclass __prepare__ Special Method
+- sometimes necessary to know the order in which the attributes of a class are defined
+- both the type constructor and the `__new__` and `__init__` methods of metaclasses receive the body of
+  the class evaluated as a mapping of names to attributes
+  . However, by default, that
+    - mapping is a dict by default
+    - means the order of the attributes as they appear in the class body is lost by the time our metaclass
+      or class decorator can look at them
+- the solution to this problem is the `__prepare__` special method
+    - introduced in Python 3
+    - relevant only in metaclasses
+    - must be a class method (i.e., defined with the @classmethod decorator)
+    - invoked by the interpreter before the `__new__` method in the metaclass to create the mapping
+      that will be filled with the attributes from the class body
+    - gets the metaclass as first argument, the name of the class to be constructed and its tuple of base classes
+    - must return a mapping, which will be received
+- metaclasses are used in frameworks and libraries that help programmers perform
+    - attribute validation
+    - applying decorators to many methods at once
+    - object serialization or data conversion
+    - object-relational mapping
+    - object-based persistency
+    - dynamic translation of class structures from other languages
+
+## Classes as Objects
+- every class has a number of attributes defined in the Python data model
+    - see "Special Attributes" of the "Built-in Types" chapter in the Library Reference
+- already looked at `__mro__`, `__class__`, and `__name__`
+- `cls.__bases__`
+    - tuple of base classes of the class
+- `cls.__qualname__`
+    - new attribute in Python 3.3 holding the qualified name of a class or function
+        - dotted path from the global scope of the module to the class definition
+    - specification for this attribute is PEP-3155
+- `cls.__subclasses__()`
+    - method returns a list of the immediate subclasses of the class
+    - implementation uses weak references to avoid circular references between the superclass and its
+      subclasses — which hold a strong reference to the superclasses in their `__bases__` attribute
+    - returns the list of subclasses that currently exist in memory
+- `cls.mro()`
+    - interpreter calls this method when building a class to obtain the tuple of superclasses that is
+      stored in the `__mro__` attribute of the class
+    - a metaclass can override this method to customize the method resolution order of the class under construction
+- NOTE: none of the attributes mentioned in this section are listed by the `dir(...)` function
