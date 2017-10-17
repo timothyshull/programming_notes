@@ -1,0 +1,939 @@
+# Ch. 1 - Introduction to System Administration
+- use automation
+- not everything in this book is relevant to everyone
+    - take what is needed and leave the rest
+
+## Thinking About System Administration
+- system management 
+    - tension between authority and responsibility on the one hand and service and cooperation on the other
+- trick is to find a balance between being accessible to users and their needs while still maintaining authority and 
+  sticking to the policies put in place for the overall system welfare
+- goal of effective system administration is to provide an environment where users can get done what they need to
+    - easy and efficient 
+    - demands of security
+    - other users' needs
+    - inherent capabilities of the system
+    - realities and constraints of the human community in which they all are located
+- kill all of <username>'s process
+```
+# kill -9 `ps aux | awk '$1=="<username>" {print $2}'
+```
+- also this
+```
+$ write chavez
+```
+- a few basic strategies that can be applied to virtually any component tasks:
+    - know how things work
+        - omnipresent simple-to-use tools attempt to make system administration simple for an uninformed novice
+        - someone has to understand the nuances and details of how things really work
+    - plan before doing
+    - make it reversible (backups)
+    - make changes incrementally
+    - test, test, test, before releasing
+
+## Becoming Superuser
+- superuser (on Unix) refers to a privileged account with unrestricted access to all files and commands
+- username of this account is root
+    - log in as root directly
+    - execute the command `su`
+- the `su` command may be used to change one's current account to that of a different user
+  after entering the proper password
+    - takes the username
+    - root is the default when no argument is provided
+After you enter the su command (without arguments), the
+- system prompts you for the root password
+    - if correct, will get the normal root account prompt (by default, a number sign: #)
+    - otherwise get an error message and return to the normal command prompt
+- can exit from the superuser account with exit or Ctrl-D
+- can suspend the shell and place it in the background with the `suspend` command
+    - can return to it later using `fg`
+- new shell from `su` inherits the environment from the current shell environment
+    - different from environment that root would get after logging in
+- can simulate an actual root login session with the following command form
+```
+$ su -
+```
+- Unix superuser has all privileges all the time
+    - access to all files, commands, etc.
+- easy for a superuser to crash the system, destroy important files, etc.
+- do not do routine work as superuser
+- root account should always have a password
+    - change periodically
+- set or change the superuser password (as superuser)
+```
+# passwd
+
+// Solaris and FreeBSD systems when su'd to root
+# passwd root
+```
+
+- do not leave a logged-in session unattended - especially root
+- can use `xlock` and other screen locking programs
+
+### Controlling Access to the Superuser Account
+- any user with root password may become root at any time with `su`
+    - can be configured on Solaris with /etc/default/su
+- BSD systems limit access to `su` to members of group 0 (usually named wheel)
+    - any user may su to root on FreeBSD if the wheel group has a null user list in the group file (/etc/group)
+    - default configuration is a wheel group consisting of just root.
+
+### Running a Single Command as root
+- `su root -c "<command>"` - best used for scripts
+    - wrap in quotations if command contains any special shell characters, etc.
+    - prompts for password (if necessary)
+    - can bg command with & inside quotations
+
+### sudo: Selective Access to Superuser Commands
+- sudo freely available facility that is not universal (e.g. POSIX or Unix specified)
+    - installed by default on Red Hat Enterprise Linux and its derivatives
+        - only installs ready-to-use in RHEL 7 and newer
+        - RHEL 7 has a new option on installation to make user administrator which
+          adds sudo access
+            - does so by adding that user to the wheel group
+        - RHEL 3 through 6 also installs sudo by default
+            - configured such that only root could run commands through it
+            - easiest way to fix is to add one or more users to the wheel group
+            - run visudo as root and uncomment the %wheel ALL=(ALL)... line
+    - minimal installation of Debian 7 (Wheezy) does not include sudo
+        - instaled with "Standard system utilities" package set during installation
+        - will automatically adds the non-administrative user to the sudo group
+        - not true of Debian 6 and earlier
+            - install via apt-get after installation and configure it by hand
+    - not installed by default in FreeBSD or NetBSD
+    - OpenBSD ships with sudo installed by default
+        - configured so that only root can run commands through it
+- su is closer to a universal "get me superuser privileges" command than sudo
+    - systems like Ubuntu and OS X have the root account locked by default specifically to force you
+      to use sudo instead of su
+    - so su is not universal either
+- requires only the user's own password to run the command
+    - may run additional commands for a limited period of time without having to enter a
+      password again
+        - defaults to five minutes
+        - can extend the time period by an equal amount by running `sudo -v` before it expires
+        - can terminate the grace period by running `sudo -K`
+- uses a configuration file
+    - usually /etc/sudoers
+    - must be set up by the system administrator
+    - has sections that can define sudo aliases
+        - uppercase symbolic names for groups of computers, users and commands
+        - always use full pathnames for security
+- users can use `sudo -l` to list available sudo commands
+    - commands should be selected for use with sudo with care
+        - shell scripts should not be used
+        - any utility which provides shell escapes - the ability to execute a shell command
+          from within a running interactive program - should not be used
+          (editors, games, and even output display utilities like more and less
+    - command runs as root when a user runs a command with sudo
+        - any command run from within a utility will also be run as root
+        - most text editors provide shell escapes
+            - any command that allows the user to invoke an editor should also be avoided
+- sudo package provides the visudo command for editing /etc/sudoers
+    - locks the file
+    - performs syntax checking when editing is complete
+
+## Communicating with Users
+### Sending a Message
+- `write username [tty]`
+    - use tty for a user that is logged in more than once
+    - ^D to end
+    - can sometimes use over a network with `write <username>@<hostname>`
+- `rwho` command may be used (when available) to list all users on the local subnet
+- `talk` command formats messages as a split chat screen
+- can disable messages from users using `mesg n`, which will be overridden by messages from
+  superuser
+
+### Sending a Message to All Users
+- `wall` - write all
+    - end with ^D
+
+### The Message of the Day
+- written in /etc/motd, guaranteed to have user's attention
+    - maintenance schedules
+    - news
+    - announcements
+    - etc
+- can often disable with .hushlogin file in home dir
+
+### Specifying the Pre-Login Message
+- /etc/issue for prompt on unused terminals (HP-UX, Linux, Tru64)
+
+## About Menus and GUIs
+- often system specific
+
+### Ups and Downs
+- good points and bad points, see text
+
+## Where Does the Time Go?
+- `plod` can be used to record and categorize various tasks performed (see Ch. 14)
+
+# Ch. 2 - The Unix Way
+## Files
+- central to Unix
+- commands are executable files
+- device I/O is made to look like file I/O (all the way down to lowest levels)
+- most IPC occurs via file-like objects
+- filesystem - hierarchical (tree-structured) directory organization
+    - / - root directory or base
+- access to files controlled via ownership and protection
+    - large part of Unix security
+
+### File Ownership
+- two owners
+    - user owner
+    - group owner
+- independent of each other
+- allows for customization of ownership/security based on needs
+- use `'ls -l` to display file ownership
+- for new files
+    - user who creates it is owner
+    - for group owners
+        - usually current group of user who creates the file
+        - for BSD, same as group owner of containing directory
+            - FeeBSD & Tru64 by default
+            - most allow selective use of this pattern by using
+              setgid on the dir
+- use `chown` and `chgrp` to change ownership
+```
+chown new-owner files
+```
+- only the superuser can run the chown command on most systems
+- use the -R option (R for recursive) to change the ownership of an entire directory tree
+- can change both the user and group owner in a single operation
+```
+chown new-owner:new-group files
+```
+- use the chgrp command to change a files group ownership
+    - also supports -R
+    - non-root users calling `chgrp` must be file owner and member of the target group
+```
+$ chgrp new-group files
+```
+
+### File Protection
+- file mode on Unix
+- set with `chmod`
+    - r, w, x
+    - different meanings for file vs. dir
+- dir
+    - r - search (`ls`)
+    - w - alter contents (`mv`, `rm`, `cp`, etc)
+    - x - `cd` into dir
+    - to cd to a directory, you need
+    - only execute access to `cd` into dir since reading of the directory file itself is
+      not needed
+    - need read access to the directory file to expand wildcards in order to run any command
+      that lists or use files in the directory via an explicit or implicit wildcard
+      (`ls` without arguments or `cat *.dat`)
+    - `ls -l` also needs execute access because reading file sizes from disk implicitly
+      changes directories
+- write access on a file is not needed to delete it
+    - write access to the containing dir is sufficient
+- summary for dirs
+    - r - allows users to list the names of the files in the directory, but does not reveal any of their attributes
+      (i.e., size, ownership, mode, and so on)
+    - x - lets users work with programs in the directory specified by full pathname, but hides all other files
+    - r-x - lets users work with programs in the directory and list the contents of the directory, but does not allow
+      them to create or delete files in the directory
+    - -wx - used for a drop-box directory
+        - users can change to the directory and leave files there
+        - can't discover the names of files placed there by others
+        - sticky bit is also usually set on such directories
+    - rwx - lets users work with programs in the directory, look at the contents of the directory, and create or delete
+      files in the directory
+
+- access classes
+    - user access (u) - access granted to the owner of the file
+    - group access (g) - access granted to members of the same group as the group owner of the file (but does not apply
+      to the owner himself, even if he is a member of this group)
+    - other access (o) - access granted to all other normal users
+- set file mode with `chmod` and an access string
+    - accepts -R
+    - access class - u, g, o, a (all)
+    - operator - + (add), - (remove), = (set exact)
+    - r,w,x
+    - also accepts octal values
+    - access class defaults to a when ommitted
+    - = without an access string removes all access
+    - X access type grants execute access to the specified access classes only when execute
+      access is already set for some access class
+        - use to grant group or other read and execute access to all the directories and executable
+          files within a subtree while granting only read access to all other types of files
+- `umask <octal access`
+    -  all future files created are given this protection automatically
+    - usually put a `umask` command in the system-wide login initialization file and in the
+      individual login initialization files given to users when creating their accounts
+- special purpose access modes
+    - t - save text mode, sticky bit 
+        - files: keep executable in memory after exit
+        - directories: restrict deletions to each user's own files
+        - turns on the sticky bit
+    - s setuid bit
+        - files: set process user id on execution
+    - s setgid bit
+        - files: set process group id on execution
+        - directories: new files inherit directory group owner
+    - l file locking
+        - files: set mandatory file locking on reads/writes (solaris and tru64 and sometimes linux)
+            - set via the group access type and requires that group execute access is off
+            - displayed as s in ls -l listings
+
+ 
+- save-text access on directories
+- sticky bit has a different meaning when it is set on directories
+    - user may only delete files that she owns or for which she has explicit 
+      write permission granted
+    - even with write access to the directory (overrides the default Unix behavior) 
+    - designed to be used with directories like /tmp
+        - world-writable
+        - may not be desirable to allow any user to delete files at will
+    - set using the user access class - `# chmod u+t /tmp`
+- setgid access on a directory has a special meaning
+    - files created in that directory will have the same group ownership as the directory  
+      (rather than the user owner's primary group)
+    - useful for groups of users who need to share a lot of files
+    - `# chmod g+s /pub/chem2`
+- numerical equivalents for special access modes
+    - `chmod 4755 uid` - setuid access
+    - `chmod 2755 gid` - setgid access
+    - `chmod 6755 both` - setuid and setgid access - 2 highest bits on
+    - `chmod 1777 sticky` - sticky bit
+    - `chmod 2745 locking` - file locking with group execute off
+
+### How to Recognize a File Access Problem
+- problems that come up are usually file ownership or protection problems (from author's
+  experience)
+- for the local administrator
+    - always test every change before going on to the next one-multiple
+    - random changes are almost always bad
+    - keep track of your actions as you perform them
+- check the permissions on everything
+- always check the return value of system calls
+  if you suspect a file protection problem,
+- try running the command or program as root
+    - if it works fine, it's almost certainly a protection problem.
+- common way of creating file ownership problems is by accidentally editing files as root
+
+## Mapping Files to Disks
+- Unix maps files to disk blocks
+- inode
+    - data structure on disk that describes and stores a file's attributes
+    - physical location on disk
+    - user owner and group owner IDs
+    - file type (regular, directory, etc., or 0 if the inode is unused)
+    - access modes (permissions)
+    - most recent inode modification, data access, and data modification times
+        - first item will correspond to the file creation time if the file's metadata does not
+          change
+    - number of hard links to the file
+    - size of the file
+    - disk addresses of:
+      - disk locations for the data blocks that make up the file, and/or
+      - disk locations of disk blocks that hold the disk locations of the file's data blocks (indirect blocks), and/or
+      - disk locations of disk blocks that hold the disk locations of indirect blocks (double indirect blocks: two disk
+        addresses removed from the actual data blocks)
+- number of inodes are created when a filesystem is initially created
+    - usually becomes the maximum number of files of all types that can exist in the filesystem
+    - example - one inode for every 8 KB of actual file storage
+- inodes are given unique numbers
+    - each distinct file has its own inode
+    - an unused inode is assigned to a newly created file
+
+- regular files are files containing data
+    - ascii text files
+    - binary data files
+    - executable program binaries
+    - program input or output
+    - etc.
+- directory is a binary file consisting of a list of the other files it contains
+    - possibly including other directories (try `od -c`)
+    - entries are filename-inode number pairs
+        - mechanism by which inodes and directory locations are associated
+        - data on disk has no knowledge of its (logical) location within its filesystem
+- special files are used for character and block device files (e.g I/O)
+    - reside in the directory /dev and its subdirectories
+        - /devices under solaris
+    - character special files
+        - character-based or raw device access
+        - used for unbuffered data transfers to and from a device (e.g., a terminal)
+        - generally have names beginning with r (for "raw") or reside in subdirectories of /dev whose
+          names begin with r
+    - block special files   
+        - block I/O device access
+        - used when data is transferred in fixed-size chunks known as blocks 
+          (e.g., most file i/o)
+        - have the same name as character special files minus the initial r
+- some devices (including disks) have both kinds of special files
+- a link allows several filenames (directory entries) to refer to a single file
+  on disk
+    - hard link associates two (or more) filenames with the same inode
+        - separate directory entries that all share the same disk data blocks
+        - the command `$ ln index hlink` creates an entry in the current directory named
+          hlink with the same inode number as index and the link count in the corresponding
+          inode is increased by 1
+        - may not span filesystems because inode numbers are unique only within a filesystem
+        - should be used only for files and not for directories
+    - symbolic links are pointer files that refer to a different file or directory elsewhere
+      in the filesystem
+        - may span filesystems because they point to a unix pathname not to a specific inode
+        - created with the -s option to `ln`
+- the two types of links behave similarly but not identically
+    - disk contents for a hard link and soft link to the same file are initially the same
+        - for the soft link the disk contents referenced by the address in its inode 
+          contain the pathname for the linked file
+            - dereferencing then returns the linked file's inode and then ultimately the
+              data in the blocks pointed to by the inode
+        - the hard link points directly to the inode
+    - directory listings will return the same information for the hard link and the pointed
+      to file
+        - moving one, will however, not affect the other because it only alters the directory
+          entry
+        - (pathnames are not stored in the inode)
+    - deleting the original file will not affect the hard link which still points to the original
+      inode
+        - the corresponding disk blocks are only freed when an inode's link count reaches 
+          zero
+    - a new file created with the same name as the original will not affect the hard link
+      (will be assigned a free inode)
+    - all regular files are technically hard links (i.e., inodes with a link count >= 1)
+    - symbolic link appears as a separate entry in directory listings
+        - marked as a link with an "l" as the first character in the mode string
+        - always very small files
+            - every hard link to a given file (inode) is exactly the same size
+    - changes made by referencing either the real filename or the symbolic link will affect
+      the contents of the original file
+    - deleting the original file will break the symbolic link (it not point to anything)
+        - if another file with the same name is subsequently created the symbolic link will
+          be linked to it
+    - deleting the symbolic link will have no affect on the original file
+- NOTE: figure 2-2 is a good illustration
+- Tru64 has context-dependent symbolic links
+- a socket (officially Unix domain socket) is a special type of file used for communications between
+  processes
+    - communications end point
+    - tied to a local system port
+    - processes may attach to it
+- named pipes are pipes opened by applications for interprocess communication
+    - named means applications refer to them by their pathname
+    - System V feature that has migrated to all versions of Unix
+    - often reside in the /dev directory
+    - also known as FIFOs
+
+- can use `ls` to identify file types
+    - long directory listing `ls -l` identifies the type of each file it lists via the
+      initial character of the permissions string:
+    - `-` - plain file (hard link) d directory
+    - `l` - symbolic link
+    - `b` - block special file
+    - `c` - character special file
+    - `s` - socket
+    - `p` - named pipe
+    - -F option will append a special character to each filename indicating its type (on most
+      systems)
+    - -o option color-codes filenames in the output based on their file type (on some systems)
+    - -i option can determine the equivalent file in the case of hard links
+        - tells `ls` to display the inode number associated with each filename
+- ls can't distinguish between text and binary files (regular files)
+    - can use the `file` command - e.g. `# file *`
+
+## Processes
+- a single executable program that runs in its own address space (NOTE: processes vs. threads will
+  be addressed later)
+    - distinct from a job or a command
+        - on Unix systems a job or command may be composed of many processes working together to
+          perform a specific task
+
+### Interactive Processes
+- initiated from and controlled by a terminal session
+- may run either in the foreground or the background
+    - foreground processes remain attached to the terminal
+    - while running, the foreground process is the only process that can receive direct input
+      from the terminal
+- job control allows a process to be moved between the foreground and the background at will
+    - when a process is moved from the foreground to the background, the process is temporarily stopped,
+      and terminal control returns to its parent process (usually a shell)
+    - the background job may be resumed and continue executing unattached to the terminal session
+      that launched it
+    - it may also eventually be brought to the foreground, and once again become the terminal's
+      current process
+- processes may also be started initially as background processes
+- terminal process control
+    - `&` - run command in background
+    - ^Z - stop a foreground process
+    - `jobs` - list background processes
+    - `%n` - reference to a background job number n, e.g. `kill %2`
+    - `fg` - bring backround process to foreground
+    - `%?str` - reference to a background job command containing the characters in str
+    - `bg` - restart stopped background processes
+    - ~^Z - suspend `rlogin` session
+    - ~~^Z - suspend second-level `rlogin` session
+
+- NOTE:
+    - `ssh`, `telnet` and `rlogin` are ways of logging in to a multi-user computer from another computer over a
+      network
+        - SSH is a recently designed, high-security protocol
+            - uses strong cryptography to protect connection against eavesdropping, hijacking and other attacks
+        - telnet and rlogin are both older protocols offering minimal security
+    - some other differences with behavior and environment handling
+    - prefer SSH in all cases, especially when all systems are not behind the same firewall
+
+### Batch Processes
+- not associated with any terminal
+    - submitted to a queue for sequentially execution of jobs
+- Unix offers a very primitive batch command
+, but vendors whose customers require queuing
+    have generally imple- mented something more substantial.
+    Some of the best known are the
+- best known vendor implemented versions
+    - Network Queuing System (NQS)
+        - developed by NASA
+        and used on many high-performance computers including Crays, as well as several
+        network-based process-scheduling sys- tems from various vendors.
+        These facilities
+- usually support heterogeneous as well as homogeneous networks
+- attempt to distribute the aggregate CPU load evenly among the workstations in the network
+  (load balancing)
+
+### Daemons
+- daemons are server processes
+    - often initiated at boot time
+    - run continuously while the system is up
+    - wait in the background until a process requires their service
+
+#### Important Unix Daemons
+| Facility | Description | Daemon Names |
+|---|---|---|
+| `init` | first created process | `init` |
+| `syslog` | system status/error message logging | `syslogd` |
+| email | mail message transport | `sendmail` |
+| printing | print spooler | `lpd`, `lpsched`, `qdaemon`, `rlpdaemon` |
+| cron | periodic process execution | `crond` |
+| tty | terminal support | `getty` (and similar) |
+| sync | disk buffer flushing | `update`, `syncd`, `syncher`, `fsflush`, `bdflush`, `kupdated` |
+| paging and swapping | daemons to support virtual memory management | `pagedaemon`, `vhand`, `kpiod`, `pageout`, `swapper`, `kswapd`, `kreclaimd` |
+| `inetd` | master TCP/IP daemon* | `inted` |
+| name resolution | DNS server process | `named` |
+| routing | routing daemon | `routed`, `gated` |
+| DHCP | dynamic network client configuration | `dhcpd`, `rpcbind` |
+| RPC | RPC facility network port-to-service mapper | `portmap`, `rpcbind` |
+| NFS | native Unix network file sharing | `nfsd`, `rpc.mountd` , `rpc.nfsd`, `rpc.statd`, `rpc.lockd`, `nfsiod` |
+| Samba | file/print sharing with Windows systems | `smbd`, `nmbd` |
+| network time | network time sync | `timed`, `ntpd` |
+
+- * `inetd` is responsible for many others
+    - `telnetd`
+    - `ftpd`
+    - `rshd`
+    - `imapd`
+    - `pop3d`
+    - `fingerd`
+    - `rwhod`
+    - see /etc/inted.conf for the full list
+
+### Process Attributes
+- process ID (PID) - unique identifying number used to refer to the process.
+- parent process ID (PPID) - PID of the process's parent process (the process that created it)
+- nice number - process's scheduling priority
+    - a number indicating its importance relative to other processes
+    - distinguished from its actual execution priority, which is dynamically changed based on
+      both the process's nice number and its recent CPU usage
+- TTY - terminal (or pseudo-terminal) device associated with the process
+- real and effective user ID (RUID, EUID)
+    - real UID is the UID of the user who started it
+    - effective UID is the UID that is used to determine the process's access to system resources
+      (such as files and devices)
+    - they are usually the same
+    - when the setuid access mode is set on an executable image
+        - the EUIDs of processes executing it are set to the UID of the file's user owner
+          and they are accorded corresponding access rights
+- real and effective group ID (RGID, EGID)
+    - real GID is the user's primary or current group
+    - effective GID is used to determine the process's access rights
+        - same as the real GID except when the setgid access mode is set on an executable image
+    - EGIDs of processes executing such files are set to the GID of the file's group owner
+      and they are given corresponding access to system resources
+
+#### The lifecycle of a process
+- existing process makes an exact copy of itself (forking)
+- new process (child process) has the same environment as its parent process
+    - assigned a different PID
+- the image in the child process's address space is overwritten by the one the child will run
+    - done via the exec system call
+    - fork-and-exec
+- the new program (or command) completely replaces the one duplicated from the parent
+    - the environment of the parent still remains
+        - values of environment variables
+        - assignments of standard input, standard output, and standard error
+        - execution priority
+- command `grep`
+    - user's shell process forks, creating a new shell process to run the command
+    - new shell process execs grep, which overlays the shell's executable image in memory with grep's
+    - begins executing
+    - process dies when finished
+- ultimate ancestor for every process on a Unix system is the process with PID 1, init
+    - created during the boot process
+    - creates many other processes (fork-and-exec)
+    - usually one or more executing the getty program
+        - each assigned to a different serial line
+        - display the login prompt and wait for someone to respond to it
+        - when someone does, the getty process execs the login program
+            - validates user logins, among other activities
+            - if verified, login execs the user's shell
+
+            - login does not fork in this case (forking is not always required to run a new program)
+        - after login, the user's shell is the same process as the getty that was watching the unused
+          serial line
+        - getty process changed programs twice by execing a new executable
+            - will create new processes to execute the commands that the user types
+- on exit, process sends a signal to inform its parent process that is has completed
+    - on logout, login shell sends a signal to its parent, init, as it dies, letting init
+      know that it's time to create a new getty process for the terminal
+     - init forks again and starts the getty, and the whole cycle repeats itself again
+       and again as different users use that terminal
+
+#### Setuid and setgid file access and process execution
+- setuid and setgid access modes allow ordinary users to perform tasks requiring privileges and access rights 
+  that are ordinarily denied to them
+    - `write` command is owned by the tty group which also owns all of the terminal and pseudo
+      terminal device files 
+    - `write` command has setgid access
+        - allows any user to use it to write a message to another user's terminal or window 
+          (do not normally have any access) 
+        - user's effective GID is set to that of the group owner of the executable file when executing
+          `write` 
+- setuid and/or setgid access are also used by 
+    - the printing subsystem
+    - programs like mailers
+    - other system facilities
+- setuid programs are notorious security risks
+- setuid access should be avoided since it involves greater security risks than setgid
+
+#### The relationship between commands and files
+- Unix does not distinguish between commands and files in the ways that some systems do
+    - few commands are built into each Unix shell
+    - Unix commands are executable files stored in one of several standard locations within the 
+      filesystem
+- access to commands == access to command files
+    - no other privilege mechanism by default 
+- Unix shells use search paths to locate the executable's images for commands
+    - a search path is simply an ordered list of directories in which to look for command executables
+    - typically set in an initialization file ($HOME/.profile or $HOME/.login)
+- faulty (incomplete) search path is the most common cause for "Command not found"
+- stored in the PATH environment variable
+- search path is used whenever a command name is entered without an explicit directory location
+    - locate command the OS first looks for a file named after the command in the first
+      dir in colon separate PATH variable, then second, and so on
+    - the order of the directories in the search path is important when more than one version
+      of a command exists
+- be aware of working on systems that have both the BSD and System V versions of commands
+- most of the Unix administrative utilities are located in the directories /sbin and /usr/sbin
+    - locations of administrative commands can vary widely between Unix versions
+- /sbin and /usr/sbin typically aren't in the search path unless explicitly added
+    - either add these directories to the search path or provide the full pathname for the command
+      when executing administrative commands
+
+## Devices
+- device access through files simplifies user device access and I/O operations
+    - rarely a need to worry about the specific characteristics of devices and device I/O 
+- Unix special file mechanism allows many device I/O operations to look just like file I/O
+- administrator does need to know the details
+- device files are characterized by their major and minor numbers
+    - allows the kernel to determine which device driver to use to access the device 
+      (via the major number) and specific method of access (via the minor number)
+- major and minor numbers appear in place of the file size in long directory listings
+  (using `ls -l`)
+- device files are created with the `mknod` command
+    - takes the desired device name and major and minor numbers as its arguments
+    - many systems provide a script named MAKEDEV (located in /dev)
+        - easy-to-use interface to mknod
+
+### An In-Depth Device Example: Disks
+- disk drives as example 
+- Unix organizes all user-accessible files into a single hierarchical directory structure
+    - files and directories it contains may be spread across several different disk drives.
+    - disks are divided into one or more fixed-size partitions on most Unix systems
+        - physical subsets of the disk drive that are separately accessed by the operating 
+          system
+    - may be several partitions or just one on 
+    - each physical disk may have one or more partitions
+- disk partition containing the root filesystem is called the root partition 
+    - doesn't need to comprise the entire disk drive
+- disk containing the root partition is generally called the system disk
+- root filesystem is the first one mounted
+    - early boot process
+    - remaining filesystems are mounted afterwards
+- mounting a disk means more for Unix than other OSes
+    - refers to the process of making the device's contents available on many OSes
+    - files and directories physically located on each disk partition are arranged in a tree structure
+    - integral part of the process of mounting a disk partition involves grafting its local directory
+      structure into the overall Unix directory tree
+    - files physically residing on that device may be accessed via the usual Unix pathname syntax once this
+      is finished
+    - OS handles mapping pathnames to the correct physical device and data blocks
+- there are a few times when the disk partition must be accessed directly for admins
+    - `mount` operation is the most common
+    - disk partitions may be accessed in two modes, block mode and raw (or character) mode
+        - different special files are used from each mode
+    - character access mode does unbuffered I/O
+        - generally causes data transfer to or from the device with every read or write system call
+    - block devices do buffered I/O on a block basis
+        - buffers data until the operating system can transfer an entire block of data at one time
+- most disk partition-related commands require a specific type of special file and won't accept the other kind
+
+- NOTE: most Linux versions and newer versions of BSD do not distinguish between the two types of special files for
+  IDE disks and provide only one special file per disk partition
+    - IDE (Integrated Drive Electronics) is a standard electronic interface used between a computer motherboard's
+      data paths or bus and the computer's disk storage devices
+    - IDE interface is based on the IBM PC Industry Standard Architecture (ISA) 16-bit bus standard
+    - also used in computers that use other bus standards
+    - adopted as a standard by the American National Standards Institute (ANSI)
+        - ANSI name for IDE is Advanced Technology Attachment (ATA)
+        - ATA standard is one of several related standards maintained by the T10 Committee
+    - IDE controller is often built into the motherboard
+    - controllers were separate external devices prior to the IDE drive
+        - IDE reduced problems associated with storage devices and integrated controllers
+- command to mount a disk partition needs to specify the physical disk partition to be mounted
+  (mount's first argument) and the location to place it in the filesystem, its mount point (the second argument)
+```
+# mount /dev/disk0a /
+```
+
+#### Fixed-disk special files
+- special file names for disk partitions are highly implementation-dependent
+    - common logic underlies all of the various naming schemes
+- disk special file names can encode
+    - type of disk
+    - disk controller
+    - disk location on its controller
+    - disk partition within the physical disk (as well as the access mode)
+- see table 2-8 for examples from different platforms
+
+### Special Files for Other Devices
+- other device types have special files named differently
+    - use the same basic conventions
+
+| Device/use | Special file naming |
+|---|---|
+| floppy | /dev/[r]fd<n>* |
+|   | /dev/floppy |
+| tape devices | /dev/rmt<n> |
+|   | /dev/rmt/<n> |
+| nonrewinding | /dev/nrmt<n> |
+| SCSI | /dev/rst<n> |
+| default tape drive | /dev/tape |
+| CD-ROM devices | /dev/cd<n> |
+|   | /dev/cdrom |
+| serial lines | /dev/tty<n> |
+|   | /dev/term/<n> |
+| slave virtual terminal windows | /dev/tty[p-s]<n> |
+|   | /dev/pts/<n> |
+| master/control virtual terminal devices | /dev/pty[p-s]<n> |
+| console device | /dev/console |
+| some System V | /dev/syscon |
+| AIX | /dev/lft0 |
+| process controlling TTY | /dev/tty |
+| memory maps - physical | /dev/mem |
+| memory maps - virtual | /dev/kmem |
+| mouse interface | /dev/mouse |
+| null devices | /dev/null |
+| null devices | /dev/zero |
+| pseudorandom number generation - blocking | /dev/random |
+| pseudorandom number generation - non-blocking | /dev/urandom |
+| always full device (Linux) | /dev/full |
+ - the allways full device is a special file
+    - returns the error code ENOSPC ("No space left on device") on writing
+    - provides an infinite number of zero bytes to any process that reads from it
+
+#### Commands for listing the devices on a system
+
+| Unix Version | Command | Description |
+|---|---|---|
+| AIX | `lscfg` | list all devices |
+|   | `lscfg -v -l device` | device config detail |
+|   | `lsdev -C -s scsi` | list all SCSI IDs |
+|   | `lsattr -E -H -l device` | display device attributes |
+| FreeBSD | `pciconf -l -v` | list PCI devices |
+|   | `camcontrol devlist` | list SCSI devices |
+| HP-UX | `ioscan -f -n` | detailed device listing |
+|   | `ioscan -f -n -C disk` | limit to device class |
+| Linux | `lsdev` | list major devices |
+|   | `scsiinfo -l` | list SCSI devices |
+|   | `lspci` | list PCI devices |
+| Solaris | `dmesg` | boot messages identify all devices |
+|   | `getdev` | list devices |
+|   | `getdev type=disk` | limit to device class |
+|   | `devattr -v device` | device detail |
+| Tru64 | `dsfmgr -s` | list devices |
+
+#### The AIX Object Data Manager
+
+## The Unix Filesystem Layout
+
+### The Root Directory
+This is the 
+- base of the filesystem's tree structure
+    - all other files and directories are logically contained underneath the root directory
+- /bin
+    - traditional location for executable (binary) files for the various Unix user commands
+      and utilities
+    - some files within /bin are merely symbolic links to files in /usr/bin
+    - /bin is sometimes a link to /usr/bin
+    . Other directories that hold Unix commands are
+    - /usr/bin and /usr/ucb also hold Unix commands
+- /dev
+    - device directory
+    - contains special files
+    - divided into subdirectories in most System V-based versions of Unix
+        - each holding special files of a given type
+        - names indicate the type of devices it contains
+            - dsk and rdsk for disks accessed in block and raw mode
+            - mt and rmt for tape drives
+            - term for terminals (serial lines)
+            - pts and ptc for pseudo-terminals
+    - Solaris introduced a new device directory tree
+        - /devices
+        - many files under /dev are links to files in subdirectories of /devices
+- /etc and /sbin
+    - system configuration files and executables
+    - contain many administrative files and configuration files
+    - System V-style boot script subdirectories
+        - rcn.d and init.d
+        - located under one of these two locations on systems using this style of booting
+    - /etc traditionally contained the executable binaries for most administrative commands
+     In recent Unix versions, these files have
+    - moved to /sbin and /usr/sbin in recent Unix versions
+        - /sbin used for files required to boot the system
+        - /usr/sbin contains all other administrative commands
+    - /etc also contains a subdirectory default
+        - holds files containing default parameter values for various commands
+    - sysconfig subdirectory on Linux holds network configuration and other package-specific, boot-related
+      configuration files
+    - /etc contains two additional notable directories on AIX
+        - /etc/objrepos stores the device configuration databases
+        - /etc/security stores most security-related configuration files
+- /home
+    - conventional location for users' home directories
+    - may also be a sepa- rate filesystem.
+- /lib
+    - location of shared libraries required for booting the system (i.e., before /usr is mounted)
+- /lost+found
+    - lost files directory
+    - disk errors or incorrect system shutdown may cause files to become lost
+        - lost files refer to disk locations that are marked as in use in the data structures on
+          the disk, but that are not listed in any directory (i.e., an inode with a link count
+          greater than zero that isn't listed in any directory)
+    - fsck runs on boot and, among other things, finds these files
+    - usually a lost+found directory on every disk partition
+    - some Unix systems do not create the directory until it is needed
+- /mnt
+    - temporary mount directory
+        - empty directory conventionally designed for temporarily mounting filesystems
+- /opt
+    - directory tree into which optional software is often installed
+    - optional software products are installed under /var/opt on some systems
+        - /usr/lpp on AIX
+- /proc
+    - process directory
+    - enable processes to be manipulated using Unix file access system calls
+    - files in this directory correspond to active processes
+    - also additional files containing various information about the system configuration on Linux
+        - interrupt usage
+        - I/O port use
+        - DMA channel allocation
+        - CPU type
+        - etc
+    - HP-UX operating system does not use /proc.
+- /stand
+    - boot-related files, including the kernel executable
+    - Solaris uses /kernel
+    - Linux systems use /boot
+    - FreeBSD systems use /stand for installation and system configuration?related programs and
+      use /boot for kernels and related files used for booting
+- /tcb
+    - directory tree for security-related database files on some systems offering enhanced security features
+      (HP-UX and Tru64) (trusted computing base)
+    - configuration files related to the TCB are also stored under /etc/auth
+        - /usr/tcb may also be used for this purpose
+- /tmp
+    - temporary directory
+    - available to all users as a scratch directory
+    - system administrator should see that all the files in this directory are deleted occasionally
+    - one of the Unix startup scripts will usually clear /tmp
+- /usr
+    - contains subdirectories for
+        - locally generated programs
+        - executables for user and administrative commands
+        - shared libraries
+        - other parts of the Unix operating system
+    - sometimes contains applica- tion programs.
+- /var
+    - spooling and other volatile directories (varying data)
+
+### The /usr Directory
+- /usr/bin
+    - command binary files and shell scripts
+    - contains public executable programs that are part of the Unix system
+    - many executables for the X Window System are stored in /usr/bin/X11 or /usr/X11R6/bin
+- /usr/include
+    - include files
+    - contains C-language header files that define the C programmer's interface to standard system features
+      and program libraries
+    - /usr/include/sys contains operating system include files
+- /usr/lib
+    - library directory for public library files
+    - contains the standard C libraries for mathematics and I/O
+    - generally have names of the form libx.a or libx.so
+    - extensions specify a regular (statically linked) and shared library, respectively
+- /usr/local
+    - local files
+    - directory /usr/local/bin holds executable programs that were developed locally or retrieved
+      from the Internet and any sources other than the operating-system vendor (by convention)
+    - may be other subdirectories here to hold related files
+        - man - manual pages
+        - lib - libraries
+        - src - source code
+        - doc - documentation
+- /usr/sbin
+    - administrative commands (except ones required for booting, which are in /sbin)
+- /usr/share
+    - shared data
+    - certain CPU architecture-independent static data files are stored in subdirectories under /usr/share
+      on some recent systems
+    - files could be shared among a group of networked systems
+- /usr/share/man
+    - one location for the manual pages directory tree
+    - contains the online version of the Unix reference manuals
+    - divided into subdirectories for the various sections of the manual.
+
+- /usr/src
+    - source code for locally built software packages (FreeBSD and Linux)
+    - FreeBSD also uses the /usr/ports directory tree for retrieving and building additional
+      software packages
+- /usr/ucb
+    - contains standard Unix commands originally developed under BSD
+    - recent System V-based systems also provide BSD versions of commands so that users may
+      use the form that they prefer
+    - some BSD-based versions have similar directories for System V versions of commands
+
+### The /var Directory
+- holds data that changes over time
+- /var/adm
+    - administrative directory (home directory of the special adm user)
+    - traditionally contains the Unix accounting files
+    - many Unix versions have moved them
+- /var/cron, /var/news
+    - /var contains subdirectories used by many system facilities
+    - /var/cron and /var/news are used by the cron and Usenet news facilities, respectively
+- /var/log
+    - location for log files maintained by many system facilities
+- /var/mail
+    - user mailbox location
+- /var/run
+    - contains files holding the current process IDs of various system daemons and other server
+      and/or execution instance-specific data
+- /var/spool
+    - contains subdirectories for Unix subsystems that provide different kinds of spooling services
+        - print spooling system
+        - the mail system
+        - cron facility
+
