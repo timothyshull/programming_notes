@@ -822,7 +822,7 @@ This is the
         - lost files refer to disk locations that are marked as in use in the data structures on
           the disk, but that are not listed in any directory (i.e., an inode with a link count
           greater than zero that isn't listed in any directory)
-    - fsck runs on boot and, among other things, finds these files
+    - `fsck` runs on boot and, among other things, finds these files
     - usually a lost+found directory on every disk partition
     - some Unix systems do not create the directory until it is needed
 - /mnt
@@ -945,7 +945,7 @@ This is the
 - specifying a specific section
 - using -k (or apropos) to search for entries for a specific topic
 - useful, lesser known features
-    - can request multiple manual pages within a single man command - `$ man umount fsck newfs`
+    - can request multiple manual pages within a single man command - `$ man umount `fsck` newfs`
     - has a -a option on FreeBSD, Linux, and Solaris systems
         - retrieves the specified manual page(s) from every section of the manual
 - manual pages are generally located in a predictable location within the filesystem
@@ -1652,3 +1652,330 @@ $ dmesg | egrep 'down|up'
 
 
 # Ch. 4 - Startup and Shutdown
+
+## About the Unix Boot Process
+- bootstrapping - process of bringing a computer system to life and making it ready for use
+    - computer needs its operating system to function 
+    - must also get the operating system started on its own without having any of the services
+      normally provided by the operating system to do this
+- basic boot process is very similar for all Unix systems
+    - mechanisms used to accomplish it vary quite a bit from system to system
+- depend on both the physical hardware and the operating system type (System V or BSD)
+- boot process can be initiated automatically or manually
+- can begin when the computer is powered on (a cold boot) or as a result of a reboot command from a
+  running system (a warm boot or restart)
+- phases of normal Unix boot
+    - basic hardware detection (memory, disk, keyboard, mouse, etc.)
+    - executing the firmware system initialization program (happens automatically)
+    - locating and running the initial boot program (by the firmware boot program)
+      usually from a predetermined location on disk
+        - may perform additional hardware checks prior to loading the kernel
+    - locating and starting the Unix kernel (by the first-stage boot program)
+        - kernel image file to execute may be determined automatically or via input to
+          the boot program
+    - the kernel initializes itself and then performs final, high-level hardware checks,
+      loading device drivers and/or kernel modules as required
+    - the kernel starts the init process, which in turn starts system processes (daemons) and initializes all active
+      subsystems
+        - system begins accepting user logins when ready
+
+### From Power On to Loading the Kernel
+- boot process begins when the instructions stored in the computer's permanent, nonvolatile memory
+  (BIOS, ROM, NVRAM, etc) are executed
+- storage location for the initial boot instructions is generically referred to as
+  firmware (in contrast to "software")
+- executed automatically when the power is turned on or the system is reset
+- exact sequence of events may vary according to the values of stored parameters
+- firmware instructions may also begin executing in response to a command entered on the system console (as we'll see in a bit). How- ever they are initiated, these instructions are used to locate and start up the system's boot program, which in turn starts the Unix operating system.
+- boot program is stored in a standard location on a bootable device
+. For a nor- mal boot from disk, for example, the
+- boot program might be located in block 0 of the root disk or, less commonly, in a special
+  partition on the root disk for a normal boot disk
+- boot program may be the second file on a bootable tape or in a designated location on a remote file server in
+  the case of a network boot of a diskless workstation
+- usually more than one bootable device on a system
+    - firmware program may include logic for selecting the device to boot from
+        - may be a list of potential devices to examine
+- first bootable device that is found is usually the one that is used in the absence of 
+  other instructions
+- boot program is responsible for loading the Unix kernel into memory and passing control 
+  of the system to it
+- some systems have two or more levels of intermediate boot programs between 
+  the firmware instructions and the independently-executing Unix kernel
+- some systems use different boot programs depending on the type of boot
+- PC systems follow this same basic procedure
+- firmware is basically just smart enough to figure out if the hardware devices it needs 
+  are accessible 
+- kernel executable image is named unix (System V-based systems), vmunix (BSD-based system)
+  or something similar
+    - stored in or linked to the root directory
+    - AIX - /unix (actually a link to a file in /usr/lib/boot)
+    - FreeBSD - /kernel
+    - HP-UX - /stand/vmunix
+    - Linux - /boot/vmlinuz
+    - Tru64 - /vmunix
+    - Solaris - /kernel/genunix
+- kernel prepares itself to run the system by initializing its internal tables once control is passed to it
+    - creates in-memory data structures at sizes appropriate to current system resources and
+      kernel parameter values
+- kernel may also complete the hardware diagnostics that are part of the boot process
+  and install loadable drivers for the various hardware devices present on the system
+- when prep is done, kernel creates init program with PID 1
+    - process 0, if it exists, is part of the kernel itself
+        - often the scheduler or the swapper (which moves process memory pages to and from swap space
+          under System V)
+
+### Booting to Multiuser Mode
+- init is the ancestor of all subsequent Unix processes and the direct parent of user login
+  shells
+- init prepares system for users during the remainder of the boot process
+- has to verify the integrity of the local filesystems beginning with root
+- to get around kernel and init program being on root filesystem
+    - there is sometimes copy of the kernel in the boot partition of the root disk as well
+      as in the root filesystem
+    - alternatively if the executable from the root filesystem successfully begins executing
+      it is probably safe to assume that the file is OK
+    - on System V the root filesystem is mounted read-only until after it has been checked
+        - init remounts it read- write
+    - kernel handles checking and mounting the root filesystem itself in the traditional BSD approach
+- other activities performed by init
+    - checking the integrity of the filesystems, traditionally using the `fsck` utility
+    - mounting local disks
+    - designating and initializing paging areas
+    - performing filesystem cleanup activities
+        - checking disk quotas
+        - preserving editor recovery files
+        - deleting temporary files in /tmp and elsewhere
+    - starting system server processes (daemons) for subsystems
+        - printing
+        - electronic mail
+        - accounting
+        - error logging
+        - cron
+    - starting networking daemons and mounting remote disks
+    - enabling user logins, usually by starting getty processes and/or the graphical
+      login interface on the system console (e.g., xdm), and removing the file /etc/nologin, if present
+- specified and carried out by means of the system initialization scripts
+    - traditionally stored in /etc or /sbin or their subdirectories
+    - executed by init at boot time
+- users may log in to the system once described activities are complete
+    - boot process is complete
+    - system is in multiuser mode
+
+### Booting to Single-User Mode
+- booting process can place the system in single-user mode
+    - doesn't have to complete all the initialization tasks required for multiuser mode
+- single-user mode is a system state designed for administrative and maintenance activities
+    - needs unshared control of the system
+- init forks to create a new process
+    - then executes the default shell (usually /bin/sh) as user root
+- occasionally called maintenance mode
+- system might enter single-user mode automatically occurs if there are any problems in the
+  boot process that the system cannot handle
+    - filesystem problems that `fsck` cannot fix in its default mode
+    - errors in one of the system initialization files
+- single-user mode represents a minimal system startup
+    - root access to the system
+    - many of the normal system services are not available at all or are not set up
+    - search path and terminal type not set correctly
+    - no daemons are running
+    - system is not connected to the network
+    - available filesystems may be mounted read-only
+    - modifying files is initially disabled
+    - only commands that physically reside on these filesystems are available initially
+
+#### Password protection for single-user mode
+- single-user mode does not require a password on older Unix systems
+    - significant security problem
+- most systems now require that the root password be entered before granting system access in
+  single-user mode
+    - accomplished via the sulogin program that is invoked automatically by init once the system reaches
+      single-user mode on some System V-bases systems
+- see text for description of various single-user login requirements
+
+#### Firmware passwords
+- some systems also allow assigning a separate password to the firmware initialization program
+- for Linux, commonly used boot-loader programs (lilo and grub) have configuration settings that accomplish
+  this purpose
+    - grub package provides the grub-md5-crypt utility for generating the MD5 encoding for a password
+
+### Starting a Manual Boot
+- almost all modern computers can be configured to boot automatically when power comes
+  on or after a crash
+- booting is initiated by entering a simple command in response to a prompt when autoboot is not
+  enabled
+- see text for low-level boot commands for our supported operating systems
+
+#### Linux
+- lilo - traditional Linux boot loader
+    - kernels available for booting are predefined
+    - can specify kernel and parameters
+- grub boot loader is newer
+    - can enter boot commands manually
+    - root option on the kernel command locates the partition where the root directory is
+      located (we are using separate / and /boot partitions here)
+    - can send `kernel single`
+
+### Boot Activities in Detail
+#### Boot messages
+#### Saved boot log files
+- most Unix versions automatically save some or all of the boot messages
+  from the kernel initialization phase to a log file
+    - system message facility (syslogd daemon) and the related System V `dmesg` utility are
+      often used to capture messages from the kernel during a boot
+    - must execute the `dmesg` command to view the messages from the most recent boot
+    - can also view them in the /var/run/ dmesg.boot file on FreeBSD systems
+- common for syslogd to maintain only a single message log file
+    - conventional message file is /var/log/messages.
+
+#### General considerations
+- init controls the multiuser mode boot process
+    - runs whatever initialization scripts it has been designed to run
+    - structure of the init program determines the fundamental design of the set of initialization scripts
+      for Unix version
+        - script naming
+        - location
+        - sequence in which they are run
+        - constraints placed upon the scripts' programmers
+        - assumptions under which they operate
+- differences in the System V and BSD versions of init that determines the differences
+  in the boot process for the two types of systems
+
+#### Preliminaries
+- system initialization scripts usually perform a few preliminary actions before getting down to the
+  work of booting the system
+    - define any functions and local variables that may be used in
+      the script and setting up the script's execution environment
+    - path is deliberately set to be as short as possible
+    - only system directories appear in it to ensure that only authorized, unmodified versions of
+      commands get executed
+    - other scripts are careful always to use full pathnames for every command that they use
+
+#### Preparing filesystems
+Preparing the filesystem for use is the
+- first and most important aspect of the multiuser boot process is to prep filesystem
+    - mount the root filesystem and other vital system filesystems (such as /usr)
+    - handle the remainder of the local filesystems
+- task of filesystem checking is the responsibility of the fsck* utility
+- considering traditional, non-journaled Unix filesystems
+    - modern filesystem types use journaling techniques adapted from transaction processing to
+      record and, if necessary, replay filesystem changes
+    - avoids the need for a traditional `fsck` command and its slow verification and repair
+      procedures
+
+- fsck's job for traditional Unix filesystem types (ufs - FreeBSD and ext2 - Linux)
+    - ensure that the data structures in the disk partition's superblock and inode tables are consistent
+      with the filesystem's directory entries and actual disk block consumption
+    - designed to detect and correct inconsistencies between them
+        - disk blocks marked as in use that are not claimed by any file
+        - files existing on disk that are not contained in any directory
+    - deals with filesystem structure
+    - doesn't deal with the internal structure or contents of any particular file
+    - ensures filesystem-level integrity, not data-level integrity
+    - most cases can be repaired automatically at boot time and are completely benign
+    - sometimes finds more serious problems
+        - requires administrator intervention
+- normal practice is to check all filesystems on every boot for traditional BSD
+    - filesystem inconsistencies do on occasion crop up at times other than system crashes
+- System V-style filesystems are not checked if they were unmounted normally when the 
+  system last went down
+    - results in much faster boots
+
+#### Checking and mounting the root filesystem
+- root filesystem is the first filesystem that the boot process accesses as it prepares 
+  the system for use
+- see text for sample script to check and mount root filesystem
+- `fsstat` command determines whether a filesystem is clean 
+- root filesystem is mounted read-only until after it is known to be in a viable state as a result 
+  of running fsstat and `fsck` as needed on many systems
+- remounted read-write - `# mount -o rw,remount /`
+- corresponding command is `# mount -u -o rw /` on FreeBSD systems 
+
+#### Preparing other local filesystems
+- traditional BSD approach to checking the filesystems is to check all of them via a single 
+  invocation of `fsck` 
+    - some System V systems have adopted this method as well
+    - see text for script with long switch case to do this 
+    - executes the command `fsck` -p to check the filesystem's consistency
+    - -p option stands for preen and says that any needed repairs that will cause no 
+      loss of data should be made automatically
+        - almost all repairs are of this type, this is a very efficient way to invoke `fsck` - need to run `fsck` it manually when it boots to single-user mode if it cannot fix a disk on its own
+    - rare, most common after crash from electrical storm, etc.
+    - most vulnerable disks are those with continuous disk activity 
+- local filesystems can be mounted with the `mount` command (BSD - `mount -a -t ufs`) once all the local filesystems 
+  have been checked (or it has been determined that they don't need to be)
+    - -a option says to mount all filesystems listed in the system's filesystem configuration file
+    - -t option restricts the command to filesystems of the type specified as its argument
+
+#### Saving a crash dump
+- most Unix versions automatically write the current contents of kernel memory when a system crashes due to an
+  operating system-level problem
+    - crash dump
+    - usually written to the primary swap partition
+    - AIX - `sysdumpdev`
+    - FreeBSD sets it via the dumpdev parameter in /etc/rc.conf
+- crash dump is just a core dump of the Unix kernel
+    - can be analyzed to figure out what caused the kernel program/system to crash
+- need to take action to to save swap partition contents after a crash
+    - will be overwritten when the system is booted and paging is restarted
+    - `savecore` command copies the contents of the crash dump location to a file within the filesystem
+        - exits without doing anything if there is no crash dump present
+        - usually executed automatically as part of the boot process - `savecore /var/adm/crash`
+- crash dumps themselves are conventionally a pair of files named something like
+  vmcore.n (the memory dump) and kernel.n, unix.n, or vmunix.n (the running kernel)
+    - extension is an integer that is increased each time a crash dump is made
+    - additional files holding other system status information may be created as well
+- `savecore` often disabled in the delivered versions of system initialization files since crash
+  dumps are not needed by most sites
+
+#### Starting paging
+- paging can be started once the filesystem is ready and any crash dump has been saved
+    - normally happens before the major subsystems are initialized
+    - ordering of the remaining multiuser mode boot activities varies tremendously
+- paging is started by `swapon -a`
+    - activates all the paging areas listed in the filesystem configuration file
+
+#### Security-related activities
+- must ensure that available security measures are in place and operational
+- enhanced security levels systems include
+    - utilities to verify the integrity of system files and executables
+    - run at boot time and must complete successfully before users are allowed
+      access to the system
+- initialization scripts on many systems often try to ensure that there is a valid password
+  file (containing the system's user accounts)
+    - `vipw` utility for editing the password file
+        - makes sure that only one person edits the password file at a time
+- see text for command bash pattern to detect and correct issues with editing a sensitive file
+
+#### Checking disk quotas
+- most Unix systems offer an optional disk quota facility
+    - allows the available disk space to be apportioned among users as desired
+    - depends on database files that need to be checked and possibly updated at boot time
+        - `quotacheck -a`, `quotaon -a`
+    - `quotacheck` checks the internal structure of all disk quota databases
+        - enables disk quotas with `quotaon`
+
+#### Starting servers and initializing local subsystems
+- important subsystems can be started when all the prerequisite system devices are ready
+    - electronic mail
+    - printing
+    - accounting
+- most rely on daemons (server processes) started automatically by one of the boot scripts
+    - purely local subsystems that do not depend on the network are usually started
+      before networking is initialized
+    - subsystems that do need network facilities are started afterwards
+- sample script checks if daemon is already running via a lock file before starting
+- update
+    - process that periodically forces all filesystem buffers (accumulated changes to inodes and data blocks)
+      to disk. It does so by
+    - runs the sync command
+        - makes sure that the disks are fairly up-to-date should the system crash
+    - name varies
+        - bdflush
+        - syncd
+        - syncer
+        - fsflush
+    - Linux runs both update and bdflush
+    - this daemon should not be disabled
+        - will seriously compromise filesystem integrity
+- syslogd
