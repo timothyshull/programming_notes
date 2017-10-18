@@ -847,7 +847,7 @@ This is the
     - boot-related files, including the kernel executable
     - Solaris uses /kernel
     - Linux systems use /boot
-    - FreeBSD systems use /stand for installation and system configuration?related programs and
+    - FreeBSD systems use /stand for installation and system configuration-related programs and
       use /boot for kernels and related files used for booting
 - /tcb
     - directory tree for security-related database files on some systems offering enhanced security features
@@ -937,3 +937,718 @@ This is the
         - the mail system
         - cron facility
 
+# Ch. 3 - Essential Administrative Tools and Techniques
+## Getting the Most from Common Commands
+### Getting Help
+- manual page facility 
+- getting help for a command
+- specifying a specific section
+- using -k (or apropos) to search for entries for a specific topic
+- useful, lesser known features
+    - can request multiple manual pages within a single man command - `$ man umount fsck newfs`
+    - has a -a option on FreeBSD, Linux, and Solaris systems
+        - retrieves the specified manual page(s) from every section of the manual
+- manual pages are generally located in a predictable location within the filesystem
+    - often /usr/share/man
+    - can configure the man command to search multiple man directory trees by setting the
+      MANPATH environment variable to the colon-separated list of desired directories
+
+#### Changing the search order
+- searches the various manual page sections in a predefined order
+    - commands
+    - system calls and library functions
+    - then the other sections (i.e., 1, 6, 8, 2, 3, 4, 5, and 7 for BSD-based schemes)
+- many operating systems allow this ordering scheme to be customized via the MANSECTS
+  entry within a configuration file
+    - FreeBSD - MANSECT environment variable (colon-separated)
+    - Linux (Red Hat) - MANSECT in /etc/man.config (colon-separated)
+    - Linux (SuSE) - SECTION in /etc/manpath.config (space-separated)
+    - Solaris - MANSECTS in /usr/share/man/man.cf and/or the top level directory of any manual page tree (comma-separated)
+
+#### Setting up man -k
+- `apropos` is an alias to `man -k`
+- `man -k` may need setup if the system claims to support it
+- command uses a data file indexing all available manual pages
+    - file often must be initially created by the system administrator
+    - may need to be updated from time to time
+```
+# makewhatis Most systems
+# makewhat /usr/share/man (for Solaris)
+```
+- `catman -w` command is used on AIX, HP-UX, and Tru64
+
+### Piping into grep and awk
+- can use `grep` for searching files or piping output into
+- also `egrep`
+- `awk` is also useful in pipes
+    - can also be used for summing and mapping over specific fields/columns
+    - can be used to generate strings from the `date` command and others
+```
+% ps -aux | egrep 'chavez|PID'
+% alias pu "ps -aux | egrep '\!:1|PID'" % pu chavez
+$ ps -ef | grep "[q]uake" | awk '{print $1}'
+$ (date ; ps -ef | grep "[q]uake" | awk '{print $1 " [" $7 "]"}' \ | sort | uniq) >> quaked.users
+# find / -user chavez -fstype 4.2 ! -name /dev/\* -ls | \
+    awk '{sum+=$7}; END {print "User chavez total disk use = " sum}'
+$ sys_doc > `date | awk '{print $3 $2 $6}'`.`hostname`.sysdoc
+$ date +junk_%d%b%y%H%M%S.junk
+```
+
+### Finding Files
+- locates files with common, specified characteristics
+    - searches anywhere on the system specified
+- general syntax
+```
+# find starting-dir(s) matching-criteria-and-actions
+```
+- starting-dir(s) is the set of directories where find should start looking for files
+    - searches all directories underneath the listed directories by default
+- matching-criteria tell find what types of files to look for
+    - does not distinguish between file-selection options and action-related options
+    - often helpful to think of them as separate types
+
+| Option | Meaning |
+|---|---|
+| `-atime <n>` | last access exactly n days ago |
+| `-mtime <n>` | last modified exactly n days ago |
+| `-newer <file>` | modified more recently than file was |
+| `-size <n>` | n 512-byte blocks long (rounded up to next block |
+| `-type <c>` | specifies file type - f = plain file, d = directory, and more |
+| `fstype <typ>` | specifies filesystem type |
+| `name <nam>` | filename is nam |
+| `-perm <p>` | access mode is p |
+| `-user <usr>` | owner is usr |
+| `-group <grp>` | group owner is grp |
+| `-nouser` | file's owner is not listed in the password file |
+| `-nogroup` | file's group owner is not listed in the group file |
+
+- may precede time periods, sizes, and other numeric quantities with a plus sign 
+- can include wildcards with the -name option
+    - must quote them
+- multiple conditions are joined with AND by default
+    - may also be joined with -o for OR combination
+    - grouping is allowed using escaped parentheses
+    - an exclamation point may be used for NOT
+```
+-atime +60 -mtime +120
+\( -atime +7 -o -mtime +30 \)
+! -name gold.dat -name \*.dat
+```
+- -perm option allows searching for files with a specific access mode (numeric form)
+    - unsigned value specifies files with exactly that permission setting
+    - preceding the value with a minus sign searches for files with at least the specified
+      access
+        - specified permission mode is XORed with the file's permission setting
+- actions options tell find what to do with each file it locates that matches all the specified criteria
+
+| Option | Meaning |
+|---|---|
+| `-print` | display pathname of matching file |
+| `-ls` | display long directory listing for matching file |
+| `-exec <cmd>` | execute cmd on file |
+| `-ok <cmd>` | prompt before executing command on file |
+| `xdev` | restrict the search to the filesystem of the starting directory |
+| `-prune` | don't descend into encountered directories (e.g. non-recursive) |
+
+- default on newer systems is -print
+    - called -exec on older systerms
+- -exec and -ok commands must end with an escaped semicolon (\;)
+    - `{}` may be used in commands as a placeholder for the pathname of each found file
+```
+-exec rm -f {} \;
+```
+- NOTE: no spaces between the opening and closing curly braces
+    - may only appear once within the command.
+- lists the pathname of all C source files under the current directory
+```
+$ find . -name \*.c -print
+```
+- administrative uses of `find`
+    - monitoring disk use
+    - locating files that pose potential security problems
+    - performing recursive file operations
+- locate large disk files
+```
+$ find /chem -size +2048 -mtime +30 -exec ls -l {} \;
+```
+- can use -ls instead of -exec
+    - more efficient because the directory listing is handled by find internally
+      (rather than having to spawn a subshell for every file)
+- search for files not modified in a month or not accessed in three months
+```
+$ find /chem -size +2048 \( -mtime +30 -o -atime +120 \) -ls
+```
+- can delete files automatically as it finds them
+```
+# find / \( -name a.out -o -name core -o -name '*~' \
+    -o -name '.*~' -o -name '#*#' \) -type f -atime +14 \
+    -exec rm -f {} \; -o -fstype nfs -prune
+```
+- matching criteria and actions may be placed in any order
+    - evaluated from left to right
+- lists all regular files under the directories /home and /aux1 that are larger than 500K and
+  were last accessed over 30 days ago, removes those named core
+```
+# find /home /aux1 -type f -atime +30 -size +1000 -print \
+    -name core -exec rm {} \;
+```
+- find has security uses
+- lists all files that have setuid or setgid access set
+```
+# find / -type f \( -perm -2000 -o -perm -4000 \) -print
+# find / \( -perm -2000 -o -perm -4000 \) -print | \ diff - files.secure
+```
+
+- can use as a simple method for tracking changes that have been made to a system in the
+  course of a certain time period or as the result of a certain action
+```
+# touch /tmp/starting_time
+# perform some operation
+# find / -newer /tmp/starting_time
+```
+
+### Repeating Commands
+- `xargs` command is a way of automating similar commands on a group of objects
+    - more flexible than `find` because it can operate on any set of objects
+    - most often used as the final component of a pipe
+- defaults to sending as a single string list of arguments when piping it through
+- can send its incoming arguments to the specified command in groups by using -n option
+    - takes the number of items to use at a time as its argument
+
+So far, all of the xargs commands we've look at have
+- by default places the incoming items at the end of the specified command
+- can place each incoming line of input at a specified position within the command to
+  be executed
+    - use -i option and use the form {} as placeholder for each incoming line within the
+      command
+    - can specify a different pair of placeholder characters as the argument to -i if curly
+      braces are needed elsewhere in the command
+```
+# ps -ef | grep "[q]uake" | awk '{print $1}' | \
+    xargs -i chargefee {} 10000
+```
+- -t option displays each constructed command before executing
+- -p option allows you to selectively execute commands by prompting you before each one
+- -t and -p together provides the safest execution mode and also enables nondestructively debug
+  a command or script by answering no for every offered command
+- -i and -n don't interact as expected
+    - -i and -n conflict with one another
+    - the one appearing last wins
+- to execute commands containing pipes, I/O redirection, compound commands joined with semicolons,
+  etc
+    - use the -c option to a shell to execute the desired command
+- to lookat the final lines of a group of files and then view all of them a screen at a time
+```
+$ ls -1 test00* | xargs -i /usr/bin/sh -c \
+       'echo "****** {}:"; tail -15 {}; echo ""' | more
+```
+
+### Creating Several Directory Levels at Once
+Many people are unaware of the
+- options offered by the mkdir command
+- -m to set the file mode when creating
+    - can use either a numeric mode or a symbolic mode as the argument to the -m option
+    - can also use a relative symbolic mode
+- -p option tells it to create any missing parents required for the subdirectories specified as
+  its arguments
+    - same command without -p will give an error if all of the parent subdirectories are not
+      already present
+
+### Duplicating an Entire Directory Tree
+- common to need to move or duplicate an entire directory tree while preserving
+  the directory structure, file contents, and ownership and mode settings for every file
+    - can accomplish using
+        - tar
+        - cpio
+        - sometimes even cp
+- tar command `# tar -cf - -C /<working dir> <dir to archive>` creates an archive consisting of
+  /<parent dir>/<dir to archive> and all of the files and directories underneath it and writes it to standard output
+    - the `-` argument to the -f option means to write the archive to stdout
+    - -C option sets the current directory for the first tar command to /<working dir>
+- the tar command `tar -xvpf -` extracts files from standard input (indicated by -f -), retaining their previous
+  ownership and protection
+    - the -v option gives detailed output
+- piping the first tar command to the second (when operating in a different dir) will require a final mv command
+  to make the copied dir identical to the original dir name
+```
+# cd /<parent dir>
+# tar -cf - -C /<working dir> <dir to archive> | tar -xvpf -
+# mv <dir to archive> <new dir>
+```
+- need to vary to copy only a subset of the files and directories under the original dir
+```
+# mkdir /<parent dir>/<new dir>
+set ownership and protection for newdir if necessary
+# cd /<parent dir>/<old dir>
+# tar -cvf - <subdir1> ... <glob> ... <file> ... | \
+       tar -xvpf - -C /<parent dir>/<new dir>
+```
+- first two commands are necessary only if <new dir> does not already exist
+- copy only a single branch of the subtree
+```
+# mkdir /chem1/newdir
+set ownership and protection for newdir if necessary
+# cd /chem1/newdir
+# tar -cvf - -C /chem/olddir src/viewers/rasmol | tar -xvpf -
+```
+- `cpio` can perform similar functions
+```
+# mkdir /chem1/newdir
+set ownership and protection for newdir if necessary # cd /chem1/olddir
+# find . -print | cpio -pdvm /chem1/newdir
+```
+- `cp` command has a -p option on all considered systems
+```
+# cp -pr /chem/olddir /chem1
+# mv /chem1/olddir /chem1/newdir
+```
+- -r option stands for recursive and causes `cp` to duplicate the source directory structure
+  in the new location
+- tar works differently than cp does in the case of symbolic links
+    - tar recreates links in the new location
+    - cp converts symbolic links to regular files
+
+### Comparing Directories
+- two identical directories may diverge over time
+- use `dircmp` to determine the differences between two directories
+- `diff -r` provides the equivalent functionality on FreeBSD and Linux systems
+- default output from dircmp indicates only whether the corresponding files are the
+  same or not
+- add - d to determine exactly what the file differences are
+    - runs diff for each pair of differing files (works only for text files)
+- add -s to decrease the amount of output by limiting the second section of the report
+    to files that differ
+
+#### Deleting Pesky Files
+- occasionally a user winds up with a file that cannot be removed with `rm`
+    - possible for a buggy application program to put a file into an inconclusive state
+    - can also be achieved with certain filesystem manipulation tools
+- can be solved with the directory editor feature of the GNU emacs text editor
+    - also useful to teach quoting of stange filenames
+1. invoke emacs on the directory in question
+    - include its path on the command line
+    - or by entering its name at the prompt produced by Ctrl-X Ctrl-F
+2. emacs enters its directory editing mode
+    - move to the file in question using the usual emacs commands
+3. enter d
+    - directory editing mode subcommand to mark a file for deletion
+    - use u to unmark a file
+    - # to mark all auto-save files
+    - ~ to mark all backup files
+4. enter x
+    - delete all marked files
+    - answer the confirmation prompt in the affirmative
+- emacs can also be useful for viewing directory contents when they include files with bizarre
+  characters embedded within them
+
+### Putting a Command in a Cage
+- system security involves tradeoffs between convenience and risk
+- one way to mitigate the risks arising from certain inherently dangerous commands and
+  subsystems is to isolate them from the rest of the system
+- accomplished with the chroot command
+    - runs another command from an alternate location within the filesystem
+    - tricks the command into thinking that that the location is actually the root
+      directory of the filesystem
+- takes the alternate top-level directory
+- FreeBSD also has a facility called jail
+    - stronger version of chroot
+    - allows specifying access restrictions for the isolated command
+
+### Starting at the End
+- `tail` is principally used to display the last 10 lines of a file (or standard input)
+    - -f option displays new lines as they are added to the end of a file
+        - useful for monitoring the progress of a command that writes periodic status
+          information to a file
+- advantage over the `tee` command is that the `tail` command may be killed and restarted
+  as many times as you like without affecting the tar command
+- some versions of tail also include a -r option
+    - displays the lines in a file in reverse order
+    - HP-UX does not support this option
+- Linux provides this feature in the `tac` command
+
+### Be Creative
+- to see all the files in the current directory - `$ echo *`
+    - tells the shell to display the value of "*"
+    - expands to all files not beginning with a period in the current directory
+- `echo` and `cd` are shell builtins
+
+## Essential Administrative Techniques
+
+### Periodic Program Execution: The cron Facility
+- allows scheduling of programs for periodic execution
+- administrative functions are performed without any explicit action by the system administrator 
+  (or any other user)
+- `cron` is useful for running commands and scripts according to a preset schedule
+    - can send the resulting output 
+        - to a log file
+        - as a mail or terminal message
+        - to a different host for centralized logging
+- the `cron` command starts the crond daemon
+    - normally started automatically by one of the system initialization scripts
+
+
+
+
+- crontab files
+    - usual: /var/spool/cron/crontabs
+    - FreeBSD: /var/cron/tabs, /etc/crontab
+    - Linux: /var/spool/cron (Red Hat) /var/spool/cron/tabs (SuSE), /etc/crontab (both)
+- crontab format
+    - usual: System V (no username field)
+    - BSD: /etc/crontab (requires username as sixth field)
+- cron.allow and cron.deny files
+    - usual: /var/adm/cron
+    - FreeBSD: /var/cron
+    - Linux: /etc (Red Hat), /var/spool/cron (SuSE) Solaris: /etc/cron.d
+- related facilities
+    - usual: none
+    - FreeBSD: periodic utility
+    - Linux: /etc/cron.* (hourly,daily,weekly,monthly) 
+    - Red Hat: anacron utilitya
+- cron log file
+    - usual: /var/adm/cron/log
+    - FreeBSD: /var/log/cron
+    - Linux: /var/log/cron (Red Hat), not configured (SuSE) 
+    - Solaris: /var/cron/log
+- file containing PID of crond
+    - usual: not provided
+    - FreeBSD: /var/run/cron.pid
+    - Linux: /var/run/crond.pid (Red Hat), /var/run/cron.pid (SuSE)
+- boot script that starts cron
+    - AIX: /etc/inittab 
+    - FreeBSD: /etc/rc 
+    - HP-UX: /sbin/init.d/cron 
+    - Linux: /etc/init.d/cron 
+    - Solaris: /etc/init.d/cron 
+    - Tru64: /sbin/init.d/cron
+- boot script configuration file: cron-related entries
+    - AIX: none used
+    - FreeBSD: /etc/rc.conf: cron_enable="YES" and cron_flags="args-to-cron" 
+    - HP-UX: /etc/rc.config.d/cron: CRON=1
+    - Linux: none used (Red Hat, SuSE 8), /etc/rc.config: CRON="YES" (SuSE 7) 
+    - Solaris: /etc/default/cron: CRONLOG=yes
+    - Tru64: none used
+
+#### crontab files
+- what to run and when to run it are specified by crontab entries
+    - comprise the system's cron schedule
+- any user may add entries to the cron schedule by default
+    - entries are stored in separate files for each user
+        - usually /var/spool/cron/crontabs
+    - files are named after their username
+        - /var/spool/cron/crontabs/root
+- crontab files are not ordinarily edited directly
+    - created and modified with the crontab command
+- crontab entries direct cron to run commands at regular intervals
+    - each one-line entry in the crontab file has the format
+```
+minutes  hours  day-of-month  month  weekday  command
+```
+- final field, `command`, can contain spaces within it
+    - it consists of everything after the space following weekday
+    - other fields must not contain embedded spaces
+
+| Field | Meaning | Range |
+|---|---|---|
+| minutes | minutes after the hour | 0-59 |
+| hours | hour of the day | 0-23 (0 = midnight) |
+| day of the month | numeric day within a month | 1-31 |
+| month | month of the year | 1-12 |
+| weekday | day of the week | 0-6 (0 = Sunday) |
+
+- an entry in any of these fields can be
+    - a single number
+    - a pair of numbers separated by a dash (indicating a range of numbers)
+    - a comma-separated list of numbers and/or ranges
+    - an asterisk (a wildcard that represents all valid values for that field)
+        - NOTE: the common case for this if for all increasingly sized divisions from
+          a value (e.g. minutes -> hours, so specify minutes and run for these minutes
+          on every hour)
+- use # for commented lines
+- the command field can be any Unix command or group of commands
+  (properly separated with semicolons)
+- entire crontab entry can be arbitrarily long
+    - must be a single physical line in the file
+- cron will use any text following a % sign as standard input for command
+    - subsequent percent signs can be used to subdivide this text into lines
+- cron daemon reads the crontab files when it starts up and whenever there have been
+  changes to any of the crontab files in most implementations
+    - read once every minute in some (older) versions
+- BSD crontab file /etc/crontab uses a slightly different entry format
+    - adds an additional field between the weekday and command fields
+- see book for FreeBSD and Linux crontab entry format enhancements
+
+#### Adding crontab entries
+- generally create crontab entries with the `crontab` command
+    - installs the text file specified as its argument into the cron spool area by default
+- any previously installed crontab entries will be replaced
+- the -l option to crontab lists the current crontab entries
+    - can redirect output to a file to edit
+- the BSD-style /etc/crontab file must be edited manually
+- -r option removes all current crontab entries
+- -e option allows for directly modifying and reinstalling current crontab entries in a
+  single step
+- most crontab commands also accept a username as their final argument
+    - allows root to list or install a crontab file for a different user
+- -u on FreeBSD and Linux
+- need to carefully consider which user should execute each command run by cron
+    - root
+        - general system functions
+        - security monitoring
+        - filesystem cleanup
+    - lp
+        - cleanup and accounting related to print spooling
+    - sys
+        - performance monitoring
+    - uucp
+        - running tasks in the UUCP file exchange facility
+
+#### cron log files
+- almost all versions of cron provide some mechanism for recording its activities to a log file
+    - automatic on some systems
+    - messages are routed through the syslog facility on others
+    - usually set up at installation time
+    - occasionally necessary to configure syslog
+    . For example, on SuSE Linux sys- tems, you'll need to add an entry for cron to the syslog configuration file /etc/syslog. conf (discussed later in this chapter).
+
+#### Using cron to automate system administration
+- see list for examples and durations
+- useful to group long commands into custom script
+- can be used to run a command a set number of times for a certain period and then stop
+- FreeBSD provides the periodic command for the same reason
+    - see text for more info
+
+#### Linux: The /etc/cron.* directories
+- Linux systems provides the /etc/cron.* subdirectories
+    - scripts are run via these crontab entries on Red Hat Systems
+```
+01 * * * * root run-parts /etc/cron.hourly
+02 4 * * * root run-parts /etc/cron.daily
+22 4 * * 0 root run-parts /etc/cron.weekly
+42 4 1 * * root run-parts /etc/cron.monthly
+```
+
+#### cron security issues
+- two main types
+    - making sure the system crontab files are secure
+        - addressed by setting (if necessary) and checking the ownership and protection on the crontab files
+          appropriately (should not be world-writeable)
+        - should be included in any filesystem security monitoring that you do
+    - making sure unauthorized users don't run commands using cron
+        - addressed by the files cron.allow and cron.deny
+            - control access to the crontab command
+        - both files contain lists of usernames, one per line
+        - controlled in the following way
+            - if cron.allow exists, a username must be listed within it in order to
+              run crontab
+            - if cron.allow does not exist but cron.deny does exist, any user not
+              listed in cron.deny may use the crontab command
+                - cron.deny may be empty to allow unlimited access to cron
+            - only root can use crontab if neither exists
+                - except FreeBSD and Linux
+                - default build configuration of cron allows everyone to use it
+-  cron.allow and cron.deny files control only whether a user can use the crontab command
+  or not
+    - do not affect whether any existing crontab entries will be executed
+      which will be executed until they are removed
+
+### System Messages
+- system facilities generate status messages
+- error messages are generated whenever there are hardware or software problems
+- system administrator's most important job is monitoring these messages
+
+#### The syslog facility
+- syslog is a message-logging facility which provides a more general way to specify
+  where and how some types of system messages are saved
+
+- syslogd option to reject nonlocal messages
+    - AIX: -r
+    - FreeBSD: -s
+    - HP-UX: -N
+    - Linux: -r to allow remote messages
+    - Solaris: -t
+    - Tru64: List allowed hosts in /etc/syslog.auth (all hosts are allowed if it doesn't exist)
+- file containing PID of syslogd
+    - usual: /var/run/syslog.pid
+    - AIX: /etc/syslog.pid
+- current general message log file
+    - usual: /var/log/messages
+    - HP-UX: /var/adm/syslog/syslog.log
+    - Solaris: /var/adm/messages
+    - Tru64: /var/adm/syslog.dated/current/*.log
+- boot script that starts syslogd
+    - AIX: /etc/rc.tcpip FreeBSD: /etc/rc
+    - HP-UX: /sbin/init.d/syslogd
+    - Linux: /etc/init.d/syslog
+    - Solaris: /etc/init.d/syslog
+    - Tru64: /sbin/init.d/syslog
+- boot script configuration file: syslog-related entries
+    - usual: none used
+    - FreeBSD: /etc/rc.conf: syslogd_enable="YES" and syslogd_flags="opts"
+    - SuSE Linux: /etc/rc.config (SuSE 7), /etc/sysconfig/syslog (SuSE 8); SYSLOGD_PARAMS="opts" and KERNEL_LOGLEVEL=n
+
+#### Configuring syslog
+- syslogd, the system message logging daemon, writes messages to the locations specified by admin
+    - collects messages sent by various system processes and routes them to their final
+      destination based on instructions given in /etc/syslog.conf
+    - organizes system messages in two ways
+        - part of the system that generated them
+        - importance
+- format
+```
+facility.level  destination
+```
+- facility - name of the subsystem sending the message
+- level - severity level of the message
+- destination - file, device, computer or username to send the message to
+- two fields must be separated by tab characters on most systems
+    - spaces are allowed under Linux and FreeBSD
+- most important defined facilities
+    - kern - kernel
+    - user - user processes
+    - mail - mail subsystem
+    - lpr - printing subsystem
+    - daemon - system server processes
+    - auth - user authentication system (nonsensitive information)
+    - authpriv - user authentication system (security sensitive information)
+        - some systems have only one of auth and authpriv
+    - ftp
+    - cron
+    - syslog - internal messages
+    - mark - timestamps produced at regular intervals (e.g., every 15 minutes)
+    - local* - eight local message facilities (0-7)
+        - some operating systems use one or more of them
+
+- severity levels (decreasing seriousness)
+    - emerg - system panic
+    - alert - serious error requiring immediate attention
+    - crit - critical errors like hard device errors
+    - err - other errors
+    - warning - warnings
+    - notice - noncritical messages
+    - info - informative messages
+    - debug - extra information helpful for tracking down problems
+    - none - ignore messages from this facility
+    - mark - selects timestamp messages (generated every 20 minutes by default)
+        - not included by the asterisk wildcard (and you wouldn't really want it to be)
+- multiple facility-level pairs may be included on one line by separating them with semi-colons
+- multiple facilities may be specified with the same severity level by separating them with commas
+- an asterisk may be used as a wildcard throughout an entry
+- see text for different types of destinations and a sample syslog.conf
+- all messages are appended to log files
+    - must monitor size and truncate them periodically
+    - log file must already exist when the syslogd process reads the configuration file entry
+      referring to it in order for it to be recognized on some systems
+        - need to create an empty log file, add a new entry to syslog.conf, and signal (`kill -HUP`) or
+          restart the daemon in order to add a new log file
+
+#### Enhancements to syslog.conf
+- several operating systems offer enhanced versions of the syslog configuration file
+- see text for examples
+
+#### The logger utility
+- can be used to send messages to the syslog facility from a shell script
+```
+# logger -p auth.alert -t DOT_FILE_CHK \ "$user's $file is world-writeable"
+```
+- -i option, which includes the process ID within the syslog log message
+
+### Hardware Error Messages
+- error messages related to hardware problems often appear within system log files
+- some Unix versions also provide a separate facility for hardware-related error messages
+- `dmesg` command is found on FreeBSD, HP-UX, Linux, and Solaris systems
+    - primarily used to examine or save messages from the most recent system boot
+    - some hardware informational and error messages also go to this facility
+```
+$ dmesg | egrep 'down|up'
+```
+
+#### The AIX error log
+#### Viewing errors under HP-UX
+#### The Tru64 binary error logger
+
+### Administering Log Files
+- must consider
+    - limiting the amount of disk space log files consume while simultaneously retaining
+      sufficient data for projected future requirements
+    - monitoring the contents of log files in order to identify and act upon important entries
+
+#### Managing log file disk requirements
+- log files grow without bounds and can quickly consume quite a lot of disk space
+    - common solution is to keep only a fraction of the historical data on disk
+- one approach involves periodically renaming the current log file and keeping
+  only a few recent versions on the system
+    - periodically delete the oldest one
+    - rename the current one
+    - recreate it
+- see script in text
+- can be run periodically via `cron`
+- back up log files on a regular basis so that older ones can be retrieved from backup media in the
+  event that their information is needed
+- disk space won't actually be released until you send a HUP signal to the associated daemon process holding
+  the file open (usually syslogd) when removing active log files
+- AIX has related functionality built into syslog
+- FreeBSD provides the `newsyslog` facility
+- Red Hat Linux systems provide a similar facility via `logrotate` and logrotated
+    - run daily by default via a script in /etc/cron.daily
+    - operations are controlled by the configuration file /etc/logrotate.conf
+- logrotate is open source and can be built on other Linux and Unix systems as well
+
+#### Monitoring log file contents
+- easy to generate huge amounts of logging information very quickly
+- often need to sift through log files
+- `swatch` facility runs in a variety of modes
+    - examines new entries as they are added to a system log file
+    - monitor an output stream in real time
+    - check through a file on a one-time basis
+- on recognizing a pattern specified in its input it can perform some specified action
+- swatch can be used to monitor any output, not just syslog events
+- -t continuously examines the tail of the file (similar to `tail -f`)
+- -f scans a file once for matching entries (useful when running swatch via cron)
+- -p monitors the output from a running program
+- another free tool for this purpose is logcheck
+
+### Managing Software Packages
+- see text for table of options for various platforms
+
+### Building Software Packages from Source Code
+#### mtools: Using configure and accepting imperfections
+- mtools is a set of utilities for directly accessing DOS-format floppy disks on Unix systems
+- outlines use of `configure`, `make`, etc
+
+#### bzip2: Converting Linux-based make procedures
+#### jove: Configuration via make file settings
+#### Internet software archives
+- General
+    - http://sourceforge.net
+    - http://www.gnu.org
+    - http://freshmeat.net
+    - http://www.xfree86.org
+    - http://rtfm.mit.edu
+- AIX
+    - http://freeware.bull.net
+    - http://aixpdslib.seas.ucla.edu/aixpdslib.html
+- FreeBSD
+    - http://www.freebsd.org/ports/
+    - http://www.freshports.org
+- HP-UX
+    - http://hpux.cs.utah.edu
+    - http://www.software.hp.com (drivers and commercial packages)
+- Linux
+    - http://www.redhat.com
+    - http://www.suse.com
+    - http://www.ibiblio.org/Linux
+    - http://linux.davecentral.com
+- Solaris
+    - http://www.sun.com/bigadmin/downloads/
+    - http://www.sun.com/download/
+    - ftp://ftp.sunfreeware.com/pub/freeware/
+    - http://www.ibiblio.org/pub/packages/solaris/
+- Tru64
+    - http://www.unix.digital.com/tools.html
+    - ftp://ftp.digital.com
+    - http://gatekeeper.dec.com
+    - http://www.tru64.compaq.com
+
+
+# Ch. 4 - Startup and Shutdown
