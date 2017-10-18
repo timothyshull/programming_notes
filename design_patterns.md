@@ -962,3 +962,5 @@
 - visitor
     - represent an operation to be performed on the elements of an object structure
     - visitor lets a new operation be defined without changing the classes of the elements on which it operates
+
+-
