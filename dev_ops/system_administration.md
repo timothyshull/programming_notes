@@ -1979,3 +1979,151 @@ Preparing the filesystem for use is the
     - this daemon should not be disabled
         - will seriously compromise filesystem integrity
 - syslogd
+    - system message handling facility
+    - routes informational and error messages to log files, specific users, electronic mail, and other destinations
+      according to the specifications in its configuration file
+- accounting
+    - started using the `accton` command
+    - relevant commands may be commented out if accounting is not enabled
+- system status monitor daemons
+    - some systems provide daemons that monitor the system's physical conditions
+        - power level
+        - temperature
+        - humidity
+    - trigger action when a problem occurs
+- subsystems that are typically started after networking
+    - electronic mail
+        - most popular electronic mail server is sendmail
+        - postfix is a common alternative (server process is also called sendmail)
+    - printing
+
+#### Connecting to the network
+- network initialization
+    - sets the system's network hostname if necessary
+    - configures network interfaces (adapter devices)
+    - it to communicate on the network
+- sample network init commands in boot scripts (newer RHEL uses `ip`)
+    - specific ifconfig commands vary
+```
+ifconfig lo0 127.0.0.1
+ifconfig ent0 inet 192.168.29.22 netmask 255.255.255.0
+```
+- sample network daemon startup
+```
+if [ -x server-pathname ]; then
+    preparatory commands server-start-cmd
+    echo Starting server-name
+fi
+```
+When the server program file exists and is executable, the script
+performs any neces- sary preparatory activities and then starts
+the server process. Note that
+- NOTE: some servers go into background execution automatically
+    - others must be explicitly started in the background
+- common network daemons
+    - inetd
+        - networking master server responsible for responding to many types of network requests via a large number
+          of subordinate daemons, which it controls and to which it delegates tasks
+    - named, routed, gated
+        -  name server and routing daemons
+        - provide dynamic remote hostname and routing data for TCP/IP
+        - one of routed or gated is used
+    - ntpd, xntpd, timed
+        - time-synchronization daemons
+        - timed daemon has been mostly replaced by the newer ntpd and the latest xntpd
+    - portmap, rpc.statd, rpc.lockd
+        - RPC daemons
+        - primary network interprocess communication mechanism used on Unix systems
+        - portmap connects RPC program numbers to TCP/IP port numbers
+        - many network services depend on it
+        - rpc.lockd provides locking services to NFS in conjunction with rpc.statd (status monitor)
+            - names may vary
+    - nfsd, biod, mountd
+        - NFS daemons, which service file access and filesystem mounting requests from remote systems. The first two take an integer parameter indicating how many copies of the daemon are created. The system boot scripts also typically execute the exportfs -a command, which makes local filesystems available to remote systems via NFS.
+    - automount
+        - NFS automounter
+        - mounts remote filesystems on demand
+            - has other names
+    - smbd, nmbd
+        - SAMBA daemons that handle SMB/CIFS-based remote file access requests from Windows
+          (and other) systems
+ Once basic networking is running,
+- other services and subsystems that depend networking can be started once basic networking is running
+    - remote filesystems can be mounted `mount -a -t nfs`
+    - –F replaces –t on some systems
+
+#### Housekeeping activities
+Traditionally,
+- multiuser-mode boots include a number of cleanup activities
+    - preserve editor files from vi and other ex-based editors
+        - enables users to recover some unsaved edits in the event of a crash
+        - automatically place checkpoint files in /tmp or /var/tmp during editing sessions
+        - `expreserve` utility is normally run at boot time to recover such files
+        - `elvis` vi-clone is commonly available
+            - `elvprsv` performs the same function as `expreserve` for its files
+    - clear /tmp directory and other temporary directories
+        - commands may simply remove from /tmp with filtering
+        - might have to handle /tmp located on a separate filesystem from the root filesystem to avoid
+          removing important files and subdirectories
+        - might make sure that the /tmp directory exists and then remove a variety of junk files and
+          any subdirectory trees from a series of temporary directories
+
+#### Allowing users onto the system
+- final boot-time activities complete the process of making the system available to users
+    - prepare resources users need to log in
+        - consists of creating the getty processes that handle each terminal line
+        - starting a graphical login manager
+    - remove barriers that prevent them from doing so
+- file /etc/nologin may be created automatically when the system is shut down normally on most systems
+    - removing it is often one of the very last tasks of the boot scripts
+    - /etc/nologin may also be created as needed by the system administrator
+    - contents are displayed to users when they attempt to log in if not empty
+    - creating the file has no effect on users who are already logged in
+    - root user can always log in
+
+## Initialization Files and Boot Scripts
+- Unix initialization files
+    - command scripts that perform most of the work associated with taking the system to multiuser
+      mode
+- System V and BSD activities are similar but specifics are very different
+    - FreeBSD follows the traditional BSD style
+    - AIX is a hybrid of the two
+    - all the other versions use the System V scheme
+- vital part of system administration
+    - need to know where they are located and what they do
+- from a high-level, BSD boot process is controlled by a relatively small number of scripts in
+  the /etc directory
+    - names beginning with rc
+    -executed sequentially
+- System V executes a large number of scripts
+    - 50 or more
+    - organized in a three-tiered hierarchy
+- written using the Bourne shell (/bin/sh)
+- some aspects are also controlled by configuration files that modify the operations of the boot scripts
+    - some files consist of a series of variable definitions that are read in at the beginning of a boot script
+     - values determine which commands in the script are executed
+    - files are generally edited manually
+        - some systems provide graphical tools for this purpose
+
+### Initialization Files Under FreeBSD
+- BSD systems such as FreeBSD have simple init scripts
+    - boot-time activities previously occurred via a series of only three or four shell scripts
+      usually residing in /etc
+    - around 20 on FreeBSD
+- multiuser-mode system initialization under BSD-based operating systems is controlled by the
+  file /etc/rc
+    - init executes the rc script in multiuser boot
+        - calls other rc.* scripts
+- rc begins executing when the single-user shell is exited when booting to single-user mode
+- boot script configuration files control the functioning of the rc script
+    - /etc/default/rc.conf
+    - /etc/rc.conf
+    - /etc/rc.conf.local
+    - /etc/default/rc.conf installed by the operating system and should not be modified
+    - other two contain overrides to settings in the first file
+
+### Initialization Files on System V Systems
+- more complex than BSD-based systems
+- revolve around the notion of the current system run level
+
+#### System V run levels

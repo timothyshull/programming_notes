@@ -3,13 +3,13 @@
 ## How Special Methods Are Used
 - meant to be called by Python interpreter and not programmer
 - can be used to emulate numeric types with operator overloading
-- can be used to set how a custom type is printed (__repr__)
-    - __str__ is called by the str() constructor and implicitly used by the print function
-    - __str__ should return a string suitable for display to end users
-    - choose __repr__ if only implementing one because when no custom __str__ is available Python will call __repr__ as
+- can be used to set how a custom type is printed (`__repr__`)
+    - `__str__` is called by the str() constructor and implicitly used by the print function
+    - `__str__` should return a string suitable for display to end users
+    - choose `__repr__` if only implementing one because when no custom `__str__` is available Python will call `__repr__` as
       a fallback
-- can be used for arithmetic operators (__add__, __mul__)
-- can be used to use custom type as a bool value (__bool__)
+- can be used for arithmetic operators (__add__, `__mul__`)
+- can be used to use custom type as a bool value (`__bool__`)
 
 ## Overview of Special Methods
 - string/bytes representation
@@ -144,13 +144,13 @@
     - `__ixor__`
 
 - len is not called as a method because it gets special treatment as part of the Python data model, just like abs
-- can also make len work with custom objects using the special method __len__
+- can also make len work with custom objects using the special method `__len__`
 
 - special methods allow custom objects to behave like the built-in types
     - enables the expressive coding style the community considers Pythonic
 - A basic requirement for a Python object is to provide usable string representations of itself, one used for debugging
   and logging, another for presentation to end users
-    - purpose of special methods __repr__ and __str__ exist in the data model
+    - purpose of special methods `__repr__` and `__str__` exist in the data model
 - emulating sequences is one of the most widely used applications of the special methods
 - Python offers a rich selection of numeric types, aided by operator overloading, from the built-ins to
   decimal.Decimal and fractions.Fraction, all supporting infix arithmetic operators
@@ -169,254 +169,6 @@
 
 
 # II. Data Structures
-
-# 2. An Array of Sequences
-- mastering the standard library sequence types is a prerequisite for writing concise, effective, and idiomatic Python code
-
-## Overview of Built-In Sequences
-- mutable
-    - list, bytearray, array.array, collections.deque, and memoryview
-- immutable
-    - tuple, str, and bytes
-- flat sequences
-    - str, bytes, bytearray, memoryview, and array.array hold items of one type
-    - physically store the value of each item within its own memory space, and not as distinct objects
-    - more compact, faster, and easier to use
-    - limited to storing atomic data such as numbers, characters, and bytes
-- container sequences
-    - list, tuple, and collections.deque can hold items of different types
-    - hold references to the objects they contain, which may be of any type
-    - more flexible
-    - act surprisingly when they hold mutable objects
-    - use with caution with nested data structures
-
-```
-Container       Iterable        Sized
-__contains__    __iter__        __len__
-
-^               ^               ^
-Sequence
-__getitem__
-__contains__
-__iter__
-__reversed__
-index
-count
-
-^
-MutableSequence
-__setitem__
-__delitem__
-insert
-append
-reverse
-extend
-pop
-remove
-__iadd__
-```
-
-## List Comprehensions and Generator Expressions
-- powerful notations to build and initialize sequences, master them
-- listcomps and genexps
-```
-for symbol in symbols:
-    codes.append(ord(symbol))
-
-codes = [ord(symbol) for symbol in symbols]
-```
-- syntax tip - in Python code, line breaks are ignored inside pairs of [], {}, or ()
-    - can build multiline lists, listcomps, genexps, dictionaries and the like without using the ugly \ line
-      continuation escape
-- in Python 2.x, variables assigned in the for clauses in list comprehensions were set in
-  the surrounding scope
-    - the value of outer variables can be overwritten
-- prefer listcomps over builtin map and filter
-    - may be faster in some cases but not always
-    - test
-- to initialize tuples, arrays, and other types of sequences can use listcomp
-    - genexp saves memory because it yields items one by one using the iterator protocol instead
-      of building a whole list just to feed another constructor
-- use the same syntax as listcomps, but are enclosed in parentheses rather than brackets
-```
-tuple( ord( symbol) for symbol in symbols)
-```
-
-## Tuples Are Not Just Immutable Lists
-- tuples in Python play two roles
-    - records with unnamed fields
-    - immutable lists
-- when a tuple is used as a record, tuple unpacking is the safest, most readable way of getting at the fields
-- the new * syntax makes tuple unpacking even better by making it easier to ignore some fields and to deal with
-  optional fields
-- can use tuple unpacking with any iterable
-    - tuple unpacking -> iterable unpacking
-```
-a, b, *rest = range( 5)
-(0, 1, [2, 3, 4])
-```
-- can use nested tuple unpacking
-```
-for name, cc, pop, (latitude, longitude) in metro_areas:
-```
-- named tuples
-    - like tuples, they have very little overhead per instance
-    - provide convenient access to the fields by name and a handy ._asdict() to export the record as an OrderedDict.
-
-- tuples as immutable lists
-    - tuple supports all list methods that do not support adding or removing items
-        - except __reverse__ but reversed(my_tuple) works without it
-    - __add__
-    - __iadd__
-    - append
-    - clear
-    - __contains__
-    - copy
-    - count
-    - __delitem__
-    - extend
-    - __getitem__
-    - __getnewargs__
-    - index
-    - insert
-    - __iter__
-    - __len__
-    - __mul__
-    - __imul__
-    - __rmul__
-    - pop
-    - remove
-    - reverse
-    - __reversed__
-    - __setitem__
-    - sort
-
-## Slicing
-- sequence slicing is a favorite Python syntax feature, and it is even more powerful than many realize
-- multidimensional slicing and ellipsis (...) notation, as used in NumPy, may also be supported by user-defined sequences
-- assigning to slices is a very expressive way of editing mutable sequences
-- repeated concatenation as in seq * n is convenient and, with care, can be used to initialize lists of lists containing
-  immutable items
-
-## Using + and * with Sequences
-
-## Augmented Assignment with Sequences
-- augmented assignment with + = and *= behaves differently for mutable and immutable sequences
-    - *= - these operators necessarily build new sequences
-    - if the target sequence is mutable, it is usually changed in place — but not always, depending on how the sequence
-      is implemented
-
-## list.sort and the sorted Built-In Functions
-- the sort method and the sorted built-in function are easy to use and flexible, thanks to the key optional argument
-  they accept, with a function to calculate the ordering criterion
-- key can also be used with the min and max built-in functions
-
-## Managing Ordered Sequences with bisect
-- to keep a sorted sequence in order, always insert items into it using bisect.insort; to search it efficiently, use
-  bisect.bisect
-
-## When a List Is Not the Answer
-- Python standard library provides array.array.
-- NumPy and SciPy are not part of the standard library but should study
-- thread-safe collections.deque
-    - comparing its API with that of list in Table   2-3 and mentioning other queue implementations in the standard
-      library
-
-# 3. Dictionaries and Sets
-- Python dicts are highly optimized
-- hash tables are the engines behind Python's high-performance dicts
-
-## Generic Mapping Types
-- collections.abc
-    - Mapping
-    - MutableMapping
-    - formalize the interfaces of dict
-- often extend collections.UserDict instead
-```
-Container       Iterable        Sized
-__contains__    __iter__        __len__
-
-^               ^               ^
-Mapping
-__getitem__
-__contains__
-__eq__
-__ne__
-get
-items
-values
-
-^
-MutableMapping
-__setitem__
-__delitem__
-clear
-pop
-popitem
-setdefault
-update
-```
-- keys must be hashable
-    - an object is hashable if it has a hash value which never changes during its lifetime
-      (it needs a `__hash__()` method), and can be compared to other objects (it needs an __eq__() method)
-    - hashable objects which compare equal must have the same hash value
-    - the atomic immutable types (str, bytes, numeric types) are all hashable
-    - a frozenset is always hashable, because its elements must be hashable by definition
-    - a tuple is hashable only if all its items are hashable
-    - user-defined types are hashable by default because their hash value is their id
-      () and they all compare not equal
-        - if an object implements a custom `__eq__` that takes into account its internal state
-          it may be hashable only if all its attributes are immutable
-
-## dict Comprehensions
-- dictcomp added in Python 2.7
-```
-country_code = {country: code for code, country in DIAL_CODES}
-```
-
-## Overview of Common Mapping Methods
-- defaultdict and OrderedDict in collections
-    - clear
-    - __contains__
-    - copy
-    - __copy__
-    - default_factory
-    - __delitem__
-    - fromkeys
-    - get
-    - __getitem__
-    - items
-    - __iter__
-    - keys
-    - __len__
-    - __missing__
-    - move_to_end
-    - pop
-    - popitem
-    - __reversed__
-    - setdefault
-    - __setitem__
-    - update
-    - values
-
-### Handling Missing Keys with setdefault
-- dict access with `d[k]` raises an error when k is not an existing key
-- d.get(k, default) is an alternative to `d[k]` whenever a default value is more convenient
-  than handling KeyError
-- when updating the value found (if it is mutable), using either __getitem__ or get is
-  awkward and inefficient
-```
-my_dict.setdefault(key, []).append(new_value)
-
-# same as
-if key not in my_dict:
-    my_dict[key] = []
-my_dict[ key]. append( new_value)
-```
-- setdefault uses a single lookup whereas the second example uses at least two and three
-  if its not found
-
-## Mappings with Flexible Key Lookup
 
 
 # Ch. 2 - An Array of Sequences
@@ -748,9 +500,9 @@ isinstance(instance, abc.Mapping)
 - all std lib mapping types use dict and so keys must be hashable
 - an object is hashable if it
     - has a hash value which never changes during its lifetime
-        - needs a __hash__() method
+        - needs a `__hash__`() method
     - can be compared to other objects
-        - needs an __eq__() method
+        - needs an `__eq__`() method
     - hashable objects which compare equal must have the same hash value
 - atomic immutable types (str, bytes, numeric types) are all hashable
 - frozenset is always hashable, because its elements must be hashable by definition
@@ -758,7 +510,7 @@ isinstance(instance, abc.Mapping)
     - other than that, all immutable built-in objects are hashable
 - user-defined types are hashable by default because their hash value is their id()
   and they all compare not equal
-    - if an object implements a custom __eq__ that takes into account its internal
+    - if an object implements a custom `__eq__` that takes into account its internal
       state, it may be hashable only if all its attributes are immutable
 
 ## dict Comprehensions
@@ -1253,13 +1005,13 @@ def remove_diacritics(txt):
         - methods implemented in C, like dict.get. methods functions defined in the
           body of a class
     - classes
-        - when invoked, a class runs its __new__ method to create an instance, then __init__ to initialize it, and
+        - when invoked, a class runs its `__new__` method to create an instance, then `__init__` to initialize it, and
           finally the instance is returned to the caller
         - because there is no new operator in python, calling a class is like calling a function
            (usually calling a class creates an instance of the same class, but other behaviors are
-           possible by overriding __new__)
+           possible by overriding `__new__`)
     - class instances
-        - if a class defines a __call__ method, then its instances may be invoked as functions
+        - if a class defines a `__call__` method, then its instances may be invoked as functions
     - generator functions
         - functions or methods that use the yield keyword
         - when called, generator functions return a generator object
@@ -1280,16 +1032,16 @@ def remove_diacritics(txt):
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| __annotations__ | dict | parameter and return annotations |
-| __call__ | method-wrapper | implementation of the () operator; a.k.a. the callable object protocol |
-| __closure__ | tuple | the function closure, i.e., bindings for free variables (often is None) |
-| __code__ | code | function metadata and function body compiled into bytecode |
-| __defaults__ | tuple | default values for the formal parameters |
-| __get__ | method-wrapper | implementation of the read-only descriptor protocol |
-| __globals__ | dict | global variables of the module where the function is defined |
-| __kwdefaults__ | dict | default values for the keyword-only formal parameters |
-| __name__ | str | the function name |
-| __qualname__ | str | the qualified function name, e.g., Random.choice (see PEP-3155) |
+| `__annotations__` | dict | parameter and return annotations |
+| `__call__` | method-wrapper | implementation of the () operator; a.k.a. the callable object protocol |
+| `__closure__` | tuple | the function closure, i.e., bindings for free variables (often is None) |
+| `__code__` | code | function metadata and function body compiled into bytecode |
+| `__defaults__` | tuple | default values for the formal parameters |
+| `__get__` | method-wrapper | implementation of the read-only descriptor protocol |
+| `__globals__` | dict | global variables of the module where the function is defined |
+| `__kwdefaults__` | dict | default values for the keyword-only formal parameters |
+| `__name__` | str | the function name |
+| `__qualname__` | str | the qualified function name, e.g., Random.choice (see PEP-3155) |
 
 ## From Positional to Keyword-Only Parameters
 - keyword only args and * and ** to "explode" args
@@ -1342,7 +1094,7 @@ def remove_diacritics(txt):
 - most common types used in annotations are classes, like str or int, or strings, like
   'int > 0'
 - no processing is done with annotations
-    - merely stored in the __annotations__ attribute of the function
+    - merely stored in the `__annotations__` attribute of the function
 - only thing Python does with annotations is to store them in the `__annotations__` attribute of
   the function
     - annotations have no meaning to the Python interpreter
@@ -1605,7 +1357,7 @@ f = d1(d2(f))
       pass
     - letting user-defined classes override the copying operation or the set of components
       copied
-- can control the behavior of both copy and deepcopy by implementing the __copy__() and __deepcopy__()
+- can control the behavior of both copy and deepcopy by implementing the `__copy__`() and `__deepcopy__`()
   special methods as described in the copy module documentation
 
 ## Function Parameters as References
@@ -1818,7 +1570,6 @@ def x(self):
   identifiers for the instance attributes
     - good to use a tuple because it conveys the message that the `__slots__` definition
       cannot change
-      By defining __slots__ in the class, you are telling the interpreter: "
 - effectively tells interpreter that the specified attributes are all the instance attributes in
   this class
 - stored in a tuple-like structure in each instance
@@ -1826,12 +1577,12 @@ def x(self):
 - NOTE: use numpy arrays if handling millions of objects with numeric data
     - memory-efficient
     - have highly optimized functions for numeric processing
-- class instances will not be allowed to have any other attributes when __slots__ is specified in a class
-    - considered bad form to use __slots__ just to prevent users of your class from creating
+- class instances will not be allowed to have any other attributes when `__slots__` is specified in a class
+    - considered bad form to use `__slots__` just to prevent users of your class from creating
       new attributes in the instances if they want to
     - use for optimization, not for programmer restraint
     - can add the `__dict__` name to the `__slots__`
-        - instances will keep attributes named in __slots__ in the per-instance tuple
+        - instances will keep attributes named in `__slots__` in the per-instance tuple
         - will also support dynamically created attributes which will be stored in the
           usual `__dict__`
         - may defeat the purpose
@@ -2123,7 +1874,7 @@ return len(self) == len(other) and all(a == b for a, b in zip(self, other))
     - for earlier versions of Python use the metaclass=keyword in the class statement
       and point to abc.ABCMeta `class Tombola(metaclass=abc.ABCMeta):`
 - metaclass=keyword argument was introduced in Python 3
-- use the __metaclass__ class attribute in Python 2
+- use the `__metaclass__` class attribute in Python 2
 ```
 class Tombola(object):
     __metaclass__ = abc.ABCMeta
@@ -2479,7 +2230,7 @@ P.method(i)
     - a concrete `Iterable.__iter__` should return a new Iterator instance
     - a concrete Iterator must implement `__next__`
     - `Iterator.__iter__` method just returns the instance itself
-    - Iterator implements __iter__ by returning self
+    - Iterator implements `__iter__` by returning self
         - allows an iterator to be used wherever an iterable is required
 - return the next item from the iterator
 - the Iterator ABC abstract method is `it.__next__()` in Python 3 and `it.next()` in Python 2
@@ -2672,7 +2423,7 @@ but eventually I got used to it. Here are the
     - not on whatever is returned by `__enter__`
 - the as clause of the with statement is optional (depending on the context manager)
 - NOTE: use contextlib.redirect_stdout to redirect stdout
-- three arguments passed to __exit__
+- three arguments passed to `__exit__`
     - exc_type - exception class
     - exc_value - exception instance (parameters passed to the exception constructor can be found in exc_value.args)
     traceback - traceback object
@@ -3135,7 +2886,7 @@ For simple uses, the
 - asyncio.Future and the concurrent.futures.Future classes have mostly the same interface 
     - implemented differently and are not interchangeable
     - may unify asyncio.Future and concurrent.futures.Future in the future (e.g., by adding 
-      an __iter__ method to concurrent.futures.Future that works with yield from)
+      an `__iter__` method to concurrent.futures.Future that works with yield from)
 - futures are created only as the result of scheduling something for execution
 - `BaseEventLoop.create_task(...)` takes a coroutine, schedules it to run, and returns an asyncio.Task instance
     - Task is also an instance of asyncio.Future because Task is a subclass of Future designed 
@@ -3621,7 +3372,7 @@ The behavior of many of the functions and
     - `__class__`
         - a reference to the object's class
         - `obj.__class__` is the same as type(obj)
-         Python looks for special methods such as __getattr__ only in an object's class,
+         Python looks for special methods such as `__getattr__` only in an object's class,
          and not in the instances themselves.
     - `__dict__`
         - a mapping that stores the writable attributes of an object or class
@@ -3664,7 +3415,7 @@ The behavior of many of the functions and
         - assigns the value to the named attribute of object, if the object allows it
         - may create a new attribute or overwrite an existing one
     - `vars([object])`
-        - returns the __dict__ of object
+        - returns the `__dict__` of object
         - can't deal with instances of classes that define `__slots__` and don't have
           a `__dict__`
         - same as locals() without vars - returns a dict representing the local scope
@@ -3749,7 +3500,7 @@ The behavior of many of the functions and
       instance, with values stored in storage attributes
     - a descriptor instance and a storage attribute provide the infrastructure for a managed
       attribute
-- NOTE: when coding a __set__ method keep in mind
+- NOTE: when coding a `__set__` method keep in mind
     - self is the descriptor instance
     - instance is the managed instance
     - descriptors managing instance attributes should store values in the managed instances
@@ -3836,7 +3587,7 @@ class Descriptor:
           instead of returning the descriptor object
     - e.g. the instance attribute will shadow the descriptor, but only when reading
 - nonoverriding descriptor
-    - a descriptor that does not implement __set__
+    - a descriptor that does not implement `__set__`
     - setting an instance attribute with the same name will shadow the descriptor
         - renders it ineffective for handling that attribute in that specific instance
     - methods are implemented as nonoverriding descriptors
@@ -3984,10 +3735,10 @@ When we left the LineItem example in "LineItem Take #5: A New Descriptor Type", 
       descriptor will be bound)
     - can inspect the class and set proper storage names to the descriptors once the whole class is
       assembled and the descriptors are bound to the class attributes
-    - could be done in the __new__ method of the class
-        - correct storage names are set by the time the descriptors are used in the __init__ 
+    - could be done in the `__new__` method of the class
+        - correct storage names are set by the time the descriptors are used in the `__init__`
           method
-    - using __new__ for that purpose causes the logic of __new__ to run every time a new instance 
+    - using `__new__` for that purpose causes the logic of `__new__` to run every time a new instance
       is created, but the binding of the descriptor to the managed attribute will never change once 
       the class itself is built
     - need to set the storage names when the class is created
@@ -4069,12 +3820,12 @@ When we left the LineItem example in "LineItem Take #5: A New Descriptor Type", 
     - `__init__` method can do everything a class decorator can do
     - effects are more profound
 - NOTE: further class customization can be done by implementing `__new__` in a metaclass
-    - implementing __init__ is usually enough
+    - implementing `__init__` is usually enough
 
 ## A Metaclass for Customizing Descriptors
 - see model.Entity
 
-## The Metaclass __prepare__ Special Method
+## The Metaclass `__prepare__` Special Method
 - sometimes necessary to know the order in which the attributes of a class are defined
 - both the type constructor and the `__new__` and `__init__` methods of metaclasses receive the body of
   the class evaluated as a mapping of names to attributes
